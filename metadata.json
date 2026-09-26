@@ -1,0 +1,6 @@
+{
+  "name": "MagiVents",
+  "description": "A premium event management and discovery platform celebrating curated cultural, culinary, and design gatherings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

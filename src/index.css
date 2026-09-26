@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --color-sand-base: #F4F1EA;
+  --color-sand-card: #FFFFFF;
+  --color-espresso: #2A2421;
+  --color-mocha: #736B66;
+  --color-terracotta: #C85A40;
+  --color-terracotta-hover: #A64831;
+  --color-border-sand: #E2DDD5;
+}
+
+:root {
+  --bg-sand-base: #F4F1EA;
+  --bg-sand-card: #FFFFFF;
+  --text-espresso: #2A2421;
+  --text-mocha: #736B66;
+  --accent-terracotta: #C85A40;
+  --accent-terracotta-hover: #A64831;
+  --border-sand: #E2DDD5;
+}
+
+body {
+  background-color: var(--bg-sand-base);
+  color: var(--text-espresso);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Warm diffused shadows with subtle amber undertone */
+.shadow-sand-sm {
+  box-shadow: 0 1px 3px 0 rgba(42, 36, 33, 0.05), 0 1px 2px -1px rgba(42, 36, 33, 0.05);
+}
+
+.shadow-sand-md {
+  box-shadow: 0 4px 16px -2px rgba(42, 36, 33, 0.08), 0 2px 6px -2px rgba(42, 36, 33, 0.04);
+}
+
+.shadow-sand-lg {
+  box-shadow: 0 12px 32px -4px rgba(42, 36, 33, 0.12), 0 4px 12px -2px rgba(42, 36, 33, 0.06);
+}
+
+.shadow-sand-xl {
+  box-shadow: 0 20px 48px -6px rgba(42, 36, 33, 0.16), 0 8px 24px -4px rgba(42, 36, 33, 0.08);
+}
+
+/* Warm sand shimmer skeleton animation */
+@keyframes sand-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #EBE6DF 0%, #F5F2EC 50%, #EBE6DF 100%);
+  background-size: 200% 100%;
+  animation: sand-shimmer 1.8s infinite ease-in-out;
+}
+
