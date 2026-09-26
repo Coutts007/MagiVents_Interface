@@ -87,6 +87,13 @@ export interface TicketBooking {
   attendeeEmail: string;
   bookingDate: string;
   ticketCode: string;
+  paymentMethod?: 'mpesa' | 'card' | 'complimentary';
+  mpesaPhoneNumber?: string;
+  mpesaReceiptNumber?: string;
+  mpesaMode?: 'stk' | 'paybill';
+  currency?: string;
+  totalInKes?: number;
+  notes?: string;
 }
 
 export interface OrganizerStats {

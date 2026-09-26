@@ -19,13 +19,18 @@ import {
   Layers,
   Sparkles,
   Share2,
-  Check
+  Check,
+  Printer,
+  Smartphone
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { EventItem, TicketBooking } from '../../types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { ImageUploadZone } from '../ui/ImageUploadZone';
+import { PrintableTicketModal } from '../ticket/PrintableTicketModal';
+import { EmailConfirmationModal } from '../ticket/EmailConfirmationModal';
 
 export interface ProfileViewProps {
   onNavigate: (view: 'discover' | 'organizer') => void;
@@ -71,6 +76,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // Digital Pass Inspection Modal
   const [selectedPass, setSelectedPass] = useState<TicketBooking | null>(null);
   const [passCalendarAdded, setPassCalendarAdded] = useState(false);
+  const [printBooking, setPrintBooking] = useState<TicketBooking | null>(null);
+  const [emailBooking, setEmailBooking] = useState<TicketBooking | null>(null);
 
   // Security Password Change
   const [currentPass, setCurrentPass] = useState('');
@@ -367,16 +374,38 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <span>
                         {booking.tierName} × {booking.quantity}
                       </span>
-                      <span className="font-serif font-bold tabular-nums">
-                        ${booking.totalPrice} Paid
-                      </span>
+                      <div className="text-right">
+                        <span className="font-serif font-bold tabular-nums block">
+                          ${booking.totalPrice} Paid
+                        </span>
+                        {booking.paymentMethod === 'mpesa' && (
+                          <span className="text-[10px] text-[#00A34D] font-mono font-medium flex items-center gap-1 justify-end">
+                            <Smartphone className="w-3 h-3" />
+                            KES {(booking.totalInKes || booking.totalPrice * 130).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pt-5 mt-4 border-t border-[#E2DDD5] flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs text-[#736B66]">
-                      <QrCode className="w-4 h-4 text-[#2A2421]" />
-                      <span>Ready for scan</span>
+                  <div className="pt-5 mt-4 border-t border-[#E2DDD5] flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setPrintBooking(booking)}
+                        title="Print ticket pass"
+                        className="p-2 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-xl transition-colors cursor-pointer"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEmailBooking(booking)}
+                        title="Email confirmation"
+                        className="p-2 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-xl transition-colors cursor-pointer"
+                      >
+                        <Mail className="w-4 h-4" />
+                      </button>
                     </div>
 
                     <Button
@@ -804,10 +833,50 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     </span>
                   </div>
                 </div>
-                <span className="font-serif text-lg font-bold text-[#2A2421] tabular-nums">
-                  ${selectedPass.totalPrice} Paid
-                </span>
+                <div className="text-right">
+                  <span className="font-serif text-lg font-bold text-[#2A2421] tabular-nums block">
+                    ${selectedPass.totalPrice} Paid
+                  </span>
+                  {selectedPass.paymentMethod === 'mpesa' && (
+                    <span className="text-[11px] text-[#00A34D] font-mono">
+                      KES {(selectedPass.totalInKes || selectedPass.totalPrice * 130).toLocaleString()}
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {selectedPass.paymentMethod === 'mpesa' && (
+                <div className="p-3 bg-[#00A34D]/5 border border-[#00A34D]/20 rounded-xl text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[#00A34D]">
+                    <Smartphone className="w-4 h-4 shrink-0" />
+                    <span className="font-semibold">M-Pesa Verified</span>
+                  </div>
+                  <span className="font-mono text-[11px] text-[#2A2421]">
+                    Ref: {selectedPass.mpesaReceiptNumber || 'Verified'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions: Print Ticket & Email Confirmation */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                fullWidth
+                icon={<Printer className="w-4 h-4 text-[#C85A40]" />}
+                onClick={() => setPrintBooking(selectedPass)}
+              >
+                Print Ticket Pass
+              </Button>
+
+              <Button
+                variant="outline"
+                fullWidth
+                icon={<Mail className="w-4 h-4 text-[#C85A40]" />}
+                onClick={() => setEmailBooking(selectedPass)}
+              >
+                Email Confirmation
+              </Button>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -851,6 +920,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </Modal>
       )}
+
+      {/* Printable Ticket Pass Modal */}
+      <PrintableTicketModal
+        isOpen={!!printBooking}
+        onClose={() => setPrintBooking(null)}
+        booking={printBooking}
+      />
+
+      {/* Email Confirmation Packet Modal */}
+      <EmailConfirmationModal
+        isOpen={!!emailBooking}
+        onClose={() => setEmailBooking(null)}
+        booking={emailBooking}
+      />
     </div>
   );
 };
