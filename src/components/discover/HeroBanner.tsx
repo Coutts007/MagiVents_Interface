@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, MapPin, ArrowRight, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, MapPin, ArrowRight, Pause, Play, Share2 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -8,12 +8,14 @@ export interface HeroBannerProps {
   events: EventItem[];
   onSelectEvent: (event: EventItem) => void;
   onQuickBook: (event: EventItem) => void;
+  onShare?: (event: EventItem) => void;
 }
 
 export const HeroBanner: React.FC<HeroBannerProps> = ({
   events,
   onSelectEvent,
-  onQuickBook
+  onQuickBook,
+  onShare
 }) => {
   const featured = events.filter((e) => e.isFeatured);
   const displayEvents = featured.length > 0 ? featured : events.slice(0, 3);
@@ -144,6 +146,18 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               >
                 Curatorial Overview
               </Button>
+
+              {onShare && (
+                <button
+                  type="button"
+                  onClick={() => onShare(currentEvent)}
+                  aria-label="Share this featured gathering"
+                  title="Share event link"
+                  className="p-3 rounded-full bg-white/10 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm transition-all duration-200 cursor-pointer shadow-xs active:scale-95 flex items-center justify-center"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>

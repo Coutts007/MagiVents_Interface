@@ -12,6 +12,7 @@ import { EventEditorModal } from './components/organizer/EventEditorModal';
 import { CheckoutModal } from './components/checkout/CheckoutModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { BookmarksDrawer } from './components/bookmarks/BookmarksDrawer';
+import { ShareModal } from './components/share/ShareModal';
 import { Footer } from './components/common/Footer';
 
 const STORAGE_EVENTS_KEY = 'magivents_events_v3';
@@ -79,6 +80,7 @@ function MainLayout() {
 
   // Navigation State: 'discover' | 'details' | 'organizer' | 'profile'
   const [currentView, setCurrentView] = useState<'discover' | 'details' | 'organizer' | 'profile'>('discover');
+  const [discoverTab, setDiscoverTab] = useState<'grid' | 'calendar'>('grid');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
@@ -95,9 +97,36 @@ function MainLayout() {
 
   const [isSavedDrawerOpen, setIsSavedDrawerOpen] = useState(false);
 
+  // Social Sharing Modal State
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareTargetEvent, setShareTargetEvent] = useState<EventItem | null>(null);
+
   // Auth Modal State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('login');
+
+  // Deep linking: Sync ?event=<id> from URL on initial load and popstate
+  useEffect(() => {
+    const handleUrlChange = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const eventId = params.get('event');
+        if (eventId) {
+          const match = events.find((e) => e.id === eventId);
+          if (match) {
+            setSelectedEventId(match.id);
+            setCurrentView('details');
+          }
+        }
+      } catch (e) {
+        console.warn('Could not inspect search params', e);
+      }
+    };
+
+    handleUrlChange();
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, [events]);
 
   // Sync to localStorage
   useEffect(() => {
@@ -134,7 +163,31 @@ function MainLayout() {
   const handleSelectEvent = (event: EventItem) => {
     setSelectedEventId(event.id);
     setCurrentView('details');
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('event', event.id);
+      window.history.pushState({}, '', url.toString());
+    } catch (e) {
+      console.warn('Could not update history state', e);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToDiscover = () => {
+    setCurrentView('discover');
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('event');
+      window.history.pushState({}, '', url.toString());
+    } catch (e) {
+      console.warn('Could not update history state', e);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOpenShare = (event: EventItem) => {
+    setShareTargetEvent(event);
+    setIsShareModalOpen(true);
   };
 
   const handleToggleBookmark = (event: EventItem) => {
@@ -238,8 +291,12 @@ function MainLayout() {
       {/* Universal Glassmorphic Navigation Bar */}
       <Navbar
         currentView={currentView}
-        onNavigate={(view) => {
+        discoverTab={discoverTab}
+        onNavigate={(view, tab) => {
           setCurrentView(view);
+          if (tab) {
+            setDiscoverTab(tab);
+          }
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         savedCount={bookmarkedIds.length}
@@ -258,19 +315,20 @@ function MainLayout() {
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={handleToggleBookmark}
             initialCategory={activeCategory}
+            onShareEvent={handleOpenShare}
+            currentTab={discoverTab}
+            onTabChange={setDiscoverTab}
           />
         )}
 
         {currentView === 'details' && selectedEvent && (
           <EventDetailsView
             event={selectedEvent}
-            onBack={() => {
-              setCurrentView('discover');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+            onBack={handleBackToDiscover}
             onBookTickets={handleBookFromDetails}
             isBookmarked={bookmarkedIds.includes(selectedEvent.id)}
             onToggleBookmark={handleToggleBookmark}
+            onShare={handleOpenShare}
             onSelectCategory={(cat) => {
               setActiveCategory(cat);
               setCurrentView('discover');
@@ -302,6 +360,8 @@ function MainLayout() {
             onRemoveBookmark={(id) =>
               setBookmarkedIds((prev) => prev.filter((bookmarkedId) => bookmarkedId !== id))
             }
+            onShareEvent={handleOpenShare}
+            allEvents={events}
           />
         )}
       </main>
@@ -330,6 +390,7 @@ function MainLayout() {
         tier={checkoutTarget.tier}
         quantity={checkoutTarget.quantity}
         onCompleteBooking={handleCompleteBooking}
+        onShareEvent={handleOpenShare}
       />
 
       {/* Authentication Modal (Login / Signup / Password Reset) */}
@@ -351,6 +412,14 @@ function MainLayout() {
           setBookmarkedIds((prev) => prev.filter((bookmarkedId) => bookmarkedId !== id))
         }
         onSelectEvent={handleSelectEvent}
+        onShareEvent={handleOpenShare}
+      />
+
+      {/* Social Sharing Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        event={shareTargetEvent}
       />
     </div>
   );

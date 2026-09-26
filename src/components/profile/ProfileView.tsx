@@ -17,7 +17,9 @@ import {
   AlertCircle,
   Camera,
   Layers,
-  Sparkles
+  Sparkles,
+  Share2,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { EventItem, TicketBooking } from '../../types';
@@ -31,6 +33,8 @@ export interface ProfileViewProps {
   savedEvents: EventItem[];
   purchasedBookings: TicketBooking[];
   onRemoveBookmark: (eventId: string) => void;
+  onShareEvent?: (event: EventItem) => void;
+  allEvents?: EventItem[];
 }
 
 const AVATAR_PRESETS = [
@@ -45,7 +49,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onSelectEvent,
   savedEvents,
   purchasedBookings,
-  onRemoveBookmark
+  onRemoveBookmark,
+  onShareEvent,
+  allEvents = []
 }) => {
   const { user, updateProfile, logout, isLoading: authLoading } = useAuth();
 
@@ -64,6 +70,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Digital Pass Inspection Modal
   const [selectedPass, setSelectedPass] = useState<TicketBooking | null>(null);
+  const [passCalendarAdded, setPassCalendarAdded] = useState(false);
 
   // Security Password Change
   const [currentPass, setCurrentPass] = useState('');
@@ -445,7 +452,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       from ${event.pricing.startingPrice}
                     </span>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {onShareEvent && (
+                        <button
+                          type="button"
+                          onClick={() => onShareEvent(event)}
+                          title="Share gathering"
+                          className="p-1.5 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => onRemoveBookmark(event.id)}
                         className="text-xs text-[#736B66] hover:text-red-700 px-2 py-1 cursor-pointer"
@@ -793,15 +810,36 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 variant="secondary"
                 fullWidth
-                icon={<CalendarPlus className="w-4 h-4" />}
-                onClick={() => alert(`Calendar invite generated for ${selectedPass.eventTitle}`)}
+                icon={passCalendarAdded ? <Check className="w-4 h-4 text-emerald-600" /> : <CalendarPlus className="w-4 h-4" />}
+                onClick={() => {
+                  setPassCalendarAdded(true);
+                  setTimeout(() => setPassCalendarAdded(false), 3000);
+                }}
               >
-                Add to Calendar
+                {passCalendarAdded ? 'Added (.ics)' : 'Add to Calendar'}
               </Button>
+
+              {onShareEvent && (
+                <Button
+                  variant="outline"
+                  fullWidth
+                  icon={<Share2 className="w-4 h-4 text-[#C85A40]" />}
+                  onClick={() => {
+                    const matchedEvent = allEvents.find((e) => e.id === selectedPass.eventId) ||
+                      savedEvents.find((e) => e.id === selectedPass.eventId);
+                    if (matchedEvent) {
+                      onShareEvent(matchedEvent);
+                    }
+                  }}
+                >
+                  Invite Companions
+                </Button>
+              )}
+
               <Button
                 variant="primary"
                 fullWidth

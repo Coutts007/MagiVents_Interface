@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, MapPin, Trash2, ArrowRight, Bookmark } from 'lucide-react';
+import { X, Calendar, MapPin, Trash2, ArrowRight, Bookmark, Share2 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Button } from '../ui/Button';
 
@@ -9,6 +9,7 @@ export interface BookmarksDrawerProps {
   savedEvents: EventItem[];
   onRemoveBookmark: (eventId: string) => void;
   onSelectEvent: (event: EventItem) => void;
+  onShareEvent?: (event: EventItem) => void;
 }
 
 export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
@@ -16,7 +17,8 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
   onClose,
   savedEvents,
   onRemoveBookmark,
-  onSelectEvent
+  onSelectEvent,
+  onShareEvent
 }) => {
   if (!isOpen) return null;
 
@@ -80,7 +82,17 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                       from ${event.pricing.startingPrice}
                     </span>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {onShareEvent && (
+                        <button
+                          type="button"
+                          onClick={() => onShareEvent(event)}
+                          title="Share gathering"
+                          className="p-1.5 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => onRemoveBookmark(event.id)}
                         title="Remove from saved"

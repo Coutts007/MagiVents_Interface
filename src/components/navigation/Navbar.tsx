@@ -17,11 +17,12 @@ import { Button } from '../ui/Button';
 
 export interface NavbarProps {
   currentView: 'discover' | 'details' | 'organizer' | 'profile';
-  onNavigate: (view: 'discover' | 'details' | 'organizer' | 'profile') => void;
+  onNavigate: (view: 'discover' | 'details' | 'organizer' | 'profile', tab?: 'grid' | 'calendar') => void;
   savedCount: number;
   onOpenSaved: () => void;
   onCreateEvent: () => void;
   onOpenAuth: () => void;
+  discoverTab?: 'grid' | 'calendar';
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -30,7 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   savedCount,
   onOpenSaved,
   onCreateEvent,
-  onOpenAuth
+  onOpenAuth,
+  discoverTab = 'grid'
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -40,25 +42,29 @@ export const Navbar: React.FC<NavbarProps> = ({
     {
       label: 'Discover',
       view: 'discover' as const,
+      tab: 'grid' as const,
       icon: Compass,
-      active: currentView === 'discover'
+      active: currentView === 'discover' && discoverTab === 'grid'
+    },
+    {
+      label: 'Calendar',
+      view: 'discover' as const,
+      tab: 'calendar' as const,
+      icon: Calendar,
+      active: currentView === 'discover' && discoverTab === 'calendar'
     },
     {
       label: 'Curated Series',
       view: 'discover' as const,
+      tab: 'grid' as const,
       icon: Sparkles,
-      active: false
-    },
-    {
-      label: 'Venues',
-      view: 'discover' as const,
-      icon: Building,
       active: false
     },
     {
       label: 'Organizer Portal',
       view: 'organizer' as const,
-      icon: Calendar,
+      tab: 'grid' as const,
+      icon: PlusCircle,
       active: currentView === 'organizer'
     }
   ];
@@ -85,7 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               key={item.label}
               onClick={() => {
-                onNavigate(item.view);
+                onNavigate(item.view, item.tab);
               }}
               className={`relative py-2 text-sm font-medium tracking-wide transition-colors duration-300 cursor-pointer ${
                 item.active ? 'text-[#2A2421]' : 'text-[#736B66] hover:text-[#2A2421]'
@@ -257,7 +263,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 key={item.label}
                 onClick={() => {
-                  onNavigate(item.view);
+                  onNavigate(item.view, item.tab);
                   setMobileMenuOpen(false);
                 }}
                 className={`min-h-[48px] px-4 rounded-xl flex items-center gap-3 text-base font-medium transition-colors text-left cursor-pointer ${

@@ -25,6 +25,7 @@ export interface EventDetailsViewProps {
   isBookmarked: boolean;
   onToggleBookmark: (event: EventItem) => void;
   onSelectCategory?: (category: any) => void;
+  onShare?: (event: EventItem) => void;
 }
 
 export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
@@ -33,7 +34,8 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
   onBookTickets,
   isBookmarked,
   onToggleBookmark,
-  onSelectCategory
+  onSelectCategory,
+  onShare
 }) => {
   const [selectedTier, setSelectedTier] = useState<TicketTier>(
     event.pricing.tiers[0] || {
@@ -52,7 +54,9 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
   const totalPrice = selectedTier.price * quantity;
 
   const handleShare = () => {
-    if (navigator.clipboard) {
+    if (onShare) {
+      onShare(event);
+    } else if (navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
       setCopiedShare(true);
       setTimeout(() => setCopiedShare(false), 2000);

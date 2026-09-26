@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, SlidersHorizontal, Sparkles, RefreshCw } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Sparkles, RefreshCw, LayoutGrid, CalendarDays } from 'lucide-react';
 import { EventItem, EventCategory } from '../../types';
 import { HeroBanner } from './HeroBanner';
 import { EventCard } from './EventCard';
 import { CategoryFilterBar } from './CategoryFilterBar';
+import { CalendarView } from '../calendar/CalendarView';
 import { SkeletonGrid } from '../ui/SkeletonCard';
 import { Button } from '../ui/Button';
 
@@ -14,6 +15,9 @@ export interface DiscoverViewProps {
   bookmarkedIds: string[];
   onToggleBookmark: (event: EventItem) => void;
   initialCategory?: string;
+  onShareEvent?: (event: EventItem) => void;
+  currentTab?: 'grid' | 'calendar';
+  onTabChange?: (tab: 'grid' | 'calendar') => void;
 }
 
 export const DiscoverView: React.FC<DiscoverViewProps> = ({
@@ -22,8 +26,21 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   onQuickBook,
   bookmarkedIds,
   onToggleBookmark,
-  initialCategory = 'all'
+  initialCategory = 'all',
+  onShareEvent,
+  currentTab,
+  onTabChange
 }) => {
+  const [internalTab, setInternalTab] = useState<'grid' | 'calendar'>('grid');
+  const activeTab = currentTab || internalTab;
+
+  const handleTabChange = (tab: 'grid' | 'calendar') => {
+    setInternalTab(tab);
+    if (onTabChange) {
+      onTabChange(tab);
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -112,6 +129,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         events={events}
         onSelectEvent={onSelectEvent}
         onQuickBook={onQuickBook}
+        onShare={onShareEvent}
       />
 
       {/* Discovery Catalog Section */}
@@ -131,22 +149,65 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
             </h2>
           </div>
 
-          {/* Shimmer Simulation & Count */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-[#736B66] font-medium tabular-nums">
-              Showing {filteredEvents.length} of {events.length} editions
-            </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
-              onClick={handleSimulateLoading}
-              title="Preview the sand-themed shimmer skeleton loader"
-            >
-              Simulate Loading
-            </Button>
+          {/* Segmented View Mode Tabs & Shimmer Simulation */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View Mode Segmented Tab: Directory Grid vs Calendar Schedule */}
+            <div className="bg-[#FAF8F5] p-1 rounded-2xl border border-[#E2DDD5] flex items-center shadow-xs">
+              <button
+                type="button"
+                onClick={() => handleTabChange('grid')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  activeTab === 'grid'
+                    ? 'bg-white text-[#2A2421] shadow-sand-sm font-semibold'
+                    : 'text-[#736B66] hover:text-[#2A2421]'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-[#C85A40]" />
+                <span>Directory Grid</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabChange('calendar')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                  activeTab === 'calendar'
+                    ? 'bg-white text-[#2A2421] shadow-sand-sm font-semibold'
+                    : 'text-[#736B66] hover:text-[#2A2421]'
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5 text-[#C85A40]" />
+                <span>Calendar Schedule</span>
+              </button>
+            </div>
+
+            {activeTab === 'grid' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
+                onClick={handleSimulateLoading}
+                title="Preview the sand-themed shimmer skeleton loader"
+              >
+                Simulate Loading
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* View Mode Content: CalendarView vs Directory Grid */}
+        {activeTab === 'calendar' ? (
+          <div className="pt-6">
+            <CalendarView
+              events={events}
+              onSelectEvent={onSelectEvent}
+              onQuickBook={onQuickBook}
+              bookmarkedIds={bookmarkedIds}
+              onToggleBookmark={onToggleBookmark}
+              onShareEvent={onShareEvent}
+              initialCategory={selectedCategory}
+            />
+          </div>
+        ) : (
+          <div>
 
         {/* Filter Toolbar & Category Navigation */}
         <div className="py-6 space-y-5">
@@ -253,6 +314,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                   onSelect={onSelectEvent}
                   isBookmarked={bookmarkedIds.includes(event.id)}
                   onToggleBookmark={onToggleBookmark}
+                  onShare={onShareEvent}
                   onCategoryClick={(cat) => {
                     setSelectedCategory(cat);
                     window.scrollTo({ top: 400, behavior: 'smooth' });
@@ -278,7 +340,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
             </Button>
           </div>
         )}
-      </section>
+      </div>
+    )}
+  </section>
 
       {/* Curatorial Values / Manifesto Strip */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20">

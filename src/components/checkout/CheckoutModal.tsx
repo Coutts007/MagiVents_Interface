@@ -8,7 +8,9 @@ import {
   CalendarPlus,
   QrCode,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  Share2,
+  Check
 } from 'lucide-react';
 import { EventItem, TicketTier, TicketBooking } from '../../types';
 import { useAuth } from '../../context/AuthContext';
@@ -22,6 +24,7 @@ export interface CheckoutModalProps {
   tier: TicketTier | null;
   quantity: number;
   onCompleteBooking: (booking: TicketBooking) => void;
+  onShareEvent?: (event: EventItem) => void;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
@@ -30,7 +33,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   event,
   tier,
   quantity,
-  onCompleteBooking
+  onCompleteBooking,
+  onShareEvent
 }) => {
   const { user } = useAuth();
   const [step, setStep] = useState<'form' | 'success'>('form');
@@ -41,6 +45,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [discount, setDiscount] = useState(0);
   const [promoError, setPromoError] = useState('');
   const [confirmedBooking, setConfirmedBooking] = useState<TicketBooking | null>(null);
+  const [calendarAdded, setCalendarAdded] = useState(false);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -342,17 +347,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <Button
               variant="secondary"
               fullWidth
-              icon={<CalendarPlus className="w-4 h-4" />}
-              onClick={() => alert(`Calendar invite generated for ${confirmedBooking?.eventTitle}`)}
+              icon={calendarAdded ? <Check className="w-4 h-4 text-emerald-600" /> : <CalendarPlus className="w-4 h-4" />}
+              onClick={() => {
+                setCalendarAdded(true);
+                setTimeout(() => setCalendarAdded(false), 3000);
+              }}
             >
-              Add to Calendar
+              {calendarAdded ? 'Invite Added (.ics)' : 'Add to Calendar'}
             </Button>
+            {event && onShareEvent && (
+              <Button
+                variant="outline"
+                fullWidth
+                icon={<Share2 className="w-4 h-4 text-[#C85A40]" />}
+                onClick={() => onShareEvent(event)}
+              >
+                Invite Companions
+              </Button>
+            )}
             <Button
               variant="primary"
               fullWidth
               onClick={handleClose}
             >
-              Done & Return to Discovery
+              Done
             </Button>
           </div>
         </div>

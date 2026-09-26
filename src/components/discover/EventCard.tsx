@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, MapPin, Bookmark, ArrowUpRight, Compass } from 'lucide-react';
+import { Calendar, MapPin, Bookmark, ArrowUpRight, Compass, Share2 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
 
@@ -9,6 +9,7 @@ export interface EventCardProps {
   isBookmarked: boolean;
   onToggleBookmark: (event: EventItem) => void;
   onCategoryClick?: (category: any) => void;
+  onShare?: (event: EventItem) => void;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({
@@ -16,7 +17,8 @@ export const EventCard: React.FC<EventCardProps> = ({
   onSelect,
   isBookmarked,
   onToggleBookmark,
-  onCategoryClick
+  onCategoryClick,
+  onShare
 }) => {
   const [imageError, setImageError] = useState(false);
 
@@ -68,21 +70,40 @@ export const EventCard: React.FC<EventCardProps> = ({
           )}
         </div>
 
-        {/* Bookmark Action Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleBookmark(event);
-          }}
-          aria-label={isBookmarked ? 'Remove from saved' : 'Save this event'}
-          className={`absolute top-3.5 right-3.5 z-10 p-2 rounded-full backdrop-blur-md transition-colors duration-200 cursor-pointer ${
-            isBookmarked
-              ? 'bg-[#C85A40] text-white'
-              : 'bg-white/80 hover:bg-white text-[#2A2421] shadow-xs'
-          }`}
-        >
-          <Bookmark className="w-4 h-4" fill={isBookmarked ? 'currentColor' : 'none'} />
-        </button>
+        {/* Top Right Action Group: Share & Bookmark */}
+        <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-1.5">
+          {onShare && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShare(event);
+              }}
+              aria-label="Share this event"
+              title="Share event link"
+              className="p-2 rounded-full backdrop-blur-md bg-white/80 hover:bg-white text-[#2A2421] hover:text-[#C85A40] transition-colors duration-200 cursor-pointer shadow-xs"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleBookmark(event);
+            }}
+            aria-label={isBookmarked ? 'Remove from saved' : 'Save this event'}
+            title={isBookmarked ? 'Remove from saved' : 'Save this event'}
+            className={`p-2 rounded-full backdrop-blur-md transition-colors duration-200 cursor-pointer shadow-xs ${
+              isBookmarked
+                ? 'bg-[#C85A40] text-white'
+                : 'bg-white/80 hover:bg-white text-[#2A2421]'
+            }`}
+          >
+            <Bookmark className="w-4 h-4" fill={isBookmarked ? 'currentColor' : 'none'} />
+          </button>
+        </div>
 
         {/* Starting Price Pill */}
         <div className="absolute bottom-3.5 right-3.5 z-10 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-[#2A2421] shadow-xs tabular-nums">
