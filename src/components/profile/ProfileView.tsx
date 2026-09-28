@@ -188,9 +188,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <button
                 onClick={handleOpenEdit}
                 aria-label="Change portrait"
-                className="absolute inset-0 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                className="absolute inset-0 rounded-full bg-black/50 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-center p-2"
+                title="Upload or change profile portrait"
               >
-                <Camera className="w-6 h-6" />
+                <Camera className="w-5 h-5 mb-0.5" />
+                <span className="text-[10px] font-semibold leading-tight">Change Photo</span>
               </button>
             </div>
 
@@ -674,36 +676,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           )}
 
-          {/* Avatar Preset Selector */}
-          <div>
-            <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-2">
-              Select Editorial Portrait
-            </label>
-            <div className="grid grid-cols-4 gap-3 mb-3">
-              {AVATAR_PRESETS.map((preset) => (
-                <div
-                  key={preset.label}
-                  onClick={() => {
-                    setEditAvatarUrl(preset.url);
-                    setCustomAvatarInput('');
-                  }}
-                  className={`aspect-square rounded-2xl overflow-hidden border-2 cursor-pointer transition-all ${
-                    editAvatarUrl === preset.url && !customAvatarInput
-                      ? 'border-[#C85A40] ring-2 ring-[#C85A40]/30 scale-105'
-                      : 'border-[#E2DDD5] hover:border-[#736B66]'
-                  }`}
-                >
-                  <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
-
-            <input
-              type="url"
-              value={customAvatarInput}
-              onChange={(e) => setCustomAvatarInput(e.target.value)}
-              placeholder="Or paste custom image URL..."
-              className="w-full px-4 py-2 bg-white border border-[#E2DDD5] rounded-xl text-xs text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+          {/* Avatar / Portrait Upload & Presets */}
+          <div className="pt-1">
+            <ImageUploadZone
+              label="Profile Photo & Editorial Portrait"
+              helperText="Upload your custom photo or choose an atelier preset"
+              value={editAvatarUrl}
+              onChange={(newUrl) => {
+                setEditAvatarUrl(newUrl);
+                setCustomAvatarInput('');
+              }}
+              shape="circle"
+              aspectRatio="1:1"
+              presets={AVATAR_PRESETS}
+              maxDimension={{ width: 800, height: 800 }}
+              uploadButtonText="Upload Profile Photo"
+              allowUrlInput={true}
             />
           </div>
 

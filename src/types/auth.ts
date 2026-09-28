@@ -7,6 +7,8 @@ export interface UserProfile {
   city?: string;
   joinedDate: string;
   role: 'patron' | 'curator';
+  authProvider?: 'google' | 'email';
+  googleId?: string;
 }
 
 export type AuthModalMode = 'login' | 'signup' | 'forgot-password' | 'reset-sent';

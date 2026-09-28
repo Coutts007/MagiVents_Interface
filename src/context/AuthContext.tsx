@@ -7,6 +7,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
+  loginWithGoogle: (googleAccount?: { name?: string; email?: string; avatarUrl?: string }) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   logout: () => void;
@@ -150,6 +151,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   };
 
+  const loginWithGoogle = async (googleAccount?: { name?: string; email?: string; avatarUrl?: string }): Promise<void> => {
+    setIsLoading(true);
+    // Simulate Google Identity Services verification
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    const email = googleAccount?.email || 'petershemaya007@gmail.com';
+    const name = googleAccount?.name || 'Peter Shemaya';
+    const avatarUrl =
+      googleAccount?.avatarUrl ||
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80';
+
+    try {
+      const storedUsers = localStorage.getItem(STORAGE_REGISTERED_USERS);
+      const registered: UserProfile[] = storedUsers ? JSON.parse(storedUsers) : [];
+      const match = registered.find((u) => u.email.toLowerCase() === email.toLowerCase());
+
+      if (match) {
+        const updatedMatch: UserProfile = {
+          ...match,
+          authProvider: 'google'
+        };
+        setUser(updatedMatch);
+        setIsLoading(false);
+        return;
+      }
+
+      // Create new registered Google user
+      const newGoogleUser: UserProfile = {
+        id: `usr-google-${Date.now()}`,
+        name,
+        email,
+        avatarUrl,
+        bio: 'Patron of acoustic gatherings, contemporary craftsmanship, and architectural salons.',
+        city: 'Nairobi & Avignon',
+        joinedDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        role: 'patron',
+        authProvider: 'google',
+        googleId: `google-sub-${Date.now()}`
+      };
+
+      localStorage.setItem(STORAGE_REGISTERED_USERS, JSON.stringify([newGoogleUser, ...registered]));
+      setUser(newGoogleUser);
+      setIsLoading(false);
+    } catch (e) {
+      console.warn('Error during Google authentication', e);
+      setIsLoading(false);
+      throw new Error('Google authentication service encountered a transient issue. Please try again.');
+    }
+  };
+
   const resetPassword = async (email: string): Promise<void> => {
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -189,6 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         signup,
+        loginWithGoogle,
         resetPassword,
         updateProfile,
         logout
