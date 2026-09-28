@@ -34,12 +34,16 @@ const INITIAL_BOOKINGS: TicketBooking[] = [
     attendeeName: 'Elena Rostova',
     attendeeEmail: 'elena.rostova@atelier.com',
     bookingDate: 'Oct 14, 2026',
+<<<<<<< HEAD
     ticketCode: 'MV-849201',
     paymentMethod: 'mpesa',
     mpesaPhoneNumber: '0712345678',
     mpesaReceiptNumber: 'SFK89201QM',
     mpesaMode: 'stk',
     totalInKes: 42900
+=======
+    ticketCode: 'MV-849201'
+>>>>>>> eecc011 (Save local partial code before merging)
   }
 ];
 

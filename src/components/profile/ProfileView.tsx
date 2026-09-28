@@ -19,18 +19,25 @@ import {
   Layers,
   Sparkles,
   Share2,
+<<<<<<< HEAD
   Check,
   Printer,
   Smartphone
+=======
+  Check
+>>>>>>> eecc011 (Save local partial code before merging)
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { EventItem, TicketBooking } from '../../types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+<<<<<<< HEAD
 import { ImageUploadZone } from '../ui/ImageUploadZone';
 import { PrintableTicketModal } from '../ticket/PrintableTicketModal';
 import { EmailConfirmationModal } from '../ticket/EmailConfirmationModal';
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
 
 export interface ProfileViewProps {
   onNavigate: (view: 'discover' | 'organizer') => void;
@@ -76,8 +83,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // Digital Pass Inspection Modal
   const [selectedPass, setSelectedPass] = useState<TicketBooking | null>(null);
   const [passCalendarAdded, setPassCalendarAdded] = useState(false);
+<<<<<<< HEAD
   const [printBooking, setPrintBooking] = useState<TicketBooking | null>(null);
   const [emailBooking, setEmailBooking] = useState<TicketBooking | null>(null);
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
 
   // Security Password Change
   const [currentPass, setCurrentPass] = useState('');
@@ -188,11 +198,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <button
                 onClick={handleOpenEdit}
                 aria-label="Change portrait"
+<<<<<<< HEAD
                 className="absolute inset-0 rounded-full bg-black/50 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-center p-2"
                 title="Upload or change profile portrait"
               >
                 <Camera className="w-5 h-5 mb-0.5" />
                 <span className="text-[10px] font-semibold leading-tight">Change Photo</span>
+=======
+                className="absolute inset-0 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              >
+                <Camera className="w-6 h-6" />
+>>>>>>> eecc011 (Save local partial code before merging)
               </button>
             </div>
 
@@ -376,6 +392,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <span>
                         {booking.tierName} × {booking.quantity}
                       </span>
+<<<<<<< HEAD
                       <div className="text-right">
                         <span className="font-serif font-bold tabular-nums block">
                           ${booking.totalPrice} Paid
@@ -408,6 +425,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       >
                         <Mail className="w-4 h-4" />
                       </button>
+=======
+                      <span className="font-serif font-bold tabular-nums">
+                        ${booking.totalPrice} Paid
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-5 mt-4 border-t border-[#E2DDD5] flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-[#736B66]">
+                      <QrCode className="w-4 h-4 text-[#2A2421]" />
+                      <span>Ready for scan</span>
+>>>>>>> eecc011 (Save local partial code before merging)
                     </div>
 
                     <Button
@@ -676,6 +705,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           )}
 
+<<<<<<< HEAD
           {/* Avatar / Portrait Upload & Presets */}
           <div className="pt-1">
             <ImageUploadZone
@@ -692,6 +722,38 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               maxDimension={{ width: 800, height: 800 }}
               uploadButtonText="Upload Profile Photo"
               allowUrlInput={true}
+=======
+          {/* Avatar Preset Selector */}
+          <div>
+            <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-2">
+              Select Editorial Portrait
+            </label>
+            <div className="grid grid-cols-4 gap-3 mb-3">
+              {AVATAR_PRESETS.map((preset) => (
+                <div
+                  key={preset.label}
+                  onClick={() => {
+                    setEditAvatarUrl(preset.url);
+                    setCustomAvatarInput('');
+                  }}
+                  className={`aspect-square rounded-2xl overflow-hidden border-2 cursor-pointer transition-all ${
+                    editAvatarUrl === preset.url && !customAvatarInput
+                      ? 'border-[#C85A40] ring-2 ring-[#C85A40]/30 scale-105'
+                      : 'border-[#E2DDD5] hover:border-[#736B66]'
+                  }`}
+                >
+                  <img src={preset.url} alt={preset.label} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+
+            <input
+              type="url"
+              value={customAvatarInput}
+              onChange={(e) => setCustomAvatarInput(e.target.value)}
+              placeholder="Or paste custom image URL..."
+              className="w-full px-4 py-2 bg-white border border-[#E2DDD5] rounded-xl text-xs text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+>>>>>>> eecc011 (Save local partial code before merging)
             />
           </div>
 
@@ -821,6 +883,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     </span>
                   </div>
                 </div>
+<<<<<<< HEAD
                 <div className="text-right">
                   <span className="font-serif text-lg font-bold text-[#2A2421] tabular-nums block">
                     ${selectedPass.totalPrice} Paid
@@ -865,6 +928,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               >
                 Email Confirmation
               </Button>
+=======
+                <span className="font-serif text-lg font-bold text-[#2A2421] tabular-nums">
+                  ${selectedPass.totalPrice} Paid
+                </span>
+              </div>
+>>>>>>> eecc011 (Save local partial code before merging)
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
@@ -908,6 +977,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </Modal>
       )}
+<<<<<<< HEAD
 
       {/* Printable Ticket Pass Modal */}
       <PrintableTicketModal
@@ -922,6 +992,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         onClose={() => setEmailBooking(null)}
         booking={emailBooking}
       />
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
     </div>
   );
 };

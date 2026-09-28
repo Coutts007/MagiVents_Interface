@@ -7,7 +7,10 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
+<<<<<<< HEAD
   loginWithGoogle: (googleAccount?: { name?: string; email?: string; avatarUrl?: string }) => Promise<void>;
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   logout: () => void;
@@ -151,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   };
 
+<<<<<<< HEAD
   const loginWithGoogle = async (googleAccount?: { name?: string; email?: string; avatarUrl?: string }): Promise<void> => {
     setIsLoading(true);
     // Simulate Google Identity Services verification
@@ -201,6 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
   const resetPassword = async (email: string): Promise<void> => {
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -240,7 +246,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         signup,
+<<<<<<< HEAD
         loginWithGoogle,
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
         resetPassword,
         updateProfile,
         logout

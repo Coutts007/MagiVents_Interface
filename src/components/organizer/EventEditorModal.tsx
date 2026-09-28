@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { EventItem, EventCategory } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+<<<<<<< HEAD
 import { ImageUploadZone } from '../ui/ImageUploadZone';
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
 
 export interface EventEditorModalProps {
   isOpen: boolean;
@@ -321,6 +324,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           </div>
         </div>
 
+<<<<<<< HEAD
         {/* Image Selection & File Upload */}
         <div className="pt-1">
           <ImageUploadZone
@@ -335,6 +339,33 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
             uploadButtonText="Upload Editorial Artwork File"
             allowUrlInput={true}
           />
+=======
+        {/* Image Selection Presets */}
+        <div>
+          <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-2">
+            Editorial Artwork Theme
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {PRESET_IMAGES.map((img) => (
+              <div
+                key={img.label}
+                onClick={() => setImageUrl(img.url)}
+                className={`relative aspect-[4/3] rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
+                  imageUrl === img.url
+                    ? 'border-[#C85A40] ring-2 ring-[#C85A40]/30 scale-[1.02]'
+                    : 'border-[#E2DDD5] hover:border-[#736B66]'
+                }`}
+              >
+                <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 flex items-end p-2">
+                  <span className="text-[11px] font-medium text-white leading-tight">
+                    {img.label}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+>>>>>>> eecc011 (Save local partial code before merging)
         </div>
 
         {/* Description */}

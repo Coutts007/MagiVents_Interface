@@ -16,6 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 
+<<<<<<< HEAD
 // Official Multi-Color Google G Icon
 const GoogleIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
   <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
@@ -38,6 +39,8 @@ const GoogleIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' })
   </svg>
 );
 
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
 export interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -51,6 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'login',
   onSuccess
 }) => {
+<<<<<<< HEAD
   const { login, signup, loginWithGoogle, resetPassword, isLoading } = useAuth();
 
   const [mode, setMode] = useState<AuthModalMode>(initialMode);
@@ -58,6 +62,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [customGoogleEmail, setCustomGoogleEmail] = useState('');
   const [showCustomGooglePrompt, setShowCustomGooglePrompt] = useState(false);
+=======
+  const { login, signup, resetPassword, isLoading } = useAuth();
+
+  const [mode, setMode] = useState<AuthModalMode>(initialMode);
+  const [showPassword, setShowPassword] = useState(false);
+>>>>>>> eecc011 (Save local partial code before merging)
 
   // Form Fields
   const [name, setName] = useState('');
@@ -117,6 +127,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+<<<<<<< HEAD
   const handleGoogleAuth = async (customEmail?: string) => {
     setErrorMessage(null);
     setIsGoogleLoading(true);
@@ -138,6 +149,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+=======
+>>>>>>> eecc011 (Save local partial code before merging)
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -231,6 +244,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* 1. Login Form */}
         {mode === 'login' && (
+<<<<<<< HEAD
           <div className="space-y-4">
             {/* Google Authentication Option */}
             <div>
@@ -260,6 +274,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
+=======
+          <form onSubmit={handleLogin} className="space-y-4">
+>>>>>>> eecc011 (Save local partial code before merging)
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
                 Email Address
@@ -340,6 +357,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </Button>
             </div>
           </form>
+<<<<<<< HEAD
         </div>
       )}
 
@@ -403,6 +421,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           </div>
 
+=======
+        )}
+
+        {/* 2. Signup Form */}
+        {mode === 'signup' && (
+>>>>>>> eecc011 (Save local partial code before merging)
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
@@ -514,10 +538,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </Button>
             </div>
           </form>
+<<<<<<< HEAD
         </div>
       )}
 
       {/* 3. Forgot Password Form */}
+=======
+        )}
+
+        {/* 3. Forgot Password Form */}
+>>>>>>> eecc011 (Save local partial code before merging)
         {mode === 'forgot-password' && (
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div>
