@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { EventItem, EventCategory } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-<<<<<<< HEAD
 import { ImageUploadZone } from '../ui/ImageUploadZone';
-=======
->>>>>>> eecc011 (Save local partial code before merging)
 
 export interface EventEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (event: EventItem) => void;
+  /** Persists the event; rejects with a readable Error if the server refuses it */
+  onSave: (event: EventItem) => Promise<void>;
   eventToEdit: EventItem | null;
 }
 
@@ -44,8 +42,11 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [hostRole, setHostRole] = useState('');
   const [curatorNote, setCuratorNote] = useState('');
   const [tags, setTags] = useState('Acoustic, Cultural, Evening');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
+    setSaveError(null);
     if (eventToEdit) {
       setTitle(eventToEdit.title);
       setSubtitle(eventToEdit.subtitle);
@@ -86,7 +87,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     }
   }, [eventToEdit, isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !venueName.trim()) return;
 
@@ -146,8 +147,16 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       curatorNote
     };
 
-    onSave(savedItem);
-    onClose();
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(savedItem);
+      onClose();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Could not save this gathering.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -324,7 +333,6 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           </div>
         </div>
 
-<<<<<<< HEAD
         {/* Image Selection & File Upload */}
         <div className="pt-1">
           <ImageUploadZone
@@ -339,33 +347,6 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
             uploadButtonText="Upload Editorial Artwork File"
             allowUrlInput={true}
           />
-=======
-        {/* Image Selection Presets */}
-        <div>
-          <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-2">
-            Editorial Artwork Theme
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {PRESET_IMAGES.map((img) => (
-              <div
-                key={img.label}
-                onClick={() => setImageUrl(img.url)}
-                className={`relative aspect-[4/3] rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${
-                  imageUrl === img.url
-                    ? 'border-[#C85A40] ring-2 ring-[#C85A40]/30 scale-[1.02]'
-                    : 'border-[#E2DDD5] hover:border-[#736B66]'
-                }`}
-              >
-                <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/40 flex items-end p-2">
-                  <span className="text-[11px] font-medium text-white leading-tight">
-                    {img.label}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
->>>>>>> eecc011 (Save local partial code before merging)
         </div>
 
         {/* Description */}
@@ -411,13 +392,17 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           </div>
         </div>
 
+        {saveError && (
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800">{saveError}</div>
+        )}
+
         {/* Actions */}
         <div className="pt-4 border-t border-[#E2DDD5] flex items-center justify-end gap-3">
           <Button variant="ghost" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button variant="primary" type="submit">
-            {eventToEdit ? 'Save Modifications' : 'Publish Gathering'}
+          <Button variant="primary" type="submit" disabled={isSaving}>
+            {isSaving ? 'Saving…' : eventToEdit ? 'Save Modifications' : 'Publish Gathering'}
           </Button>
         </div>
       </form>

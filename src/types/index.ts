@@ -32,6 +32,7 @@ export interface AgendaItem {
 
 export interface EventItem {
   id: string;
+  organizerId?: string;
   title: string;
   subtitle: string;
   category: EventCategory;
@@ -87,7 +88,6 @@ export interface TicketBooking {
   attendeeEmail: string;
   bookingDate: string;
   ticketCode: string;
-<<<<<<< HEAD
   paymentMethod?: 'mpesa' | 'card' | 'complimentary';
   mpesaPhoneNumber?: string;
   mpesaReceiptNumber?: string;
@@ -95,8 +95,6 @@ export interface TicketBooking {
   currency?: string;
   totalInKes?: number;
   notes?: string;
-=======
->>>>>>> eecc011 (Save local partial code before merging)
 }
 
 export interface OrganizerStats {

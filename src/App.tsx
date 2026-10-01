@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { EventItem, TicketTier, TicketBooking } from './types';
 import { AuthModalMode } from './types/auth';
-import { INITIAL_EVENTS } from './data/mockEvents';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import {
+  BookingRequest,
+  EventInput,
+  bookingsApi,
+  bookmarksApi,
+  gatheringsApi,
+  getApiErrorMessage
+} from './services/api';
 import { Navbar } from './components/navigation/Navbar';
 import { DiscoverView } from './components/discover/DiscoverView';
 import { EventDetailsView } from './components/event-details/EventDetailsView';
@@ -15,77 +22,27 @@ import { BookmarksDrawer } from './components/bookmarks/BookmarksDrawer';
 import { ShareModal } from './components/share/ShareModal';
 import { Footer } from './components/common/Footer';
 
-const STORAGE_EVENTS_KEY = 'magivents_events_v3';
-const STORAGE_BOOKMARKS_KEY = 'magivents_bookmarks_v3';
-const STORAGE_BOOKINGS_KEY = 'magivents_bookings_v3';
-
-const INITIAL_BOOKINGS: TicketBooking[] = [
-  {
-    id: 'booking-seed-1',
-    eventId: 'symphony-in-the-quarry',
-    eventTitle: 'Symphony in the Quarry: Nocturne & Strings',
-    eventDate: 'Saturday, Oct 24, 2026',
-    eventTime: '19:00 — 22:30',
-    venueName: 'St. Claire Stone Quarry Pavilion',
-    tierName: 'Patron Circle',
-    quantity: 2,
-    unitPrice: 165,
-    totalPrice: 330,
-    attendeeName: 'Elena Rostova',
-    attendeeEmail: 'elena.rostova@atelier.com',
-    bookingDate: 'Oct 14, 2026',
-<<<<<<< HEAD
-    ticketCode: 'MV-849201',
-    paymentMethod: 'mpesa',
-    mpesaPhoneNumber: '0712345678',
-    mpesaReceiptNumber: 'SFK89201QM',
-    mpesaMode: 'stk',
-    totalInKes: 42900
-=======
-    ticketCode: 'MV-849201'
->>>>>>> eecc011 (Save local partial code before merging)
-  }
-];
+function toEventInput(event: EventItem): EventInput {
+  const { id, attendeeCount, organizerId, ...input } = event;
+  return input;
+}
 
 function MainLayout() {
-  const { user } = useAuth();
+  const { user, isInitializing } = useAuth();
 
-  // Master events state
-  const [events, setEvents] = useState<EventItem[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_EVENTS_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (e) {
-      console.warn('Could not read events from storage', e);
-    }
-    return INITIAL_EVENTS;
-  });
+  // Server data
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [isEventsLoading, setIsEventsLoading] = useState(true);
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
+  const [bookings, setBookings] = useState<TicketBooking[]>([]);
 
-  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_BOOKMARKS_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (e) {
-      console.warn('Could not read bookmarks', e);
-    }
-    return [INITIAL_EVENTS[0].id, INITIAL_EVENTS[1].id];
-  });
-
-  const [bookings, setBookings] = useState<TicketBooking[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_BOOKINGS_KEY);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (e) {
-      console.warn('Could not read bookings', e);
-    }
-    return INITIAL_BOOKINGS;
-  });
+  // Transient error/info banner
+  const [notice, setNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   // Navigation State: 'discover' | 'details' | 'organizer' | 'profile'
   const [currentView, setCurrentView] = useState<'discover' | 'details' | 'organizer' | 'profile'>('discover');
@@ -114,6 +71,41 @@ function MainLayout() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('login');
 
+  const loadEvents = useCallback(async () => {
+    setIsEventsLoading(true);
+    try {
+      setEvents(await gatheringsApi.list());
+    } catch (err) {
+      setNotice(getApiErrorMessage(err, 'Could not load gatherings.'));
+    } finally {
+      setIsEventsLoading(false);
+    }
+  }, []);
+
+  // Reload events when the session changes, so an organizer's own drafts are included
+  useEffect(() => {
+    if (!isInitializing) {
+      loadEvents();
+    }
+  }, [loadEvents, isInitializing, user?.id]);
+
+  // Per-user data
+  useEffect(() => {
+    if (!user) {
+      setBookmarkedIds([]);
+      setBookings([]);
+      return;
+    }
+    bookmarksApi
+      .list()
+      .then(setBookmarkedIds)
+      .catch((err) => setNotice(getApiErrorMessage(err, 'Could not load your saved gatherings.')));
+    bookingsApi
+      .list()
+      .then(setBookings)
+      .catch((err) => setNotice(getApiErrorMessage(err, 'Could not load your passes.')));
+  }, [user?.id]);
+
   // Deep linking: Sync ?event=<id> from URL on initial load and popstate
   useEffect(() => {
     const handleUrlChange = () => {
@@ -137,36 +129,26 @@ function MainLayout() {
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, [events]);
 
-  // Sync to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_EVENTS_KEY, JSON.stringify(events));
-    } catch (e) {
-      console.warn('Could not save events', e);
-    }
-  }, [events]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_BOOKMARKS_KEY, JSON.stringify(bookmarkedIds));
-    } catch (e) {
-      console.warn('Could not save bookmarks', e);
-    }
-  }, [bookmarkedIds]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_BOOKINGS_KEY, JSON.stringify(bookings));
-    } catch (e) {
-      console.warn('Could not save bookings', e);
-    }
-  }, [bookings]);
-
   // Derived selected event
   const selectedEvent = events.find((e) => e.id === selectedEventId) || events[0];
 
   // Saved events list
   const savedEvents = events.filter((e) => bookmarkedIds.includes(e.id));
+
+  // Gatherings owned by the signed-in organizer
+  const myEvents = user ? events.filter((e) => e.organizerId === user.id) : [];
+
+  const handleOpenAuth = (mode: AuthModalMode = 'login') => {
+    setAuthModalMode(mode);
+    setIsAuthModalOpen(true);
+  };
+
+  /** Returns true when signed in; otherwise opens the sign-in modal. */
+  const requireAuth = () => {
+    if (user) return true;
+    handleOpenAuth('login');
+    return false;
+  };
 
   // Handlers
   const handleSelectEvent = (event: EventItem) => {
@@ -199,57 +181,69 @@ function MainLayout() {
     setIsShareModalOpen(true);
   };
 
-  const handleToggleBookmark = (event: EventItem) => {
+  const handleToggleBookmark = async (event: EventItem) => {
+    if (!requireAuth()) return;
+    const previous = bookmarkedIds;
+    // Optimistic update, reverted if the server call fails
     setBookmarkedIds((prev) =>
       prev.includes(event.id) ? prev.filter((id) => id !== event.id) : [...prev, event.id]
     );
+    try {
+      await bookmarksApi.toggle(event.id);
+    } catch (err) {
+      setBookmarkedIds(previous);
+      setNotice(getApiErrorMessage(err, 'Could not update your saved gatherings.'));
+    }
+  };
+
+  const handleRemoveBookmark = (eventId: string) => {
+    const event = events.find((e) => e.id === eventId);
+    if (event && bookmarkedIds.includes(eventId)) {
+      handleToggleBookmark(event);
+    }
+  };
+
+  const openCheckout = (event: EventItem, tier: TicketTier, quantity: number) => {
+    if (!requireAuth()) return;
+    setCheckoutTarget({ event, tier, quantity });
+    setIsCheckoutOpen(true);
   };
 
   const handleQuickBook = (event: EventItem) => {
     const tier = event.pricing.tiers[0] || {
-      id: 'default',
+      id: '',
       name: 'General Admission',
       price: event.pricing.startingPrice,
       description: 'Standard admission',
-      available: 20,
+      available: event.capacity - event.attendeeCount,
       perks: ['Full program entry']
     };
-    setCheckoutTarget({
-      event,
-      tier,
-      quantity: 1
-    });
-    setIsCheckoutOpen(true);
+    openCheckout(event, tier, 1);
   };
 
   const handleBookFromDetails = (event: EventItem, tier: TicketTier, quantity: number) => {
-    setCheckoutTarget({
-      event,
-      tier,
-      quantity
-    });
-    setIsCheckoutOpen(true);
+    openCheckout(event, tier, quantity);
   };
 
-  const handleCompleteBooking = (newBooking: TicketBooking) => {
-    setBookings((prev) => [newBooking, ...prev]);
-
-    // Increment attendee count on event
-    setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id === newBooking.eventId) {
-          return {
-            ...e,
-            attendeeCount: Math.min(e.capacity, e.attendeeCount + newBooking.quantity)
-          };
-        }
-        return e;
-      })
-    );
+  const handleCompleteBooking = async (request: BookingRequest): Promise<TicketBooking> => {
+    let booking: TicketBooking;
+    try {
+      booking = await bookingsApi.create(request);
+    } catch (err) {
+      throw new Error(getApiErrorMessage(err, 'Your reservation could not be completed.'));
+    }
+    setBookings((prev) => [booking, ...prev]);
+    // Refresh attendee counts and tier availability
+    gatheringsApi
+      .list()
+      .then(setEvents)
+      .catch(() => undefined);
+    return booking;
   };
 
   // Organizer Actions
   const handleOpenCreateEvent = () => {
+    if (!requireAuth()) return;
     setEventToEdit(null);
     setIsEditorOpen(true);
   };
@@ -259,7 +253,13 @@ function MainLayout() {
     setIsEditorOpen(true);
   };
 
-  const handleDeleteEvent = (eventId: string) => {
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      await gatheringsApi.remove(eventId);
+    } catch (err) {
+      setNotice(getApiErrorMessage(err, 'Could not delete this gathering.'));
+      return;
+    }
     setEvents((prev) => prev.filter((e) => e.id !== eventId));
     setBookmarkedIds((prev) => prev.filter((id) => id !== eventId));
     if (selectedEventId === eventId) {
@@ -268,31 +268,33 @@ function MainLayout() {
     }
   };
 
-  const handleToggleStatus = (eventId: string) => {
-    setEvents((prev) =>
-      prev.map((e) => {
-        if (e.id === eventId) {
-          const newStatus = e.status === 'published' ? 'draft' : 'published';
-          return { ...e, status: newStatus };
-        }
-        return e;
-      })
-    );
+  const handleToggleStatus = async (eventId: string) => {
+    const event = events.find((e) => e.id === eventId);
+    if (!event) return;
+    try {
+      const updated = await gatheringsApi.setStatus(eventId, event.status === 'published' ? 'draft' : 'published');
+      setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
+    } catch (err) {
+      setNotice(getApiErrorMessage(err, 'Could not change the status of this gathering.'));
+    }
   };
 
-  const handleSaveEvent = (savedItem: EventItem) => {
+  const handleSaveEvent = async (savedItem: EventItem): Promise<void> => {
+    let saved: EventItem;
+    try {
+      saved = eventToEdit
+        ? await gatheringsApi.update(eventToEdit.id, toEventInput(savedItem))
+        : await gatheringsApi.create(toEventInput(savedItem));
+    } catch (err) {
+      throw new Error(getApiErrorMessage(err, 'Could not save this gathering.'));
+    }
     setEvents((prev) => {
-      const exists = prev.some((e) => e.id === savedItem.id);
+      const exists = prev.some((e) => e.id === saved.id);
       if (exists) {
-        return prev.map((e) => (e.id === savedItem.id ? savedItem : e));
+        return prev.map((e) => (e.id === saved.id ? saved : e));
       }
-      return [savedItem, ...prev];
+      return [saved, ...prev];
     });
-  };
-
-  const handleOpenAuth = (mode: AuthModalMode = 'login') => {
-    setAuthModalMode(mode);
-    setIsAuthModalOpen(true);
   };
 
   return (
@@ -314,6 +316,18 @@ function MainLayout() {
         onOpenAuth={() => handleOpenAuth('login')}
       />
 
+      {notice && (
+        <div
+          role="alert"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[calc(100%-2rem)] px-4 py-3 rounded-2xl bg-[#2A2421] text-white text-xs shadow-lg flex items-start gap-3"
+        >
+          <span className="flex-1 leading-relaxed">{notice}</span>
+          <button type="button" onClick={() => setNotice(null)} className="text-white/70 hover:text-white cursor-pointer">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Main View Router */}
       <main className="flex-1 w-full">
         {currentView === 'discover' && (
@@ -327,6 +341,8 @@ function MainLayout() {
             onShareEvent={handleOpenShare}
             currentTab={discoverTab}
             onTabChange={setDiscoverTab}
+            isLoading={isEventsLoading}
+            onRefresh={loadEvents}
           />
         )}
 
@@ -348,7 +364,7 @@ function MainLayout() {
 
         {currentView === 'organizer' && (
           <OrganizerDashboard
-            events={events}
+            events={myEvents}
             onCreateEvent={handleOpenCreateEvent}
             onEditEvent={handleEditEvent}
             onDeleteEvent={handleDeleteEvent}
@@ -366,9 +382,7 @@ function MainLayout() {
             onSelectEvent={handleSelectEvent}
             savedEvents={savedEvents}
             purchasedBookings={bookings}
-            onRemoveBookmark={(id) =>
-              setBookmarkedIds((prev) => prev.filter((bookmarkedId) => bookmarkedId !== id))
-            }
+            onRemoveBookmark={handleRemoveBookmark}
             onShareEvent={handleOpenShare}
             allEvents={events}
           />
@@ -417,9 +431,7 @@ function MainLayout() {
         isOpen={isSavedDrawerOpen}
         onClose={() => setIsSavedDrawerOpen(false)}
         savedEvents={savedEvents}
-        onRemoveBookmark={(id) =>
-          setBookmarkedIds((prev) => prev.filter((bookmarkedId) => bookmarkedId !== id))
-        }
+        onRemoveBookmark={handleRemoveBookmark}
         onSelectEvent={handleSelectEvent}
         onShareEvent={handleOpenShare}
       />

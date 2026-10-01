@@ -13,34 +13,10 @@ import {
 } from 'lucide-react';
 import { AuthModalMode } from '../../types/auth';
 import { useAuth } from '../../context/AuthContext';
+import { GoogleSignInButton } from './GoogleSignInButton';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 
-<<<<<<< HEAD
-// Official Multi-Color Google G Icon
-const GoogleIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
-  <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      fill="#4285F4"
-      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-    />
-    <path
-      fill="#34A853"
-      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-    />
-    <path
-      fill="#FBBC05"
-      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-    />
-    <path
-      fill="#EA4335"
-      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-    />
-  </svg>
-);
-
-=======
->>>>>>> eecc011 (Save local partial code before merging)
 export interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -54,20 +30,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'login',
   onSuccess
 }) => {
-<<<<<<< HEAD
   const { login, signup, loginWithGoogle, resetPassword, isLoading } = useAuth();
 
   const [mode, setMode] = useState<AuthModalMode>(initialMode);
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
-  const [showCustomGooglePrompt, setShowCustomGooglePrompt] = useState(false);
-=======
-  const { login, signup, resetPassword, isLoading } = useAuth();
-
-  const [mode, setMode] = useState<AuthModalMode>(initialMode);
-  const [showPassword, setShowPassword] = useState(false);
->>>>>>> eecc011 (Save local partial code before merging)
 
   // Form Fields
   const [name, setName] = useState('');
@@ -127,18 +94,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-<<<<<<< HEAD
-  const handleGoogleAuth = async (customEmail?: string) => {
+  const handleGoogleAuth = async (credential: string) => {
     setErrorMessage(null);
     setIsGoogleLoading(true);
     try {
-      const emailToUse = customEmail || customGoogleEmail.trim() || 'petershemaya007@gmail.com';
-      const nameToUse = emailToUse.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      await loginWithGoogle({
-        email: emailToUse,
-        name: nameToUse,
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'
-      });
+      await loginWithGoogle(credential);
       resetForm();
       if (onSuccess) onSuccess();
       onClose();
@@ -149,8 +109,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-=======
->>>>>>> eecc011 (Save local partial code before merging)
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -244,23 +202,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
         {/* 1. Login Form */}
         {mode === 'login' && (
-<<<<<<< HEAD
           <div className="space-y-4">
             {/* Google Authentication Option */}
-            <div>
-              <button
-                type="button"
-                onClick={() => handleGoogleAuth()}
-                disabled={isLoading || isGoogleLoading}
-                className="w-full py-2.5 px-4 bg-white hover:bg-[#FAF8F5] border border-[#E2DDD5] hover:border-[#736B66] rounded-xl text-xs font-semibold text-[#2A2421] flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-60"
-              >
-                {isGoogleLoading ? (
+            <div className="relative">
+              <GoogleSignInButton text="signin_with" onCredential={handleGoogleAuth} onError={setErrorMessage} />
+              {isGoogleLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#FAF8F5]/70 rounded-xl">
                   <Loader2 className="w-4 h-4 animate-spin text-[#C85A40]" />
-                ) : (
-                  <GoogleIcon className="w-4 h-4 shrink-0" />
-                )}
-                <span>Sign In with Google Account</span>
-              </button>
+                </div>
+              )}
             </div>
 
             {/* Aesthetic Divider */}
@@ -274,9 +224,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
-=======
-          <form onSubmit={handleLogin} className="space-y-4">
->>>>>>> eecc011 (Save local partial code before merging)
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
                 Email Address
@@ -357,7 +304,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </Button>
             </div>
           </form>
-<<<<<<< HEAD
         </div>
       )}
 
@@ -365,48 +311,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       {mode === 'signup' && (
         <div className="space-y-4">
           {/* Google Registration Option */}
-          <div>
-            <button
-              type="button"
-              onClick={() => handleGoogleAuth()}
-              disabled={isLoading || isGoogleLoading}
-              className="w-full py-2.5 px-4 bg-white hover:bg-[#FAF8F5] border border-[#E2DDD5] hover:border-[#736B66] rounded-xl text-xs font-semibold text-[#2A2421] flex items-center justify-center gap-2.5 transition-all shadow-xs cursor-pointer active:scale-98 disabled:opacity-60"
-            >
-              {isGoogleLoading ? (
+          <div className="relative">
+            <GoogleSignInButton text="signup_with" onCredential={handleGoogleAuth} onError={setErrorMessage} />
+            {isGoogleLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-[#FAF8F5]/70 rounded-xl">
                 <Loader2 className="w-4 h-4 animate-spin text-[#C85A40]" />
-              ) : (
-                <GoogleIcon className="w-4 h-4 shrink-0" />
-              )}
-              <span>Complete Registration with Google</span>
-            </button>
-
-            <div className="mt-2 text-center">
-              <button
-                type="button"
-                onClick={() => setShowCustomGooglePrompt(!showCustomGooglePrompt)}
-                className="text-[11px] text-[#736B66] hover:text-[#C85A40] underline cursor-pointer"
-              >
-                {showCustomGooglePrompt ? 'Hide specific Google address' : 'Specify a custom Google account'}
-              </button>
-            </div>
-
-            {showCustomGooglePrompt && (
-              <div className="mt-2 p-3 bg-[#FAF8F5] border border-[#E2DDD5] rounded-xl flex gap-2 animate-in fade-in">
-                <input
-                  type="email"
-                  value={customGoogleEmail}
-                  onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                  placeholder="your-google-name@gmail.com"
-                  className="flex-1 px-3 py-1.5 bg-white border border-[#E2DDD5] rounded-lg text-xs text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleGoogleAuth(customGoogleEmail)}
-                  disabled={isGoogleLoading || !customGoogleEmail.includes('@')}
-                  className="px-3 py-1.5 bg-[#2A2421] text-white rounded-lg text-xs font-semibold hover:bg-[#C85A40] transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  Register
-                </button>
               </div>
             )}
           </div>
@@ -421,12 +330,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           </div>
 
-=======
-        )}
-
-        {/* 2. Signup Form */}
-        {mode === 'signup' && (
->>>>>>> eecc011 (Save local partial code before merging)
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
@@ -538,16 +441,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </Button>
             </div>
           </form>
-<<<<<<< HEAD
         </div>
       )}
 
       {/* 3. Forgot Password Form */}
-=======
-        )}
-
-        {/* 3. Forgot Password Form */}
->>>>>>> eecc011 (Save local partial code before merging)
         {mode === 'forgot-password' && (
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div>

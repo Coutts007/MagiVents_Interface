@@ -18,6 +18,8 @@ export interface DiscoverViewProps {
   onShareEvent?: (event: EventItem) => void;
   currentTab?: 'grid' | 'calendar';
   onTabChange?: (tab: 'grid' | 'calendar') => void;
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 export const DiscoverView: React.FC<DiscoverViewProps> = ({
@@ -29,7 +31,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   initialCategory = 'all',
   onShareEvent,
   currentTab,
-  onTabChange
+  onTabChange,
+  isLoading = false,
+  onRefresh
 }) => {
   const [internalTab, setInternalTab] = useState<'grid' | 'calendar'>('grid');
   const activeTab = currentTab || internalTab;
@@ -46,7 +50,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedDateFilter, setSelectedDateFilter] = useState<'all' | '30days' | 'later'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'price-asc' | 'price-desc'>('date');
-  const [isLoading, setIsLoading] = useState(false);
 
   // Dynamic Category Counts
   const categoryCounts = useMemo(() => {
@@ -106,13 +109,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         return a.isoDate.localeCompare(b.isoDate);
       });
   }, [events, selectedCategory, selectedTag, searchQuery, selectedDateFilter, sortBy]);
-
-  const handleSimulateLoading = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
-  };
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -184,10 +180,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 variant="secondary"
                 size="sm"
                 icon={<RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
-                onClick={handleSimulateLoading}
-                title="Preview the sand-themed shimmer skeleton loader"
+                onClick={onRefresh}
+                disabled={isLoading || !onRefresh}
+                title="Reload gatherings from the server"
               >
-                Simulate Loading
+                Refresh
               </Button>
             )}
           </div>
