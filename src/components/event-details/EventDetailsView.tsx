@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Calendar,
@@ -9,13 +9,14 @@ import {
   Check,
   Info,
   ShieldCheck,
-  Compass,
-  Users,
-  ExternalLink
+  Users
 } from 'lucide-react';
 import { EventItem, TicketTier } from '../../types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { Avatar } from '../ui/Avatar';
+import { EventArtwork } from '../ui/EventArtwork';
+import { formatKES } from '../../utils/format';
 import { LocationMap } from './LocationMap';
 
 export interface EventDetailsViewProps {
@@ -37,21 +38,31 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
   onSelectCategory,
   onShare
 }) => {
-  const [selectedTier, setSelectedTier] = useState<TicketTier>(
+  // Events without tiers are booked as one general admission at the starting price
+  const defaultTier = (): TicketTier =>
     event.pricing.tiers[0] || {
-      id: 'default',
+      id: '',
       name: 'General Admission',
-      price: event.pricing.startingPrice,
-      description: 'Standard admission to the gathering.',
-      available: 20,
-      perks: ['Full program access']
-    }
-  );
+      price: event.isFree ? 0 : event.pricing.startingPrice,
+      description: '',
+      available: Math.max(0, event.capacity - event.attendeeCount),
+      perks: []
+    };
+
+  const [selectedTier, setSelectedTier] = useState<TicketTier>(defaultTier);
   const [quantity, setQuantity] = useState(1);
-  const [imageError, setImageError] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
 
-  const totalPrice = selectedTier.price * quantity;
+  // Reset the selection when another event is shown, or when availability changes after a booking
+  useEffect(() => {
+    setSelectedTier((current) => event.pricing.tiers.find((t) => t.id === current.id) || defaultTier());
+    setQuantity(1);
+  }, [event]);
+
+  const totalPrice = event.isFree ? 0 : selectedTier.price * quantity;
+  const placesLeft = Math.max(0, event.capacity - event.attendeeCount);
+  const isSoldOut = event.status === 'sold_out' || placesLeft === 0 || selectedTier.available < 1;
+  const location = [event.venue.neighborhood, event.venue.city].filter(Boolean).join(', ');
 
   const handleShare = () => {
     if (onShare) {
@@ -72,7 +83,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
           className="inline-flex items-center gap-2 text-sm font-medium text-[#736B66] hover:text-[#2A2421] transition-colors cursor-pointer group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span>Back to all gatherings</span>
+          <span>Back to all events</span>
         </button>
 
         <div className="flex items-center gap-2">
@@ -91,7 +102,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
 
           <button
             onClick={() => onToggleBookmark(event)}
-            aria-label={isBookmarked ? 'Remove from saved' : 'Save gathering'}
+            aria-label={isBookmarked ? 'Remove from saved' : 'Save event'}
             className={`p-2.5 rounded-full border border-[#E2DDD5] transition-colors cursor-pointer shadow-sand-sm ${
               isBookmarked
                 ? 'bg-[#C85A40] text-white border-[#C85A40]'
@@ -103,22 +114,10 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
         </div>
       </div>
 
-      {/* Cinematic Hero Header with Parallax Aspect */}
+      {/* Hero header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-10">
         <div className="relative aspect-[16/9] md:aspect-[21/9] w-full rounded-3xl overflow-hidden shadow-sand-lg border border-[#E2DDD5] bg-[#2A2421]">
-          {!imageError ? (
-            <img
-              src={event.imageUrl}
-              alt={event.title}
-              referrerPolicy="no-referrer"
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-[#342D28] flex items-center justify-center p-8">
-              <Compass className="w-12 h-12 text-[#C85A40]/60" />
-            </div>
-          )}
+          <EventArtwork imageUrl={event.imageUrl} title={event.title} category={event.category} />
 
           {/* Scrim Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[#1F1916]/95 via-[#1F1916]/45 to-transparent" />
@@ -132,7 +131,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                     type="button"
                     onClick={() => onSelectCategory(event.category)}
                     className="cursor-pointer hover:scale-105 transition-transform"
-                    title={`Browse all ${event.category} gatherings`}
+                    title={`Browse all ${event.category} events`}
                   >
                     <Badge variant="terracotta" size="md">
                       {event.category}
@@ -144,7 +143,13 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                   </Badge>
                 )}
                 <span className="text-xs uppercase tracking-widest text-[#F4F1EA]/80 font-medium">
-                  {event.status === 'published' ? 'Reservations Open' : 'Private Salon'}
+                  {event.status === 'published'
+                    ? event.isFree
+                      ? 'Free entry · Registration open'
+                      : 'Booking open'
+                    : event.status === 'sold_out'
+                    ? 'Sold out'
+                    : 'Draft · only you can see this'}
                 </span>
               </div>
 
@@ -207,43 +212,46 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                     Location
                   </span>
                   <span className="font-serif text-base text-[#2A2421] font-medium block mt-0.5 truncate max-w-[180px]">
-                    {event.venue.neighborhood}, {event.venue.city}
+                    {location || event.venue.name}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Curatorial Essay / About Section */}
+            {/* About section */}
             <section className="bg-white rounded-3xl p-8 sm:p-10 border border-[#E2DDD5] shadow-sand-sm space-y-6">
               <div className="border-b border-[#E2DDD5] pb-4">
                 <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold">
-                  Curatorial Statement
+                  About
                 </span>
                 <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#2A2421] mt-1">
-                  About This Experience
+                  About this event
                 </h2>
               </div>
 
               <div className="prose text-[#2A2421] leading-relaxed space-y-4 font-sans text-base">
-                <p className="first-letter:text-5xl first-letter:font-serif first-letter:font-bold first-letter:float-left first-letter:mr-3 first-letter:mt-1 first-letter:text-[#C85A40]">
-                  {event.fullContent}
+                <p className="whitespace-pre-line">
+                  {event.fullContent || event.description}
                 </p>
-                <p className="text-[#736B66]">
-                  {event.description}
-                </p>
+                {event.fullContent && event.description && event.description !== event.fullContent && (
+                  <p className="text-[#736B66] whitespace-pre-line">
+                    {event.description}
+                  </p>
+                )}
               </div>
 
-              {event.curatorNote && (
+              {event.curatorNote?.trim() && (
                 <div className="p-4 rounded-2xl bg-[#F4F1EA] border border-[#E2DDD5] flex items-start gap-3 text-xs sm:text-sm text-[#736B66]">
                   <Info className="w-5 h-5 text-[#C85A40] shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-[#2A2421] block">Curator’s Note:</span>
+                    <span className="font-semibold text-[#2A2421] block">Note from the organizer</span>
                     {event.curatorNote}
                   </div>
                 </div>
               )}
 
               {/* Tags */}
+              {event.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {event.tags.map((tag) => (
                   <span
@@ -254,16 +262,18 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                   </span>
                 ))}
               </div>
+              )}
             </section>
 
-            {/* Program Agenda / Timeline */}
+            {/* Agenda set by the organizer; hidden when there is none */}
+            {event.agenda.length > 0 && (
             <section className="bg-white rounded-3xl p-8 sm:p-10 border border-[#E2DDD5] shadow-sand-sm">
               <div className="border-b border-[#E2DDD5] pb-4 mb-6">
                 <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold">
-                  Sequence of Events
+                  Programme
                 </span>
                 <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#2A2421] mt-1">
-                  The Evening Agenda
+                  Agenda
                 </h2>
               </div>
 
@@ -282,20 +292,23 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                       <h4 className="font-serif text-lg font-medium text-[#2A2421]">
                         {item.title}
                       </h4>
-                      <p className="text-sm text-[#736B66] mt-1 leading-relaxed">
-                        {item.detail}
-                      </p>
+                      {item.detail && (
+                        <p className="text-sm text-[#736B66] mt-1 leading-relaxed">
+                          {item.detail}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             </section>
+            )}
 
-            {/* Host & Creator Spotlight */}
+            {/* Organizer */}
             <section className="bg-white rounded-3xl p-8 sm:p-10 border border-[#E2DDD5] shadow-sand-sm">
               <div className="border-b border-[#E2DDD5] pb-4 mb-6">
                 <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold">
-                  Host & Curation
+                  Organizer
                 </span>
                 <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#2A2421] mt-1">
                   Presented by {event.host.name}
@@ -303,33 +316,36 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
               </div>
 
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                {event.host.avatarUrl && (
-                  <img
-                    src={event.host.avatarUrl}
-                    alt={event.host.name}
-                    className="w-20 h-20 rounded-full object-cover border-2 border-[#E2DDD5] shadow-sand-sm shrink-0"
-                  />
-                )}
+                <Avatar
+                  name={event.host.name}
+                  src={event.host.avatarUrl}
+                  size="xl"
+                  className="border-2 border-[#E2DDD5] shadow-sand-sm"
+                />
                 <div>
                   <h4 className="font-serif text-xl font-medium text-[#2A2421]">
                     {event.host.name}
                   </h4>
-                  <span className="text-xs font-medium text-[#C85A40] uppercase tracking-wider block mb-2">
-                    {event.host.role}
-                  </span>
-                  <p className="text-sm text-[#736B66] leading-relaxed">
-                    {event.host.bio}
-                  </p>
+                  {event.host.role && (
+                    <span className="text-xs font-medium text-[#C85A40] uppercase tracking-wider block mb-2">
+                      {event.host.role}
+                    </span>
+                  )}
+                  {event.host.bio && (
+                    <p className="text-sm text-[#736B66] leading-relaxed">
+                      {event.host.bio}
+                    </p>
+                  )}
                 </div>
               </div>
             </section>
 
-            {/* Venue & Architectural Mapping */}
+            {/* Venue and map */}
             <section className="space-y-4">
               <div className="bg-white rounded-3xl p-8 sm:p-10 border border-[#E2DDD5] shadow-sand-sm">
                 <div className="border-b border-[#E2DDD5] pb-4 mb-6">
                   <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold">
-                    Destination & Access
+                    Venue
                   </span>
                   <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#2A2421] mt-1">
                     {event.venue.name}
@@ -346,30 +362,37 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
             </section>
           </div>
 
-          {/* Right Column: Sticky Ticket Checkout Card (4 cols) */}
+          {/* Right Column: Sticky booking card (4 cols) */}
           <div className="lg:col-span-4 sticky top-28 space-y-6">
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#E2DDD5] shadow-sand-md">
               <div className="border-b border-[#E2DDD5] pb-4 mb-6">
                 <span className="text-xs uppercase tracking-widest text-[#736B66] font-semibold block">
-                  Select Admission
+                  Tickets
                 </span>
                 <div className="flex items-baseline justify-between mt-1">
                   <h3 className="font-serif text-2xl font-medium text-[#2A2421]">
-                    Reserve Passes
+                    {event.isFree ? 'Register' : 'Book tickets'}
                   </h3>
                   <div className="text-right">
-                    <span className="text-xs text-[#736B66] block">Starting at</span>
-                    <span className="font-serif text-xl font-bold text-[#C85A40] tabular-nums">
-                      ${event.pricing.startingPrice}
-                    </span>
+                    {event.isFree ? (
+                      <span className="font-serif text-xl font-bold text-emerald-700">Free</span>
+                    ) : (
+                      <>
+                        <span className="text-xs text-[#736B66] block">From</span>
+                        <span className="font-serif text-xl font-bold text-[#C85A40] tabular-nums">
+                          {formatKES(event.pricing.startingPrice)}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Tier Selection */}
+              {event.pricing.tiers.length > 0 && (
               <div className="space-y-3 mb-6">
                 <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block">
-                  Ticket Tier
+                  Ticket type
                 </label>
                 {event.pricing.tiers.map((tier) => {
                   const isSelected = selectedTier.id === tier.id;
@@ -386,27 +409,32 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-[#2A2421] text-sm">{tier.name}</span>
                         <span className="font-serif font-bold text-[#2A2421] tabular-nums">
-                          ${tier.price}
+                          {event.isFree ? 'Free' : formatKES(tier.price)}
                         </span>
                       </div>
-                      <p className="text-xs text-[#736B66] mt-1 leading-relaxed">
-                        {tier.description}
-                      </p>
+                      {tier.description && (
+                        <p className="text-xs text-[#736B66] mt-1 leading-relaxed">
+                          {tier.description}
+                        </p>
+                      )}
                       <span className="text-[11px] text-[#736B66]/80 mt-2 block tabular-nums">
-                        {tier.available} passes remaining
+                        {tier.available > 0 ? `${tier.available} left` : 'Sold out'}
                       </span>
                     </div>
                   );
                 })}
               </div>
+              )}
 
               {/* Quantity Selector */}
               <div className="mb-6">
                 <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-2">
-                  Number of Guests
+                  Number of tickets
                 </label>
                 <div className="flex items-center justify-between p-2 bg-[#F4F1EA] rounded-2xl border border-[#E2DDD5]">
                   <button
+                    type="button"
+                    aria-label="Fewer tickets"
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                     disabled={quantity <= 1}
                     className="w-10 h-10 rounded-xl bg-white border border-[#E2DDD5] flex items-center justify-center font-bold text-[#2A2421] hover:bg-[#E2DDD5]/50 disabled:opacity-40 cursor-pointer shadow-xs"
@@ -417,6 +445,8 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                     {quantity}
                   </span>
                   <button
+                    type="button"
+                    aria-label="More tickets"
                     onClick={() => setQuantity((q) => Math.min(selectedTier.available, q + 1))}
                     disabled={quantity >= selectedTier.available}
                     className="w-10 h-10 rounded-xl bg-white border border-[#E2DDD5] flex items-center justify-center font-bold text-[#2A2421] hover:bg-[#E2DDD5]/50 disabled:opacity-40 cursor-pointer shadow-xs"
@@ -427,6 +457,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
               </div>
 
               {/* Inclusions summary */}
+              {selectedTier.perks.length > 0 && (
               <div className="mb-6 p-4 bg-[#F4F1EA]/60 rounded-2xl border border-[#E2DDD5]/70 space-y-2">
                 <span className="text-xs font-semibold text-[#2A2421] block">Included with {selectedTier.name}:</span>
                 {selectedTier.perks.map((perk, idx) => (
@@ -436,16 +467,16 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                   </div>
                 ))}
               </div>
+              )}
 
               {/* Price Calculation */}
               <div className="border-t border-[#E2DDD5] pt-4 mb-6 flex items-baseline justify-between">
                 <div>
-                  <span className="text-xs text-[#736B66] block">Total Amount</span>
-                  <span className="text-xs text-[#736B66]">Taxes & Service Included</span>
+                  <span className="text-xs text-[#736B66] block">Total</span>
                 </div>
                 <div className="text-right">
                   <span className="font-serif text-3xl font-bold text-[#2A2421] tabular-nums">
-                    ${totalPrice}
+                    {formatKES(totalPrice)}
                   </span>
                 </div>
               </div>
@@ -455,15 +486,18 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                 variant="primary"
                 fullWidth
                 size="lg"
+                disabled={isSoldOut}
                 onClick={() => onBookTickets(event, selectedTier, quantity)}
               >
-                Proceed to Checkout
+                {isSoldOut ? 'Sold out' : event.isFree ? 'Register for free' : 'Proceed to checkout'}
               </Button>
 
               {/* Assurance Guarantee */}
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-[#736B66]">
                 <ShieldCheck className="w-4 h-4 text-[#C85A40]" />
-                <span>Instant confirmation · Digital pass issued</span>
+                <span>
+                  {event.isFree ? 'Instant confirmation · Digital ticket issued' : 'Pay with M-Pesa · Digital ticket issued'}
+                </span>
               </div>
             </div>
 
@@ -471,10 +505,10 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
             <div className="bg-[#EBE6DF]/50 rounded-2xl p-5 border border-[#E2DDD5] flex items-center justify-between text-xs text-[#736B66]">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#C85A40]" />
-                <span>Gathering Capacity</span>
+                <span>Capacity</span>
               </div>
               <span className="font-semibold text-[#2A2421] tabular-nums">
-                {event.attendeeCount} / {event.capacity} Filled
+                {event.attendeeCount} / {event.capacity} booked
               </span>
             </div>
           </div>

@@ -7,19 +7,18 @@ import {
   MapPin,
   Bookmark,
   Share2,
-  ArrowRight,
-  Sparkles,
   Ticket,
   Search,
   X,
-  Compass,
-  RotateCcw,
-  Check
+  Compass
 } from 'lucide-react';
-import { EventItem, EventCategory } from '../../types';
+import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { CATEGORY_DEFINITIONS } from '../../data/mockEvents';
+import { EventArtwork } from '../ui/EventArtwork';
+import { CategoryIcon } from '../ui/CategoryIcon';
+import { CATEGORY_DEFINITIONS } from '../../data/categories';
+import { formatKES } from '../../utils/format';
 
 export interface CalendarViewProps {
   events: EventItem[];
@@ -44,16 +43,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onShareEvent,
   initialCategory = 'all'
 }) => {
-  // Determine initial month based on earliest event or November 2026
+  // Open on this month when it still has upcoming events, otherwise on the month of the next upcoming event
   const initialDate = useMemo(() => {
-    if (events.length > 0) {
-      const sorted = [...events].sort((a, b) => a.isoDate.localeCompare(b.isoDate));
-      const [year, month] = sorted[0].isoDate.split('-').map(Number);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const next = events
+      .map((e) => e.isoDate)
+      .filter((d) => d >= today)
+      .sort()[0];
+    if (next) {
+      const [year, month] = next.split('-').map(Number);
       if (year && month) {
         return new Date(year, month - 1, 1);
       }
     }
-    return new Date(2026, 10, 1); // November 2026
+    return new Date(now.getFullYear(), now.getMonth(), 1);
   }, [events]);
 
   const [currentDate, setCurrentDate] = useState<Date>(initialDate);
@@ -189,8 +193,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     return days;
   }, [currentDate]);
 
-  // Count gatherings in currently visible month
-  const monthlyGatheringsCount = useMemo(() => {
+  // Count events in the visible month
+  const monthlyEventsCount = useMemo(() => {
     const prefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
     return filteredEvents.filter((ev) => ev.isoDate.startsWith(prefix)).length;
   }, [filteredEvents, currentYear, currentMonth]);
@@ -201,7 +205,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     return eventsByDate[selectedDayString] || [];
   }, [selectedDayString, eventsByDate]);
 
-  const monthName = currentDate.toLocaleString('default', { month: 'long' });
+  const monthName = currentDate.toLocaleString('en-KE', { month: 'long' });
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-500">
@@ -212,15 +216,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold flex items-center gap-1.5">
                 <CalendarIcon className="w-3.5 h-3.5" />
-                Seasonal Itinerary
+                Event calendar
               </span>
               <span className="text-[#E2DDD5]">·</span>
               <span className="text-xs text-[#736B66]">
-                {monthlyGatheringsCount} {monthlyGatheringsCount === 1 ? 'gathering' : 'gatherings'} in {monthName}
+                {monthlyEventsCount} {monthlyEventsCount === 1 ? 'event' : 'events'} in {monthName}
               </span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl font-medium text-[#2A2421]">
-              {calendarMode === 'month' ? `${monthName} ${currentYear}` : `Week of ${weekDays[0].date.toLocaleDateString('default', { month: 'short', day: 'numeric' })}`}
+              {calendarMode === 'month' ? `${monthName} ${currentYear}` : `Week of ${weekDays[0].date.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' })}`}
             </h2>
           </div>
 
@@ -267,9 +271,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 type="button"
                 onClick={handleJumpToInitial}
                 className="px-2.5 py-1 text-xs text-[#2A2421] hover:bg-[#F4F1EA] rounded-lg font-medium transition-colors cursor-pointer"
-                title="Jump to current curated season"
+                title="Jump to the next upcoming events"
               >
-                Season 2026
+                Upcoming
               </button>
               <button
                 type="button"
@@ -301,7 +305,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       : 'bg-[#F4F1EA] text-[#736B66] hover:bg-white hover:text-[#2A2421] border border-[#E2DDD5]'
                   }`}
                 >
-                  {cat.shortLabel}
+                  <span className="inline-flex items-center gap-1.5">
+                    <CategoryIcon category={cat.id} className="w-3 h-3" />
+                    {cat.shortLabel}
+                  </span>
                 </button>
               );
             })}
@@ -314,13 +321,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter by title, venue..."
+              placeholder="Search by title, venue, town or category"
+              aria-label="Search the calendar"
               className="w-full pl-9 pr-8 py-2 bg-[#F4F1EA] border border-[#E2DDD5] rounded-xl text-xs text-[#2A2421] placeholder-[#736B66] focus:outline-none focus:bg-white focus:border-[#C85A40]"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#736B66] hover:text-[#2A2421] cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
@@ -414,7 +423,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             {ev.time.split('—')[0]}
                           </span>
                           <span className="font-semibold tabular-nums">
-                            ${ev.pricing.startingPrice}
+                            {ev.isFree ? 'Free' : formatKES(ev.pricing.startingPrice)}
                           </span>
                         </div>
                       </div>
@@ -480,14 +489,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           className="p-2.5 bg-[#F4F1EA]/60 hover:bg-white border border-[#E2DDD5] hover:border-[#C85A40] rounded-xl transition-all text-left shadow-2xs group"
                         >
                           <div className="aspect-video w-full rounded-lg overflow-hidden mb-2 bg-[#2A2421]">
-                            <img
-                              src={ev.imageUrl}
-                              alt={ev.title}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLElement).style.display = 'none';
-                              }}
+                            <EventArtwork
+                              imageUrl={ev.imageUrl}
+                              title={ev.title}
+                              category={ev.category}
+                              imageClassName="group-hover:scale-105 transition-transform duration-300"
                             />
                           </div>
 
@@ -503,14 +509,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                               {ev.time.split('—')[0]}
                             </span>
                             <span className="font-semibold text-[#2A2421] tabular-nums">
-                              ${ev.pricing.startingPrice}
+                              {ev.isFree ? 'Free' : formatKES(ev.pricing.startingPrice)}
                             </span>
                           </div>
                         </div>
                       ))
                     ) : (
                       <div className="h-24 flex items-center justify-center text-center text-[#736B66]/60 text-xs italic">
-                        Quiet Day
+                        No events
                       </div>
                     )}
                   </div>
@@ -527,13 +533,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="flex items-center justify-between border-b border-[#E2DDD5] pb-4">
             <div>
               <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold block">
-                Day Schedule Breakdown
+                Day schedule
               </span>
               <h3 className="font-serif text-2xl font-medium text-[#2A2421] mt-0.5">
-                Gatherings on {new Date(selectedDayString + 'T00:00:00').toLocaleDateString('default', {
+                Events on {new Date(selectedDayString + 'T00:00:00').toLocaleDateString('en-KE', {
                   weekday: 'long',
-                  month: 'long',
                   day: 'numeric',
+                  month: 'long',
                   year: 'numeric'
                 })}
               </h3>
@@ -543,7 +549,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               type="button"
               onClick={() => setSelectedDayString(null)}
               className="p-2 text-[#736B66] hover:text-[#2A2421] hover:bg-white rounded-full transition-colors cursor-pointer"
-              title="Close Day View"
+              title="Close day view"
+              aria-label="Close day view"
             >
               <X className="w-4 h-4" />
             </button>
@@ -557,11 +564,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   className="bg-white rounded-2xl p-4 sm:p-5 border border-[#E2DDD5] shadow-sand-sm flex flex-col sm:flex-row gap-4 group"
                 >
                   <div className="w-full sm:w-36 h-28 rounded-xl overflow-hidden bg-[#2A2421] shrink-0 relative">
-                    <img
-                      src={ev.imageUrl}
-                      alt={ev.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    <EventArtwork
+                      imageUrl={ev.imageUrl}
+                      title={ev.title}
+                      category={ev.category}
+                      imageClassName="group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-2 left-2">
                       <Badge variant="terracotta" size="sm">
@@ -577,9 +584,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           <Clock className="w-3 h-3" />
                           {ev.time}
                         </span>
-                        <span className="text-xs text-[#2A2421] font-semibold tabular-nums">
-                          From ${ev.pricing.startingPrice}
-                        </span>
+                        {ev.isFree ? (
+                          <Badge variant="sage" size="sm">
+                            Free
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-[#2A2421] font-semibold tabular-nums">
+                            From {formatKES(ev.pricing.startingPrice)}
+                          </span>
+                        )}
                       </div>
 
                       <h4
@@ -602,6 +615,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             type="button"
                             onClick={() => onShareEvent(ev)}
                             title="Share event"
+                            aria-label="Share event"
                             className="p-2 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-xl transition-colors cursor-pointer"
                           >
                             <Share2 className="w-3.5 h-3.5" />
@@ -610,7 +624,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onToggleBookmark(ev)}
-                          title="Save gathering"
+                          title="Save event"
+                          aria-label={bookmarkedIds.includes(ev.id) ? 'Remove from saved' : 'Save event'}
                           className={`p-2 rounded-xl transition-colors cursor-pointer ${
                             bookmarkedIds.includes(ev.id)
                               ? 'text-[#C85A40] bg-[#C85A40]/10'
@@ -635,7 +650,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           onClick={() => onQuickBook(ev)}
                           icon={<Ticket className="w-3.5 h-3.5" />}
                         >
-                          Book Passes
+                          {ev.isFree ? 'Register' : 'Book'}
                         </Button>
                       </div>
                     </div>
@@ -647,10 +662,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-[#E2DDD5] text-[#736B66] space-y-2">
               <Compass className="w-8 h-8 text-[#C85A40]/60 mx-auto" />
               <p className="font-serif text-base text-[#2A2421]">
-                No gatherings scheduled on this date
+                No events on this date
               </p>
               <p className="text-xs text-[#736B66] max-w-md mx-auto">
-                Explore neighboring days or browse the full curated directory grid to discover upcoming salons and banquets.
+                Try another day, or switch to the grid to see every upcoming event.
               </p>
             </div>
           )}

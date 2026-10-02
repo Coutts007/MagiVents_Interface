@@ -65,7 +65,6 @@ body {
   animation: sand-shimmer 1.8s infinite ease-in-out;
 }
 
-<<<<<<< HEAD
 /* Clean Ticket Pass Printing Styles */
 @media print {
   body {
@@ -95,5 +94,3 @@ body {
 }
 
 
-=======
->>>>>>> eecc011 (Save local partial code before merging)

@@ -1,16 +1,7 @@
-import React from 'react';
-import {
-  Compass,
-  UtensilsCrossed,
-  Building2,
-  Palette,
-  Music,
-  BookOpen,
-  Sparkles,
-  X
-} from 'lucide-react';
-import { EventCategory, CategoryDefinition } from '../../types';
-import { CATEGORY_DEFINITIONS } from '../../data/mockEvents';
+import React, { useState } from 'react';
+import { Search, X } from 'lucide-react';
+import { CATEGORY_DEFINITIONS } from '../../data/categories';
+import { CategoryIcon } from '../ui/CategoryIcon';
 
 export interface CategoryFilterBarProps {
   selectedCategory: string;
@@ -21,16 +12,6 @@ export interface CategoryFilterBarProps {
   onClearTag?: () => void;
 }
 
-const CATEGORY_ICONS: Record<string, React.FC<{ className?: string }>> = {
-  Compass,
-  UtensilsCrossed,
-  Building2,
-  Palette,
-  Music,
-  BookOpen,
-  Sparkles
-};
-
 export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
   selectedCategory,
   onSelectCategory,
@@ -40,14 +21,48 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
   onClearTag
 }) => {
   const activeDef = CATEGORY_DEFINITIONS.find((c) => c.id === selectedCategory);
+  const [categoryQuery, setCategoryQuery] = useState('');
+
+  // "All" and the selected category always stay visible while searching
+  const query = categoryQuery.trim().toLowerCase();
+  const visibleCategories = CATEGORY_DEFINITIONS.filter(
+    (cat) =>
+      !query ||
+      cat.id === 'all' ||
+      cat.id === selectedCategory ||
+      [cat.label, cat.shortLabel, cat.tagline, cat.description].some((text) => text.toLowerCase().includes(query))
+  );
+  const hasMatches = !query || visibleCategories.some((cat) => cat.id !== 'all' && cat.id !== selectedCategory);
 
   return (
     <div className="w-full space-y-4">
+      {/* Category search */}
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="w-3.5 h-3.5 text-[#736B66] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          type="search"
+          value={categoryQuery}
+          onChange={(e) => setCategoryQuery(e.target.value)}
+          placeholder="Search categories, e.g. tech, sports"
+          aria-label="Search categories"
+          className="w-full pl-9 pr-8 py-2 bg-white border border-[#E2DDD5] rounded-full text-xs text-[#2A2421] placeholder-[#736B66]/70 focus:outline-none focus:border-[#C85A40] focus:ring-1 focus:ring-[#C85A40] transition-colors"
+        />
+        {categoryQuery && (
+          <button
+            type="button"
+            onClick={() => setCategoryQuery('')}
+            aria-label="Clear category search"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#736B66] hover:text-[#2A2421] cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
       {/* Category Pills Slider / Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-1 scrollbar-none">
-        {CATEGORY_DEFINITIONS.map((cat) => {
+        {visibleCategories.map((cat) => {
           const isSelected = selectedCategory === cat.id;
-          const Icon = CATEGORY_ICONS[cat.iconName] || Compass;
           const count = cat.id === 'all'
             ? Object.values(categoryCounts).reduce((a, b) => a + b, 0)
             : (categoryCounts[cat.id] || 0);
@@ -62,7 +77,7 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
                   : 'bg-white text-[#736B66] border border-[#E2DDD5] hover:border-[#736B66] hover:text-[#2A2421] shadow-sand-sm'
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#C85A40]'}`} />
+              <CategoryIcon category={cat.id} className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#C85A40]'}`} />
               <span className="font-medium">{cat.label}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono tabular-nums ${
@@ -76,19 +91,22 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
             </button>
           );
         })}
+        {!hasMatches && (
+          <span className="text-xs text-[#736B66] px-2 whitespace-nowrap">No matching category</span>
+        )}
       </div>
 
-      {/* Curatorial Header Banner when a specific category is active */}
+      {/* Category banner when a specific category is active */}
       {activeDef && activeDef.id !== 'all' && (
         <div className="bg-[#FAF8F5] rounded-2xl p-5 border border-[#E2DDD5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-300">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-[11px] uppercase tracking-widest font-bold text-[#C85A40]">
-                Curated Category
+                Category
               </span>
               <span className="text-[#E2DDD5]">·</span>
               <span className="text-xs text-[#736B66]">
-                {categoryCounts[activeDef.id] || 0} Scheduled Gatherings
+                {categoryCounts[activeDef.id] || 0} {(categoryCounts[activeDef.id] || 0) === 1 ? 'event' : 'events'}
               </span>
             </div>
             <h3 className="font-serif text-lg font-medium text-[#2A2421]">
@@ -114,7 +132,7 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
               onClick={() => onSelectCategory('all')}
               className="text-xs text-[#736B66] hover:text-[#2A2421] px-3 py-1.5 rounded-full border border-[#E2DDD5] hover:bg-white bg-white/60 transition-colors cursor-pointer"
             >
-              Reset to All
+              Show all
             </button>
           </div>
         </div>

@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Calendar, MapPin, ArrowRight, Pause, Play, Share2 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { EventArtwork } from '../ui/EventArtwork';
+import { formatKES } from '../../utils/format';
+
+/** Number of most recently created events shown in the slideshow */
+const HERO_SLIDE_COUNT = 10;
 
 export interface HeroBannerProps {
   events: EventItem[];
@@ -17,12 +22,31 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   onQuickBook,
   onShare
 }) => {
-  const featured = events.filter((e) => e.isFeatured);
-  const displayEvents = featured.length > 0 ? featured : events.slice(0, 3);
+  // The newest events first; events without a timestamp keep their list order at the end
+  const displayEvents = useMemo(
+    () =>
+      events
+        .map((event, index) => ({ event, index }))
+        .filter(({ event }) => event.status !== 'draft')
+        .sort((a, b) => {
+          const ta = a.event.createdAt ? Date.parse(a.event.createdAt) : NaN;
+          const tb = b.event.createdAt ? Date.parse(b.event.createdAt) : NaN;
+          if (!isNaN(ta) && !isNaN(tb) && ta !== tb) return tb - ta;
+          if (isNaN(ta) !== isNaN(tb)) return isNaN(ta) ? 1 : -1;
+          return a.index - b.index;
+        })
+        .slice(0, HERO_SLIDE_COUNT)
+        .map(({ event }) => event),
+    [events]
+  );
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [imageError, setImageError] = useState<Record<string, boolean>>({});
+
+  // Keep the index valid when the list shrinks (e.g. an event is deleted)
+  useEffect(() => {
+    if (currentIndex >= displayEvents.length) setCurrentIndex(0);
+  }, [currentIndex, displayEvents.length]);
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % displayEvents.length);
@@ -38,12 +62,12 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
     return () => clearInterval(interval);
   }, [isPlaying, nextSlide, displayEvents.length]);
 
-  const currentEvent = displayEvents[currentIndex];
+  const currentEvent = displayEvents[currentIndex] || displayEvents[0];
   if (!currentEvent) return null;
 
   return (
     <section
-      aria-label="Featured Gatherings Carousel"
+      aria-label="Newest events slideshow"
       className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-12"
       onMouseEnter={() => setIsPlaying(false)}
       onMouseLeave={() => setIsPlaying(true)}
@@ -52,7 +76,6 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
         {/* Slide Images */}
         {displayEvents.map((event, index) => {
           const isActive = index === currentIndex;
-          const hasError = imageError[event.id];
 
           return (
             <div
@@ -61,22 +84,13 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
               }`}
             >
-              {!hasError ? (
-                <img
-                  src={event.imageUrl}
-                  alt={event.title}
-                  referrerPolicy="no-referrer"
-                  onError={() => setImageError((prev) => ({ ...prev, [event.id]: true }))}
-                  className="w-full h-full object-cover transform scale-100 transition-transform duration-7000 ease-out"
-                />
-              ) : (
-                /* Fallback stylized gradient container if image fails */
-                <div className="w-full h-full bg-gradient-to-br from-[#3D332D] via-[#2A2421] to-[#1F1916] flex items-center justify-center p-8">
-                  <div className="text-center text-[#F4F1EA]/40">
-                    <span className="font-serif text-3xl italic">{event.title}</span>
-                  </div>
-                </div>
-              )}
+              <EventArtwork
+                imageUrl={event.imageUrl}
+                title={event.title}
+                category={event.category}
+                placeholder="plain"
+                imageClassName="transform scale-100 transition-transform duration-7000 ease-out"
+              />
 
               {/* Scrim Gradient Overlay for 4.5:1 text contrast */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#1F1916]/95 via-[#1F1916]/55 to-black/20" />
@@ -87,13 +101,13 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
         {/* Slide Content Overlay */}
         <div className="absolute inset-0 z-20 flex flex-col justify-end p-6 sm:p-10 md:p-14 text-white">
           <div className="max-w-3xl space-y-4">
-            {/* Category Badge & Curatorial Indicator */}
+            {/* Category Badge & Indicator */}
             <div className="flex flex-wrap items-center gap-3">
               <Badge variant="terracotta" size="md">
                 {currentEvent.category}
               </Badge>
               <span className="text-xs uppercase tracking-widest text-[#F4F1EA]/80 font-medium">
-                Featured Gathering · Edition 2026
+                Just added on MagiVents
               </span>
             </div>
 
@@ -135,7 +149,9 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 icon={<ArrowRight className="w-4 h-4" />}
                 iconPosition="right"
               >
-                Reserve from ${currentEvent.pricing.startingPrice}
+                {currentEvent.isFree
+                  ? 'Register for free'
+                  : `Book from ${formatKES(currentEvent.pricing.startingPrice)}`}
               </Button>
 
               <Button
@@ -144,14 +160,14 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 onClick={() => onSelectEvent(currentEvent)}
                 className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm"
               >
-                Curatorial Overview
+                View details
               </Button>
 
               {onShare && (
                 <button
                   type="button"
                   onClick={() => onShare(currentEvent)}
-                  aria-label="Share this featured gathering"
+                  aria-label="Share this event"
                   title="Share event link"
                   className="p-3 rounded-full bg-white/10 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm transition-all duration-200 cursor-pointer shadow-xs active:scale-95 flex items-center justify-center"
                 >

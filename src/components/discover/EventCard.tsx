@@ -1,7 +1,21 @@
-import React, { useState } from 'react';
-import { Calendar, MapPin, Bookmark, ArrowUpRight, Compass, Share2 } from 'lucide-react';
+import React from 'react';
+import { Calendar, MapPin, Bookmark, ArrowUpRight, Share2 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
+import { EventArtwork } from '../ui/EventArtwork';
+import { formatKES } from '../../utils/format';
+
+/** "2026-10-24" -> "Sat, 24 Oct 2026" (parsed as a local date, so it never shifts a day) */
+function formatEventDate(isoDate: string, fallback: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  if (!y || !m || !d) return fallback;
+  return new Date(y, m - 1, d).toLocaleDateString('en-KE', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+}
 
 export interface EventCardProps {
   event: EventItem;
@@ -20,8 +34,6 @@ export const EventCard: React.FC<EventCardProps> = ({
   onCategoryClick,
   onShare
 }) => {
-  const [imageError, setImageError] = useState(false);
-
   return (
     <article
       onClick={() => onSelect(event)}
@@ -29,23 +41,12 @@ export const EventCard: React.FC<EventCardProps> = ({
     >
       {/* Image Framing with 4:3 Aspect Ratio and subtle zoom on hover */}
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F4F1EA]">
-        {!imageError ? (
-          <img
-            src={event.imageUrl}
-            alt={event.title}
-            referrerPolicy="no-referrer"
-            onError={() => setImageError(true)}
-            className="w-full h-full object-cover transform transition-transform duration-700 ease-out group-hover:scale-105"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-[#EBE6DF] text-[#736B66] p-6 text-center">
-            <Compass className="w-8 h-8 mb-2 text-[#C85A40]/70" />
-            <span className="font-serif text-base italic text-[#2A2421]">{event.title}</span>
-            <span className="text-xs uppercase tracking-widest text-[#736B66] mt-1">
-              {event.category}
-            </span>
-          </div>
-        )}
+        <EventArtwork
+          imageUrl={event.imageUrl}
+          title={event.title}
+          category={event.category}
+          imageClassName="transform transition-transform duration-700 ease-out group-hover:scale-105"
+        />
 
         {/* Category Pill Tag Overlay with click-to-filter */}
         <div className="absolute top-3.5 left-3.5 z-10">
@@ -105,10 +106,16 @@ export const EventCard: React.FC<EventCardProps> = ({
           </button>
         </div>
 
-        {/* Starting Price Pill */}
-        <div className="absolute bottom-3.5 right-3.5 z-10 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-[#2A2421] shadow-xs tabular-nums">
-          from ${event.pricing.startingPrice}
-        </div>
+        {/* Price Pill */}
+        {event.isFree ? (
+          <div className="absolute bottom-3.5 right-3.5 z-10 bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-xs">
+            Free
+          </div>
+        ) : (
+          <div className="absolute bottom-3.5 right-3.5 z-10 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-[#2A2421] shadow-xs tabular-nums">
+            from {formatKES(event.pricing.startingPrice)}
+          </div>
+        )}
       </div>
 
       {/* Card Content */}
@@ -118,7 +125,7 @@ export const EventCard: React.FC<EventCardProps> = ({
           <div className="flex items-center gap-2 text-xs text-[#736B66] font-medium mb-2.5">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-[#C85A40]" />
-              {event.date.split(',')[1] || event.date}
+              {formatEventDate(event.isoDate, event.date)}
             </span>
             <span aria-hidden="true" className="text-[#E2DDD5]">·</span>
             <span className="flex items-center gap-1 truncate max-w-[150px]">
@@ -144,7 +151,7 @@ export const EventCard: React.FC<EventCardProps> = ({
             <span className="font-medium text-[#2A2421] tabular-nums">
               {event.capacity - event.attendeeCount}
             </span>{' '}
-            places remaining
+            {event.capacity - event.attendeeCount === 1 ? 'place' : 'places'} left
           </div>
 
           <div className="inline-flex items-center gap-1 text-xs font-medium text-[#C85A40] group-hover:translate-x-0.5 transition-transform duration-200">

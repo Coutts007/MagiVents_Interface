@@ -1,12 +1,39 @@
 import React, { useState, useMemo } from 'react';
 import { Search, X, SlidersHorizontal, Sparkles, RefreshCw, LayoutGrid, CalendarDays } from 'lucide-react';
-import { EventItem, EventCategory } from '../../types';
+import { EventItem } from '../../types';
 import { HeroBanner } from './HeroBanner';
 import { EventCard } from './EventCard';
 import { CategoryFilterBar } from './CategoryFilterBar';
 import { CalendarView } from '../calendar/CalendarView';
 import { SkeletonGrid } from '../ui/SkeletonCard';
 import { Button } from '../ui/Button';
+import { toLocalIsoDate as toIsoDate } from '../../utils/format';
+import { matchesSearch } from '../../utils/search';
+
+type DateFilter = 'all' | 'week' | 'month' | '30days';
+
+const DATE_FILTERS: { id: DateFilter; label: string }[] = [
+  { id: 'all', label: 'All dates' },
+  { id: 'week', label: 'This week' },
+  { id: 'month', label: 'This month' },
+  { id: '30days', label: 'Next 30 days' }
+];
+
+/** Inclusive [from, to] window for a date filter, starting today */
+function dateWindow(filter: DateFilter): [string, string] | null {
+  if (filter === 'all') return null;
+  const today = new Date();
+  const end = new Date(today);
+  if (filter === 'week') {
+    // Through Sunday of the current week
+    end.setDate(today.getDate() + ((7 - today.getDay()) % 7));
+  } else if (filter === 'month') {
+    end.setMonth(today.getMonth() + 1, 0);
+  } else {
+    end.setDate(today.getDate() + 30);
+  }
+  return [toIsoDate(today), toIsoDate(end)];
+}
 
 export interface DiscoverViewProps {
   events: EventItem[];
@@ -20,6 +47,9 @@ export interface DiscoverViewProps {
   onTabChange?: (tab: 'grid' | 'calendar') => void;
   isLoading?: boolean;
   onRefresh?: () => void;
+  /** Search text shared with the site-wide search panel; local state is used when omitted */
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 export const DiscoverView: React.FC<DiscoverViewProps> = ({
@@ -33,7 +63,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   currentTab,
   onTabChange,
   isLoading = false,
-  onRefresh
+  onRefresh,
+  searchQuery: controlledQuery,
+  onSearchChange
 }) => {
   const [internalTab, setInternalTab] = useState<'grid' | 'calendar'>('grid');
   const activeTab = currentTab || internalTab;
@@ -45,10 +77,16 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     }
   };
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [localQuery, setLocalQuery] = useState('');
+  const searchQuery = controlledQuery ?? localQuery;
+  const setSearchQuery = (query: string) => {
+    setLocalQuery(query);
+    onSearchChange?.(query);
+  };
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [selectedDateFilter, setSelectedDateFilter] = useState<'all' | '30days' | 'later'>('all');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilter>('all');
+  const [freeOnly, setFreeOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'date' | 'price-asc' | 'price-desc'>('date');
 
   // Dynamic Category Counts
@@ -62,6 +100,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
 
   // Filter & Search Logic
   const filteredEvents = useMemo(() => {
+    const today = toIsoDate(new Date());
+    const range = dateWindow(selectedDateFilter);
     return events
       .filter((event) => {
         // Category Filter
@@ -75,26 +115,19 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
           if (!hasTag) return false;
         }
 
-        // Search query
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchTitle = event.title.toLowerCase().includes(q);
-          const matchDesc = event.description.toLowerCase().includes(q);
-          const matchVenue =
-            event.venue.name.toLowerCase().includes(q) || event.venue.city.toLowerCase().includes(q);
-          const matchHost = event.host.name.toLowerCase().includes(q);
-          const matchTags = event.tags.some((t) => t.toLowerCase().includes(q));
-          const matchCategory = event.category.toLowerCase().includes(q);
-          if (!matchTitle && !matchDesc && !matchVenue && !matchHost && !matchTags && !matchCategory) {
-            return false;
-          }
+        // Search query: every word must match somewhere in the event
+        if (!matchesSearch(event, searchQuery)) {
+          return false;
         }
 
         // Date filter
-        if (selectedDateFilter === '30days') {
-          if (event.isoDate > '2026-11-15') return false;
-        } else if (selectedDateFilter === 'later') {
-          if (event.isoDate < '2026-11-15') return false;
+        if (range && (event.isoDate < range[0] || event.isoDate > range[1])) {
+          return false;
+        }
+
+        // Free events only
+        if (freeOnly && !event.isFree) {
+          return false;
         }
 
         return true;
@@ -106,21 +139,37 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         if (sortBy === 'price-desc') {
           return b.pricing.startingPrice - a.pricing.startingPrice;
         }
-        return a.isoDate.localeCompare(b.isoDate);
+        // Upcoming events first (soonest first), past events after them
+        const aPast = a.isoDate < today;
+        const bPast = b.isoDate < today;
+        if (aPast !== bPast) return aPast ? 1 : -1;
+        return aPast ? b.isoDate.localeCompare(a.isoDate) : a.isoDate.localeCompare(b.isoDate);
       });
-  }, [events, selectedCategory, selectedTag, searchQuery, selectedDateFilter, sortBy]);
+  }, [events, selectedCategory, selectedTag, searchQuery, selectedDateFilter, freeOnly, sortBy]);
+
+  // Summary figures for the strip at the bottom, from the events actually listed
+  const stats = useMemo(() => {
+    const today = toIsoDate(new Date());
+    const live = events.filter((e) => e.status !== 'draft');
+    return {
+      upcoming: live.filter((e) => e.isoDate >= today).length,
+      cities: new Set(live.map((e) => e.venue.city.trim()).filter(Boolean)).size,
+      free: live.filter((e) => e.isFree).length
+    };
+  }, [events]);
 
   const resetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('all');
     setSelectedTag(null);
     setSelectedDateFilter('all');
+    setFreeOnly(false);
     setSortBy('date');
   };
 
   return (
     <div className="w-full pb-24 animate-in fade-in duration-500">
-      {/* Editorial Featured Carousel */}
+      {/* Newest events slideshow */}
       <HeroBanner
         events={events}
         onSelectEvent={onSelectEvent}
@@ -135,13 +184,13 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
           <div>
             <span className="text-xs uppercase tracking-widest text-[#736B66] font-semibold flex items-center gap-1.5 mb-2">
               <Sparkles className="w-3.5 h-3.5 text-[#C85A40]" />
-              Curated Event Directory
+              Events across Kenya
             </span>
             <h2
               style={{ textWrap: 'balance' }}
               className="font-serif text-3xl sm:text-4xl font-medium text-[#2A2421]"
             >
-              Explore Gatherings of Mind & Craft
+              Find your next event
             </h2>
           </div>
 
@@ -159,7 +208,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5 text-[#C85A40]" />
-                <span>Directory Grid</span>
+                <span>Grid</span>
               </button>
               <button
                 type="button"
@@ -171,7 +220,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 }`}
               >
                 <CalendarDays className="w-3.5 h-3.5 text-[#C85A40]" />
-                <span>Calendar Schedule</span>
+                <span>Calendar</span>
               </button>
             </div>
 
@@ -182,7 +231,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 icon={<RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />}
                 onClick={onRefresh}
                 disabled={isLoading || !onRefresh}
-                title="Reload gatherings from the server"
+                title="Reload events from the server"
               >
                 Refresh
               </Button>
@@ -206,9 +255,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
         ) : (
           <div>
 
-        {/* Filter Toolbar & Category Navigation */}
-        <div className="py-6 space-y-5">
-          {/* Dedicated Category Filter Bar with Counts and Curatorial Descriptions */}
+        {/* Filter Toolbar & Category Navigation (the site-wide search scrolls here) */}
+        <div id="event-results" className="py-6 space-y-5 scroll-mt-24">
+          {/* Searchable category bar with counts and descriptions */}
           <CategoryFilterBar
             selectedCategory={selectedCategory}
             onSelectCategory={(cat) => {
@@ -229,7 +278,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search artists, culinary feasts, architecture or venues..."
+                placeholder="Search events, categories, venues, towns or organizers"
+                aria-label="Search events"
                 className="w-full pl-11 pr-10 py-2.5 bg-white border border-[#E2DDD5] rounded-full text-sm text-[#2A2421] placeholder-[#736B66]/70 focus:outline-none focus:border-[#C85A40] focus:ring-1 focus:ring-[#C85A40] transition-colors shadow-sand-sm"
               />
               {searchQuery && (
@@ -255,43 +305,40 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="bg-white border border-[#E2DDD5] rounded-full px-4 py-2 text-xs font-medium text-[#2A2421] focus:outline-none focus:border-[#C85A40] cursor-pointer shadow-sand-sm"
               >
-                <option value="date">Date: Soonest First</option>
+                <option value="date">Date: Upcoming first</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
               </select>
 
-              <div className="flex items-center bg-white border border-[#E2DDD5] rounded-full p-1 shadow-sand-sm">
-                <button
-                  onClick={() => setSelectedDateFilter('all')}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                    selectedDateFilter === 'all'
-                      ? 'bg-[#2A2421] text-white'
-                      : 'text-[#736B66] hover:text-[#2A2421]'
-                  }`}
-                >
-                  All Dates
-                </button>
-                <button
-                  onClick={() => setSelectedDateFilter('30days')}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                    selectedDateFilter === '30days'
-                      ? 'bg-[#2A2421] text-white'
-                      : 'text-[#736B66] hover:text-[#2A2421]'
-                  }`}
-                >
-                  Next 30 Days
-                </button>
-                <button
-                  onClick={() => setSelectedDateFilter('later')}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                    selectedDateFilter === 'later'
-                      ? 'bg-[#2A2421] text-white'
-                      : 'text-[#736B66] hover:text-[#2A2421]'
-                  }`}
-                >
-                  Winter 2026
-                </button>
+              <div className="flex items-center bg-white border border-[#E2DDD5] rounded-full p-1 shadow-sand-sm overflow-x-auto">
+                {DATE_FILTERS.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setSelectedDateFilter(filter.id)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                      selectedDateFilter === filter.id
+                        ? 'bg-[#2A2421] text-white'
+                        : 'text-[#736B66] hover:text-[#2A2421]'
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
               </div>
+
+              <button
+                type="button"
+                onClick={() => setFreeOnly((v) => !v)}
+                aria-pressed={freeOnly}
+                className={`px-3.5 py-2 rounded-full text-xs font-medium border transition-colors cursor-pointer shadow-sand-sm ${
+                  freeOnly
+                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                    : 'bg-white border-[#E2DDD5] text-[#736B66] hover:text-[#2A2421]'
+                }`}
+              >
+                Free only
+              </button>
             </div>
           </div>
         </div>
@@ -327,13 +374,13 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               <Search className="w-8 h-8 text-[#C85A40]" />
             </div>
             <h3 className="font-serif text-2xl font-medium text-[#2A2421] mb-2">
-              No gatherings match your criteria
+              No events match your search
             </h3>
             <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
-              We couldn't find any events in {selectedCategory !== 'all' ? `"${selectedCategory}"` : 'the catalog'} matching your query. Try broadening your terms or reset the filters.
+              We couldn't find any events {selectedCategory !== 'all' ? `in "${selectedCategory}" ` : ''}matching your filters. Try different words or reset the filters.
             </p>
             <Button variant="primary" onClick={resetFilters}>
-              Reset All Filters
+              Reset all filters
             </Button>
           </div>
         )}
@@ -341,28 +388,32 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     )}
   </section>
 
-      {/* Curatorial Values / Manifesto Strip */}
+      {/* About MagiVents strip, with live figures from the event list */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20">
         <div className="bg-[#EBE6DF]/70 rounded-3xl p-8 sm:p-12 border border-[#E2DDD5] flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-2xl">
             <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold">
-              The MagiVents Standard
+              About MagiVents
             </span>
             <h3 className="font-serif text-2xl sm:text-3xl font-medium text-[#2A2421] mt-2 mb-3">
-              Intimacy, Materiality, and Acoustic Integrity
+              Kenya's events, in one place
             </h3>
             <p className="text-sm text-[#736B66] leading-relaxed">
-              Every gathering in our catalogue is vetted for sensory quality. We limit capacity to preserve conversation, select venues with natural architectural resonance, and partner with creators devoted to deliberate craftsmanship.
+              Discover sports, music, business, tech, education, arts, community and civic events near you. Book in Kenyan shillings and pay with M-Pesa, or register for free events in a few taps.
             </p>
           </div>
           <div className="shrink-0 flex flex-col sm:flex-row items-center gap-3">
             <div className="text-center px-4 py-2 border-r border-[#E2DDD5]/80 last:border-none">
-              <span className="font-serif text-3xl font-medium text-[#2A2421] block tabular-nums">180</span>
-              <span className="text-xs text-[#736B66] uppercase tracking-wider">Max Capacity</span>
+              <span className="font-serif text-3xl font-medium text-[#2A2421] block tabular-nums">{stats.upcoming}</span>
+              <span className="text-xs text-[#736B66] uppercase tracking-wider">Upcoming events</span>
             </div>
             <div className="text-center px-4 py-2 border-r border-[#E2DDD5]/80 last:border-none">
-              <span className="font-serif text-3xl font-medium text-[#2A2421] block tabular-nums">100%</span>
-              <span className="text-xs text-[#736B66] uppercase tracking-wider">Acoustic Pure</span>
+              <span className="font-serif text-3xl font-medium text-[#2A2421] block tabular-nums">{stats.cities}</span>
+              <span className="text-xs text-[#736B66] uppercase tracking-wider">{stats.cities === 1 ? 'Town' : 'Towns'}</span>
+            </div>
+            <div className="text-center px-4 py-2 border-r border-[#E2DDD5]/80 last:border-none">
+              <span className="font-serif text-3xl font-medium text-[#2A2421] block tabular-nums">{stats.free}</span>
+              <span className="text-xs text-[#736B66] uppercase tracking-wider">Free events</span>
             </div>
           </div>
         </div>

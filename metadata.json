@@ -1,6 +1,5 @@
 {
   "name": "MagiVents",
-  "description": "A premium event management and discovery platform celebrating curated cultural, culinary, and design gatherings.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "description": "Find and book sports, music, business, tech, education, arts, community and civic events across Kenya. Pay with M-Pesa or register for free events.",
+  "requestFramePermissions": []
 }

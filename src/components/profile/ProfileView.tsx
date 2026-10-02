@@ -10,16 +10,12 @@ import {
   Edit3,
   LogOut,
   QrCode,
-  CalendarPlus,
   ArrowRight,
-  ExternalLink,
   CheckCircle,
   AlertCircle,
   Camera,
-  Layers,
-  Sparkles,
   Share2,
-  Check,
+  Trash2,
   Printer,
   Smartphone
 } from 'lucide-react';
@@ -29,6 +25,9 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { ImageUploadZone } from '../ui/ImageUploadZone';
+import { Avatar } from '../ui/Avatar';
+import { EventArtwork } from '../ui/EventArtwork';
+import { formatKES } from '../../utils/format';
 import { PrintableTicketModal } from '../ticket/PrintableTicketModal';
 import { EmailConfirmationModal } from '../ticket/EmailConfirmationModal';
 
@@ -41,13 +40,6 @@ export interface ProfileViewProps {
   onShareEvent?: (event: EventItem) => void;
   allEvents?: EventItem[];
 }
-
-const AVATAR_PRESETS = [
-  { label: 'Studio Portrait I', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80' },
-  { label: 'Studio Portrait II', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80' },
-  { label: 'Studio Portrait III', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80' },
-  { label: 'Studio Portrait IV', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80' }
-];
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   onNavigate,
@@ -68,14 +60,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [editEmail, setEditEmail] = useState(user?.email || '');
   const [editBio, setEditBio] = useState(user?.bio || '');
   const [editCity, setEditCity] = useState(user?.city || '');
-  const [editAvatarUrl, setEditAvatarUrl] = useState(user?.avatarUrl || AVATAR_PRESETS[0].url);
-  const [customAvatarInput, setCustomAvatarInput] = useState('');
+  const [editAvatarUrl, setEditAvatarUrl] = useState(user?.avatarUrl || '');
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState(false);
 
   // Digital Pass Inspection Modal
   const [selectedPass, setSelectedPass] = useState<TicketBooking | null>(null);
-  const [passCalendarAdded, setPassCalendarAdded] = useState(false);
   const [printBooking, setPrintBooking] = useState<TicketBooking | null>(null);
   const [emailBooking, setEmailBooking] = useState<TicketBooking | null>(null);
 
@@ -93,13 +83,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <User className="w-8 h-8" />
         </div>
         <h2 className="font-serif text-3xl font-medium text-[#2A2421] mb-2">
-          Patron Profile
+          Your profile
         </h2>
         <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
-          Sign in or register an account to access your digital passes, review saved salons, and update your curatorial preferences.
+          Sign in or create an account to see your tickets, saved events and profile details.
         </p>
         <Button variant="primary" onClick={() => onNavigate('discover')}>
-          Explore MagiVents Directory
+          Browse events
         </Button>
       </div>
     );
@@ -110,7 +100,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setEditEmail(user.email);
     setEditBio(user.bio || '');
     setEditCity(user.city || '');
-    setEditAvatarUrl(user.avatarUrl);
+    setEditAvatarUrl(user.avatarUrl || '');
     setEditError(null);
     setIsEditModalOpen(true);
   };
@@ -129,13 +119,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
 
     try {
-      const finalAvatar = customAvatarInput.trim() || editAvatarUrl;
       await updateProfile({
         name: editName.trim(),
         email: editEmail.trim(),
         bio: editBio.trim(),
         city: editCity.trim(),
-        avatarUrl: finalAvatar
+        // An empty string removes the photo; initials are shown instead
+        avatarUrl: editAvatarUrl
       });
       setEditSuccess(true);
       setTimeout(() => {
@@ -172,7 +162,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       return;
     }
 
-    setSecuritySuccess('Security credentials updated successfully.');
+    setSecuritySuccess('Your password has been updated.');
     setCurrentPass('');
     setNewPass('');
     setConfirmNewPass('');
@@ -187,19 +177,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {/* Avatar & Basic Info */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="relative group shrink-0">
-              <img
+              <Avatar
+                name={user.name}
                 src={user.avatarUrl}
-                alt={user.name}
-                className="w-24 h-24 sm:w-28 sm:sm:h-28 rounded-full object-cover border-2 border-[#E2DDD5] shadow-sand-sm"
+                size="xl"
+                className="sm:w-28 sm:h-28 border-2 border-[#E2DDD5] shadow-sand-sm"
               />
               <button
                 onClick={handleOpenEdit}
-                aria-label="Change portrait"
+                aria-label={user.avatarUrl ? 'Change profile photo' : 'Upload profile photo'}
                 className="absolute inset-0 rounded-full bg-black/50 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-center p-2"
-                title="Upload or change profile portrait"
+                title={user.avatarUrl ? 'Change profile photo' : 'Upload profile photo'}
               >
                 <Camera className="w-5 h-5 mb-0.5" />
-                <span className="text-[10px] font-semibold leading-tight">Change Photo</span>
+                <span className="text-[10px] font-semibold leading-tight">
+                  {user.avatarUrl ? 'Change photo' : 'Add photo'}
+                </span>
               </button>
             </div>
 
@@ -209,7 +202,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   {user.name}
                 </h1>
                 <Badge variant="terracotta" size="sm">
-                  {user.role === 'curator' ? 'Host & Curator' : 'Patron of the Arts'}
+                  {user.role === 'curator' ? 'Organizer' : 'Attendee'}
                 </Badge>
               </div>
 
@@ -250,25 +243,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               icon={<Edit3 className="w-4 h-4" />}
               onClick={handleOpenEdit}
             >
-              Edit Profile
+              Edit profile
             </Button>
             <Button
               variant="ghost"
               size="md"
               icon={<LogOut className="w-4 h-4" />}
               onClick={logout}
-              title="Sign out of current workstation"
+              title="Sign out"
             >
-              Sign Out
+              Sign out
             </Button>
           </div>
         </div>
 
         {/* Aggregate Stats */}
-        <div className="mt-8 pt-6 border-t border-[#E2DDD5] grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="mt-8 pt-6 border-t border-[#E2DDD5] grid grid-cols-2 gap-4 max-w-md">
           <div className="p-4 rounded-2xl bg-[#F4F1EA]/60 border border-[#E2DDD5]/70">
             <span className="text-xs uppercase tracking-wider text-[#736B66] font-semibold block">
-              Purchased Passes
+              Tickets booked
             </span>
             <span className="font-serif text-2xl font-bold text-[#2A2421] tabular-nums mt-1 block">
               {purchasedBookings.length}
@@ -277,20 +270,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
           <div className="p-4 rounded-2xl bg-[#F4F1EA]/60 border border-[#E2DDD5]/70">
             <span className="text-xs uppercase tracking-wider text-[#736B66] font-semibold block">
-              Saved Gatherings
+              Saved events
             </span>
             <span className="font-serif text-2xl font-bold text-[#2A2421] tabular-nums mt-1 block">
               {savedEvents.length}
-            </span>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-[#F4F1EA]/60 border border-[#E2DDD5]/70 col-span-2 sm:col-span-1">
-            <span className="text-xs uppercase tracking-wider text-[#736B66] font-semibold block">
-              Patron Standing
-            </span>
-            <span className="text-xs font-medium text-emerald-800 flex items-center gap-1.5 mt-2">
-              <Sparkles className="w-3.5 h-3.5 text-[#C85A40]" />
-              Verified & In Good Standing
             </span>
           </div>
         </div>
@@ -306,7 +289,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         >
           <span className="flex items-center gap-2">
             <Ticket className="w-4 h-4 text-[#C85A40]" />
-            Purchased Passes ({purchasedBookings.length})
+            My tickets ({purchasedBookings.length})
           </span>
           {activeTab === 'passes' && (
             <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#C85A40]" />
@@ -321,7 +304,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         >
           <span className="flex items-center gap-2">
             <Bookmark className="w-4 h-4 text-[#C85A40]" />
-            Favorited Gatherings ({savedEvents.length})
+            Saved events ({savedEvents.length})
           </span>
           {activeTab === 'saved' && (
             <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#C85A40]" />
@@ -336,7 +319,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         >
           <span className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-[#C85A40]" />
-            Security & Preferences
+            Security
           </span>
           {activeTab === 'security' && (
             <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#C85A40]" />
@@ -360,7 +343,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         {booking.ticketCode}
                       </span>
                       <span className="text-xs text-[#736B66]">
-                        Reserved {booking.bookingDate}
+                        Booked {booking.bookingDate}
                       </span>
                     </div>
 
@@ -385,12 +368,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       </span>
                       <div className="text-right">
                         <span className="font-serif font-bold tabular-nums block">
-                          ${booking.totalPrice} Paid
+                          {booking.totalPrice > 0 ? `${formatKES(booking.totalPrice)} paid` : 'Free'}
                         </span>
                         {booking.paymentMethod === 'mpesa' && (
                           <span className="text-[10px] text-[#00A34D] font-mono font-medium flex items-center gap-1 justify-end">
                             <Smartphone className="w-3 h-3" />
-                            KES {(booking.totalInKes || booking.totalPrice * 130).toLocaleString()}
+                            M-Pesa
                           </span>
                         )}
                       </div>
@@ -402,7 +385,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <button
                         type="button"
                         onClick={() => setPrintBooking(booking)}
-                        title="Print ticket pass"
+                        title="Print ticket"
                         className="p-2 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-xl transition-colors cursor-pointer"
                       >
                         <Printer className="w-4 h-4" />
@@ -422,7 +405,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       size="sm"
                       onClick={() => setSelectedPass(booking)}
                     >
-                      View Digital Pass
+                      View ticket
                     </Button>
                   </div>
                 </div>
@@ -434,20 +417,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Ticket className="w-8 h-8" />
               </div>
               <h3 className="font-serif text-2xl font-medium text-[#2A2421] mb-2">
-                No active passes yet
+                No tickets yet
               </h3>
               <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
-                When you reserve seating for chamber recitals, vineyard dinners, or architecture symposiums, your authenticated digital passes will reside here.
+                Tickets you book for paid or free events will appear here.
               </p>
               <Button variant="primary" onClick={() => onNavigate('discover')}>
-                Browse Upcoming Gatherings
+                Browse upcoming events
               </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 2: Favorited Gatherings */}
+      {/* TAB 2: Saved events */}
       {activeTab === 'saved' && (
         <div>
           {savedEvents.length > 0 ? (
@@ -459,10 +442,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 >
                   <div>
                     <div className="relative aspect-[16/10] rounded-2xl overflow-hidden mb-4">
-                      <img
-                        src={event.imageUrl}
-                        alt={event.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      <EventArtwork
+                        imageUrl={event.imageUrl}
+                        title={event.title}
+                        category={event.category}
+                        imageClassName="group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute top-2.5 left-2.5">
                         <Badge variant="neutral" size="sm">
@@ -487,7 +471,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                   <div className="pt-3 border-t border-[#E2DDD5] flex items-center justify-between">
                     <span className="text-xs font-semibold text-[#2A2421] tabular-nums">
-                      from ${event.pricing.startingPrice}
+                      {event.isFree ? 'Free' : `from ${formatKES(event.pricing.startingPrice)}`}
                     </span>
 
                     <div className="flex items-center gap-1.5">
@@ -495,7 +479,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         <button
                           type="button"
                           onClick={() => onShareEvent(event)}
-                          title="Share gathering"
+                          title="Share event"
                           className="p-1.5 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-lg transition-colors cursor-pointer"
                         >
                           <Share2 className="w-3.5 h-3.5" />
@@ -527,31 +511,33 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Bookmark className="w-8 h-8 text-[#C85A40]" />
               </div>
               <h3 className="font-serif text-2xl font-medium text-[#2A2421] mb-2">
-                No favorited gatherings
+                No saved events
               </h3>
               <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
-                Explore our curated catalog and click the bookmark icon on any edition to save it for consideration.
+                Select the bookmark icon on any event to save it here for later.
               </p>
               <Button variant="primary" onClick={() => onNavigate('discover')}>
-                Discover Gatherings
+                Discover events
               </Button>
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 3: Security & Preferences */}
+      {/* TAB 3: Security */}
       {activeTab === 'security' && (
         <div className="max-w-2xl bg-white rounded-3xl p-6 sm:p-10 border border-[#E2DDD5] shadow-sand-sm space-y-8">
           <div>
             <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold block mb-1">
-              Authentication Credentials
+              Account security
             </span>
             <h3 className="font-serif text-2xl font-medium text-[#2A2421]">
-              Change Passphrase
+              Change password
             </h3>
             <p className="text-xs text-[#736B66] mt-1">
-              Ensure your account employs a strong, distinctive phrase.
+              {user.authProvider === 'google'
+                ? 'You sign in with Google, so your account has no MagiVents password to change.'
+                : 'Use at least 8 characters, mixing letters, numbers and symbols.'}
             </p>
           </div>
 
@@ -569,17 +555,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           )}
 
+          {user.authProvider !== 'google' && (
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                Current Password
+                Current password
               </label>
               <input
                 type="password"
                 required
                 value={currentPass}
                 onChange={(e) => setCurrentPass(e.target.value)}
-                placeholder="••••••••••••"
+                placeholder="Your current password"
                 className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
               />
             </div>
@@ -587,28 +574,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                  New Passphrase (Min 8 Chars)
+                  New password
                 </label>
                 <input
                   type="password"
                   required
                   value={newPass}
                   onChange={(e) => setNewPass(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="At least 8 characters"
                   className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
                 />
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                  Confirm New Passphrase
+                  Confirm new password
                 </label>
                 <input
                   type="password"
                   required
                   value={confirmNewPass}
                   onChange={(e) => setConfirmNewPass(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="Type the new password again"
                   className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
                 />
               </div>
@@ -616,50 +603,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
             <div className="pt-2">
               <Button variant="primary" type="submit">
-                Update Passphrase
+                Update password
               </Button>
             </div>
           </form>
-
-          {/* Email Notification Toggles */}
-          <div className="pt-6 border-t border-[#E2DDD5] space-y-4">
-            <h4 className="font-serif text-lg font-medium text-[#2A2421]">
-              Curatorial Dispatches
-            </h4>
-            <div className="space-y-3">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="mt-0.5 rounded border-[#E2DDD5] text-[#C85A40] focus:ring-[#C85A40]"
-                />
-                <div>
-                  <span className="text-xs font-semibold text-[#2A2421] block">
-                    Private Salon Early Invitations
-                  </span>
-                  <span className="text-xs text-[#736B66]">
-                    Receive 24-hour advance booking notices prior to public release.
-                  </span>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="mt-0.5 rounded border-[#E2DDD5] text-[#C85A40] focus:ring-[#C85A40]"
-                />
-                <div>
-                  <span className="text-xs font-semibold text-[#2A2421] block">
-                    Day-of-Event Acoustic & Directions Briefing
-                  </span>
-                  <span className="text-xs text-[#736B66]">
-                    Arrival protocol and gate codes dispatched the morning of attendance.
-                  </span>
-                </div>
-              </label>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -667,8 +615,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       <Modal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        title="Edit Patron Information"
-        subtitle="Update your identity credentials and portrait."
+        title="Edit profile"
+        subtitle="Update your details and profile photo."
         maxWidth="lg"
       >
         <form onSubmit={handleSaveProfile} className="space-y-5">
@@ -679,38 +627,53 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           )}
           {editSuccess && (
             <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
-              ✓ Information saved successfully.
+              ✓ Profile saved.
             </div>
           )}
 
-          {/* Avatar / Portrait Upload & Presets */}
-          <div className="pt-1">
+          {/* Profile photo: initials until a photo is uploaded */}
+          <div className="pt-1 space-y-3">
+            <div className="flex items-center gap-4">
+              <Avatar name={editName || user.name} src={editAvatarUrl} size="lg" />
+              <div className="text-xs text-[#736B66] space-y-1">
+                <span className="block font-semibold text-[#2A2421]">Profile photo</span>
+                <span className="block">
+                  {editAvatarUrl ? 'This photo is shown on your profile.' : 'Your initials are shown until you add a photo.'}
+                </span>
+                {editAvatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setEditAvatarUrl('')}
+                    className="text-[#C85A40] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Remove photo
+                  </button>
+                )}
+              </div>
+            </div>
             <ImageUploadZone
-              label="Profile Photo & Editorial Portrait"
-              helperText="Upload your custom photo or choose an atelier preset"
+              helperText="PNG, JPG or WebP, up to 10 MB. A square photo of your face works best."
               value={editAvatarUrl}
-              onChange={(newUrl) => {
-                setEditAvatarUrl(newUrl);
-                setCustomAvatarInput('');
-              }}
+              onChange={setEditAvatarUrl}
               shape="circle"
               aspectRatio="1:1"
-              presets={AVATAR_PRESETS}
               maxDimension={{ width: 800, height: 800 }}
-              uploadButtonText="Upload Profile Photo"
+              uploadButtonText="Upload photo"
               allowUrlInput={true}
             />
           </div>
 
           <div>
             <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-              Full Legal Name *
+              Full name *
             </label>
             <input
               type="text"
               required
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
+              placeholder="Your first and last name"
               className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
             />
           </div>
@@ -718,26 +681,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                Email Address *
+                Email address *
               </label>
               <input
                 type="email"
                 required
                 value={editEmail}
                 onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="you@example.com"
                 className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
               />
             </div>
 
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                City / Region
+                City / town
               </label>
               <input
                 type="text"
                 value={editCity}
                 onChange={(e) => setEditCity(e.target.value)}
-                placeholder="Avignon & Provence"
+                placeholder="e.g. Nairobi, Kisumu, Mombasa"
                 className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
               />
             </div>
@@ -745,13 +709,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
           <div>
             <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-              Curatorial Bio & Artistic Interests
+              Short bio
             </label>
             <textarea
               rows={3}
               value={editBio}
               onChange={(e) => setEditBio(e.target.value)}
-              placeholder="Share your resonance with acoustic gatherings, natural gastronomy, or design..."
+              placeholder="A sentence or two about you and the events you enjoy (optional)"
               className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
             />
           </div>
@@ -761,7 +725,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               Cancel
             </Button>
             <Button variant="primary" type="submit" disabled={authLoading}>
-              {authLoading ? 'Saving Changes...' : 'Save Profile'}
+              {authLoading ? 'Saving...' : 'Save profile'}
             </Button>
           </div>
         </form>
@@ -772,8 +736,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <Modal
           isOpen={!!selectedPass}
           onClose={() => setSelectedPass(null)}
-          title="Digital Admission Voucher"
-          subtitle="Present this voucher upon entry."
+          title="Your ticket"
+          subtitle="Show this ticket at the entrance."
           maxWidth="lg"
         >
           <div className="space-y-6">
@@ -781,10 +745,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="flex justify-between items-start pb-4 border-b border-dashed border-[#E2DDD5]">
                 <div>
                   <span className="font-serif text-xl font-bold text-[#2A2421]">
-                    MagiVents Admission
+                    MagiVents Ticket
                   </span>
                   <span className="text-[11px] uppercase tracking-widest text-[#736B66] block">
-                    Official Guest Pass
+                    Admission ticket
                   </span>
                 </div>
                 <span className="font-mono text-xs font-bold text-[#C85A40] bg-[#C85A40]/10 px-2.5 py-1 rounded-full">
@@ -803,7 +767,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
                   <div>
                     <span className="font-semibold text-[#2A2421] block">Tier</span>
-                    <span>{selectedPass.tierName} ({selectedPass.quantity} Guests)</span>
+                    <span>
+                      {selectedPass.tierName} ({selectedPass.quantity} {selectedPass.quantity === 1 ? 'person' : 'people'})
+                    </span>
                   </div>
                   <div>
                     <span className="font-semibold text-[#2A2421] block">Date</span>
@@ -822,7 +788,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     <QrCode className="w-8 h-8" />
                   </div>
                   <div className="text-[11px] text-[#736B66]">
-                    <span>Scan at reception</span>
+                    <span>Show at the entrance</span>
                     <span className="block font-medium text-[#2A2421]">
                       Issued {selectedPass.bookingDate}
                     </span>
@@ -830,13 +796,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
                 <div className="text-right">
                   <span className="font-serif text-lg font-bold text-[#2A2421] tabular-nums block">
-                    ${selectedPass.totalPrice} Paid
+                    {selectedPass.totalPrice > 0 ? `${formatKES(selectedPass.totalPrice)} paid` : 'Free'}
                   </span>
-                  {selectedPass.paymentMethod === 'mpesa' && (
-                    <span className="text-[11px] text-[#00A34D] font-mono">
-                      KES {(selectedPass.totalInKes || selectedPass.totalPrice * 130).toLocaleString()}
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -844,11 +805,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <div className="p-3 bg-[#00A34D]/5 border border-[#00A34D]/20 rounded-xl text-xs flex items-center justify-between">
                   <div className="flex items-center gap-2 text-[#00A34D]">
                     <Smartphone className="w-4 h-4 shrink-0" />
-                    <span className="font-semibold">M-Pesa Verified</span>
+                    <span className="font-semibold">Paid with M-Pesa</span>
                   </div>
-                  <span className="font-mono text-[11px] text-[#2A2421]">
-                    Ref: {selectedPass.mpesaReceiptNumber || 'Verified'}
-                  </span>
+                  {selectedPass.mpesaReceiptNumber && (
+                    <span className="font-mono text-[11px] text-[#2A2421]">
+                      Ref: {selectedPass.mpesaReceiptNumber}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -861,7 +824,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 icon={<Printer className="w-4 h-4 text-[#C85A40]" />}
                 onClick={() => setPrintBooking(selectedPass)}
               >
-                Print Ticket Pass
+                Print ticket
               </Button>
 
               <Button
@@ -870,23 +833,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 icon={<Mail className="w-4 h-4 text-[#C85A40]" />}
                 onClick={() => setEmailBooking(selectedPass)}
               >
-                Email Confirmation
+                Email confirmation
               </Button>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                variant="secondary"
-                fullWidth
-                icon={passCalendarAdded ? <Check className="w-4 h-4 text-emerald-600" /> : <CalendarPlus className="w-4 h-4" />}
-                onClick={() => {
-                  setPassCalendarAdded(true);
-                  setTimeout(() => setPassCalendarAdded(false), 3000);
-                }}
-              >
-                {passCalendarAdded ? 'Added (.ics)' : 'Add to Calendar'}
-              </Button>
-
               {onShareEvent && (
                 <Button
                   variant="outline"
@@ -900,7 +851,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     }
                   }}
                 >
-                  Invite Companions
+                  Invite friends
                 </Button>
               )}
 

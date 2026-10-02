@@ -1,22 +1,9 @@
 import React, { useState } from 'react';
-import {
-  Mail,
-  Send,
-  Check,
-  Copy,
-  ExternalLink,
-  Smartphone,
-  Calendar,
-  MapPin,
-  Clock,
-  Sparkles,
-  ShieldCheck,
-  RotateCcw
-} from 'lucide-react';
+import { Mail, Check, Copy, ExternalLink } from 'lucide-react';
 import { TicketBooking } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { generateBookingEmailContent } from '../../utils/ticketPrinting';
+import { generateBookingEmailContent, getPaymentSummary, MAGIVENTS_CONTACT_EMAIL } from '../../utils/ticketPrinting';
 
 export interface EmailConfirmationModalProps {
   isOpen: boolean;
@@ -31,21 +18,18 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
 }) => {
   const [recipientEmail, setRecipientEmail] = useState(booking?.attendeeEmail || '');
   const [copied, setCopied] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [sendSuccess, setSendSuccess] = useState(false);
-  const [showAdditionalInput, setShowAdditionalInput] = useState(false);
 
   // Sync recipientEmail when booking changes
   React.useEffect(() => {
     if (booking?.attendeeEmail) {
       setRecipientEmail(booking.attendeeEmail);
-      setSendSuccess(false);
     }
   }, [booking]);
 
   if (!booking) return null;
 
   const { subject, plainText } = generateBookingEmailContent(booking);
+  const payment = getPaymentSummary(booking);
 
   const handleCopyText = async () => {
     try {
@@ -57,20 +41,9 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
     }
   };
 
-  const handleSendEmail = () => {
-    if (!recipientEmail.trim()) return;
-    setIsSending(true);
-
-    // Simulate sending dispatch to the recipient's mail provider
-    setTimeout(() => {
-      setIsSending(false);
-      setSendSuccess(true);
-      setTimeout(() => setSendSuccess(false), 4000);
-    }, 1200);
-  };
-
+  // Opens the user's own email app with the confirmation filled in
   const handleOpenMailClient = () => {
-    const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(
+    const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail.trim())}?subject=${encodeURIComponent(
       subject
     )}&body=${encodeURIComponent(plainText)}`;
     window.location.href = mailtoUrl;
@@ -80,83 +53,38 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Email Confirmation Packet"
-      subtitle="Digital voucher and reservation receipt delivery."
+      title="Email Your Ticket"
+      subtitle="Send the booking confirmation to yourself or someone else."
       maxWidth="lg"
     >
       <div className="space-y-6">
-        {/* Recipient / Dispatch status box */}
-        <div className="p-4 bg-[#FAF8F5] border border-[#E2DDD5] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Recipient */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block">
+            Send to
+          </label>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#C85A40] text-white flex items-center justify-center shrink-0 shadow-xs">
               <Mail className="w-5 h-5" />
             </div>
-            <div>
-              <span className="text-xs uppercase tracking-wider text-[#736B66] font-semibold block">
-                Delivered To Primary Guest
-              </span>
-              <span className="font-serif text-sm font-medium text-[#2A2421]">
-                {booking.attendeeEmail}
-              </span>
-            </div>
+            <input
+              type="email"
+              value={recipientEmail}
+              onChange={(e) => setRecipientEmail(e.target.value)}
+              placeholder="Recipient's email address"
+              className="flex-1 px-3.5 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+            />
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <Check className="w-3.5 h-3.5" />
-              Confirmation Dispatched
-            </span>
-          </div>
-        </div>
-
-        {/* Send Copy to Additional Email */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider">
-              Send or Forward Confirmation Copy
-            </label>
-            <button
-              type="button"
-              onClick={() => setShowAdditionalInput(!showAdditionalInput)}
-              className="text-xs text-[#C85A40] hover:underline font-medium cursor-pointer"
-            >
-              {showAdditionalInput ? 'Hide' : 'Send to another address'}
-            </button>
-          </div>
-
-          {showAdditionalInput && (
-            <div className="flex gap-2 animate-in fade-in">
-              <input
-                type="email"
-                value={recipientEmail}
-                onChange={(e) => setRecipientEmail(e.target.value)}
-                placeholder="companion@domain.com"
-                className="flex-1 px-3.5 py-2 bg-white border border-[#E2DDD5] rounded-xl text-xs text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
-              />
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSendEmail}
-                disabled={isSending}
-                icon={isSending ? <RotateCcw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              >
-                {isSending ? 'Sending...' : 'Send Email'}
-              </Button>
-            </div>
-          )}
-
-          {sendSuccess && (
-            <p className="text-xs text-emerald-700 font-medium flex items-center gap-1 animate-in fade-in">
-              <Check className="w-3.5 h-3.5" /> Email confirmation successfully sent to {recipientEmail}.
-            </p>
-          )}
+          <p className="text-[11px] text-[#736B66]">
+            This opens your email app with the confirmation ready to send.
+          </p>
         </div>
 
         {/* Email Preview Container */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs uppercase tracking-wider text-[#736B66] font-semibold">
-              Email Subject & Body Preview
+              Preview
             </span>
             <button
               type="button"
@@ -164,7 +92,7 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
               className="text-xs text-[#736B66] hover:text-[#2A2421] flex items-center gap-1 cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied to Clipboard' : 'Copy Message Text'}</span>
+              <span>{copied ? 'Copied' : 'Copy text'}</span>
             </button>
           </div>
 
@@ -178,20 +106,20 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
 
             <div className="space-y-3 text-[#2A2421]">
               <p>
-                Dear <strong>{booking.attendeeName}</strong>,
+                Hello <strong>{booking.attendeeName}</strong>,
               </p>
               <p className="text-[#736B66] leading-relaxed">
-                Thank you for reserving your experience with MagiVents. Your admission voucher has been confirmed for <strong>{booking.eventTitle}</strong>.
+                Your booking on MagiVents is confirmed for <strong>{booking.eventTitle}</strong>.
               </p>
 
-              {/* Condensed Voucher Detail Card in Email */}
+              {/* Condensed ticket details */}
               <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E2DDD5] space-y-2">
                 <div className="flex justify-between items-center border-b border-[#E2DDD5] pb-2">
                   <span className="font-mono text-xs font-bold text-[#C85A40]">
-                    PASS: {booking.ticketCode}
+                    TICKET: {booking.ticketCode}
                   </span>
                   <span className="text-[10px] text-emerald-700 font-bold uppercase">
-                    Paid / Confirmed
+                    {payment.isFree ? 'Free entry' : 'Paid'}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px] text-[#736B66]">
@@ -204,56 +132,47 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
                     <span>{booking.venueName}</span>
                   </div>
                   <div>
-                    <span className="block text-[#2A2421] font-semibold">Pass Tier</span>
-                    <span>{booking.tierName} ({booking.quantity} Guest{booking.quantity > 1 ? 's' : ''})</span>
+                    <span className="block text-[#2A2421] font-semibold">Ticket</span>
+                    <span>
+                      {booking.tierName} ({booking.quantity} {booking.quantity === 1 ? 'person' : 'people'})
+                    </span>
                   </div>
                   <div>
                     <span className="block text-[#2A2421] font-semibold">Payment</span>
                     <span>
-                      {booking.paymentMethod === 'mpesa'
-                        ? `M-Pesa (${booking.mpesaReceiptNumber || 'Verified'}) · KES ${(booking.totalInKes || booking.totalPrice * 130).toLocaleString()}`
-                        : `Card · $${booking.totalPrice}`}
+                      {payment.isFree
+                        ? 'Free entry'
+                        : `${payment.method}${payment.reference ? ` (${payment.reference})` : ''} · ${payment.amount}`}
                     </span>
                   </div>
                 </div>
               </div>
 
               <p className="text-[11px] text-[#736B66] leading-relaxed">
-                Check-in opens 30 minutes prior to scheduled start. You can present this digital message, download your pass, or scan the official QR code at the entrance.
+                Show your ticket code at the entrance, on your phone or printed. Need help? Email{' '}
+                <a href={`mailto:${MAGIVENTS_CONTACT_EMAIL}`} className="text-[#C85A40] hover:underline">
+                  {MAGIVENTS_CONTACT_EMAIL}
+                </a>
+                .
               </p>
             </div>
           </div>
         </div>
 
         {/* Footer actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
+          <Button variant="secondary" size="md" onClick={onClose}>
+            Close
+          </Button>
           <Button
-            variant="outline"
+            variant="primary"
             size="md"
             icon={<ExternalLink className="w-4 h-4" />}
             onClick={handleOpenMailClient}
+            disabled={!recipientEmail.trim()}
           >
             Open in Email App
           </Button>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={onClose}
-            >
-              Close
-            </Button>
-            <Button
-              variant="primary"
-              size="md"
-              onClick={handleSendEmail}
-              disabled={isSending}
-              icon={<Send className="w-4 h-4" />}
-            >
-              {isSending ? 'Sending...' : 'Resend Confirmation'}
-            </Button>
-          </div>
         </div>
       </div>
     </Modal>

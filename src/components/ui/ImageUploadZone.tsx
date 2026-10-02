@@ -219,7 +219,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
               </span>
               {isCustomUpload && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C85A40] text-white">
-                  Custom File
+                  Uploaded
                 </span>
               )}
             </div>
@@ -239,10 +239,22 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
         {isProcessing && (
           <div className="absolute inset-0 bg-white/80 rounded-2xl backdrop-blur-xs flex items-center justify-center gap-2 text-xs font-semibold text-[#C85A40] z-10">
             <RotateCw className="w-4 h-4 animate-spin" />
-            <span>Optimizing and loading artwork...</span>
+            <span>Processing image…</span>
           </div>
         )}
       </div>
+
+      {/* Remove the current image (only when there are no presets to fall back to) */}
+      {value && presets.length === 0 && (
+        <button
+          type="button"
+          onClick={handleClear}
+          className="text-[11px] text-[#736B66] hover:text-red-700 flex items-center gap-1 cursor-pointer transition-colors"
+        >
+          <Trash2 className="w-3 h-3" />
+          <span>Remove image</span>
+        </button>
+      )}
 
       {/* Error Message */}
       {errorMessage && (
@@ -256,7 +268,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
       {presets.length > 0 && (
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between text-[11px] text-[#736B66]">
-            <span>Or select from curated editorial themes:</span>
+            <span>Or choose one of these images:</span>
             {isCustomUpload && (
               <button
                 type="button"
@@ -264,7 +276,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
                 className="text-[#C85A40] hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Trash2 className="w-3 h-3" />
-                Reset to Preset
+                Use a suggested image
               </button>
             )}
           </div>
@@ -331,7 +343,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
                 type="url"
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
+                placeholder="https://example.com/poster.jpg"
                 className="flex-1 px-3 py-1.5 bg-white border border-[#E2DDD5] rounded-xl text-xs text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
               />
               <button

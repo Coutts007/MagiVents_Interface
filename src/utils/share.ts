@@ -11,12 +11,22 @@ export function canWebShare(): boolean {
   return typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 }
 
+/** Where the event happens, e.g. "KICC, Nairobi". */
+function placeLabel(event: EventItem): string {
+  return [event.venue.name, event.venue.city].filter(Boolean).join(', ');
+}
+
+/** Plain invitation used for copy-to-clipboard and the device share sheet. */
+export function buildInviteText(event: EventItem, url: string): string {
+  return `Join me at ${event.title} on ${event.date} at ${placeLabel(event)}. Get tickets on MagiVents: ${url}`;
+}
+
 export async function shareEventNative(
   event: EventItem,
   customUrl?: string
 ): Promise<{ success: boolean; canceled?: boolean; error?: any }> {
   const shareUrl = customUrl || getEventShareUrl(event.id);
-  const shareText = `Join me at "${event.title}" — ${event.subtitle || event.description.slice(0, 100)}`;
+  const shareText = `Join me at ${event.title} on ${event.date} at ${placeLabel(event)}. Get tickets on MagiVents:`;
 
   if (canWebShare()) {
     try {
@@ -54,7 +64,7 @@ export const SOCIAL_CHANNELS: SocialShareChannel[] = [
     iconBg: '#F4F1EA',
     getUrl: (url, event) => {
       const text = encodeURIComponent(
-        `Gathering at "${event.title}" (${event.date} · ${event.venue.city}). Discover passes on @MagiVents:`
+        `Join me at ${event.title} on ${event.date} at ${placeLabel(event)}. Get tickets on MagiVents:`
       );
       return `https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(url)}`;
     }
@@ -66,9 +76,7 @@ export const SOCIAL_CHANNELS: SocialShareChannel[] = [
     hoverColor: '#20BA5A',
     iconBg: '#E8F8EE',
     getUrl: (url, event) => {
-      const text = encodeURIComponent(
-        `Thought of you for this gathering: *${event.title}* on ${event.date} at ${event.venue.name} (${event.venue.city}).\n\nFull details & passes: ${url}`
-      );
+      const text = encodeURIComponent(buildInviteText(event, url));
       return `https://api.whatsapp.com/send?text=${text}`;
     }
   },
@@ -100,21 +108,22 @@ export const SOCIAL_CHANNELS: SocialShareChannel[] = [
     iconBg: '#E7F5FB',
     getUrl: (url, event) => {
       const text = encodeURIComponent(
-        `Join me at "${event.title}" on ${event.date} (${event.venue.city}):`
+        `Join me at ${event.title} on ${event.date} at ${placeLabel(event)}. Get tickets on MagiVents:`
       );
       return `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`;
     }
   },
   {
     id: 'email',
-    name: 'Email Invitation',
+    name: 'Email',
     color: '#C85A40',
     hoverColor: '#A64831',
     iconBg: '#FAEDE9',
     getUrl: (url, event) => {
-      const subject = encodeURIComponent(`Invitation: ${event.title} — ${event.date}`);
+      const subject = encodeURIComponent(`Join me at ${event.title} on ${event.date}`);
+      const venue = [event.venue.name, event.venue.address, event.venue.city].filter(Boolean).join(', ');
       const body = encodeURIComponent(
-        `Hello,\n\nI would love for you to join me at this upcoming gathering:\n\n${event.title}\n${event.subtitle}\n\nDate: ${event.date} (${event.time})\nVenue: ${event.venue.name}, ${event.venue.address}, ${event.venue.city}\n\nYou can reserve passes and view the full evening itinerary here:\n${url}\n\nWarmly,\n`
+        `Hi,\n\nJoin me at ${event.title}${event.subtitle ? ` (${event.subtitle})` : ''}.\n\nDate: ${event.date}, ${event.time}\nVenue: ${venue}\n\nDetails and tickets on MagiVents:\n${url}\n`
       );
       return `mailto:?subject=${subject}&body=${body}`;
     }

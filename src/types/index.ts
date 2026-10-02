@@ -1,10 +1,13 @@
 export type EventCategory =
-  | 'Culinary & Wine'
-  | 'Architecture & Design'
-  | 'Fine Arts & Craft'
-  | 'Music & Performance'
-  | 'Literature & Thought'
-  | 'Gatherings & Salons';
+  | 'Sports & Outdoors'
+  | 'Entertainment & Music'
+  | 'Business & Entrepreneurship'
+  | 'Tech & Innovation'
+  | 'Education & Career'
+  | 'Arts & Culture'
+  | 'Social Impact & Community'
+  | 'Political'
+  | 'Others';
 
 export interface CategoryDefinition {
   id: EventCategory | 'all';
@@ -12,7 +15,17 @@ export interface CategoryDefinition {
   shortLabel: string;
   tagline: string;
   description: string;
-  iconName: 'UtensilsCrossed' | 'Building2' | 'Palette' | 'Music' | 'BookOpen' | 'Sparkles' | 'Compass';
+  iconName:
+    | 'Compass'
+    | 'Trophy'
+    | 'Music'
+    | 'Briefcase'
+    | 'Cpu'
+    | 'GraduationCap'
+    | 'Palette'
+    | 'HeartHandshake'
+    | 'Landmark'
+    | 'Shapes';
 }
 
 export interface TicketTier {
@@ -52,7 +65,10 @@ export interface EventItem {
       lng: number;
     };
   };
+  /** Free events need no payment; every tier is priced at 0 */
+  isFree: boolean;
   pricing: {
+    /** Always 'KES' */
     currency: string;
     startingPrice: number;
     tiers: TicketTier[];
@@ -71,6 +87,8 @@ export interface EventItem {
   isFeatured?: boolean;
   tags: string[];
   curatorNote?: string;
+  /** ISO timestamp, set by the server */
+  createdAt?: string;
 }
 
 export interface TicketBooking {
@@ -88,7 +106,7 @@ export interface TicketBooking {
   attendeeEmail: string;
   bookingDate: string;
   ticketCode: string;
-  paymentMethod?: 'mpesa' | 'card' | 'complimentary';
+  paymentMethod?: 'mpesa' | 'card' | 'complimentary' | 'free';
   mpesaPhoneNumber?: string;
   mpesaReceiptNumber?: string;
   mpesaMode?: 'stk' | 'paybill';

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   Calendar,
   Users,
-  DollarSign,
+  Wallet,
   Ticket,
   PlusCircle,
   Edit3,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
+import { EventArtwork } from '../ui/EventArtwork';
+import { formatKES } from '../../utils/format';
 import { Button } from '../ui/Button';
 
 export interface OrganizerDashboardProps {
@@ -42,8 +44,9 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
     const totalEvents = events.length;
     const activeAttendees = events.reduce((acc, curr) => acc + (curr.attendeeCount || 0), 0);
     const grossRevenue = events.reduce((acc, curr) => {
-      const avgPrice = curr.pricing.startingPrice || 80;
-      return acc + (curr.attendeeCount || 0) * avgPrice;
+      // Estimate: free events earn nothing; paid ones use their starting price
+      const price = curr.isFree ? 0 : curr.pricing.startingPrice || 0;
+      return acc + (curr.attendeeCount || 0) * price;
     }, 0);
     const ticketsSold = activeAttendees;
 
@@ -71,10 +74,10 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
             Organizer Portal
           </span>
           <h1 className="font-serif text-3xl sm:text-4xl font-medium text-[#2A2421]">
-            Curator Command Center
+            Organizer Dashboard
           </h1>
           <p className="text-sm text-[#736B66] mt-1">
-            Manage your boutique cultural gatherings, track guest attendance, and publish new editions.
+            Create and manage your events, track registrations and publish updates.
           </p>
         </div>
 
@@ -84,7 +87,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           icon={<PlusCircle className="w-4 h-4" />}
           onClick={onCreateEvent}
         >
-          Create New Gathering
+          Create Event
         </Button>
       </div>
 
@@ -92,7 +95,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 my-8">
         <div className="bg-white rounded-3xl p-6 border border-[#E2DDD5] shadow-sand-sm">
           <div className="flex items-center justify-between text-[#736B66] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Gatherings</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Total Events</span>
             <div className="p-2 rounded-xl bg-[#F4F1EA] text-[#C85A40]">
               <Layers className="w-4 h-4" />
             </div>
@@ -100,12 +103,12 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           <div className="font-serif text-3xl font-medium text-[#2A2421] tabular-nums">
             {stats.totalEvents}
           </div>
-          <span className="text-xs text-[#736B66] mt-1 block">Active on platform</span>
+          <span className="text-xs text-[#736B66] mt-1 block">Created by you</span>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-[#E2DDD5] shadow-sand-sm">
           <div className="flex items-center justify-between text-[#736B66] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Attendees</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Registered Attendees</span>
             <div className="p-2 rounded-xl bg-[#F4F1EA] text-[#C85A40]">
               <Users className="w-4 h-4" />
             </div>
@@ -114,7 +117,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
             {stats.activeAttendees}
           </div>
           <span className="text-xs text-emerald-700 mt-1 block font-medium">
-            Confirmed RSVPs
+            Confirmed bookings
           </span>
         </div>
 
@@ -122,18 +125,18 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           <div className="flex items-center justify-between text-[#736B66] mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider">Estimated Revenue</span>
             <div className="p-2 rounded-xl bg-[#F4F1EA] text-[#C85A40]">
-              <DollarSign className="w-4 h-4" />
+              <Wallet className="w-4 h-4" />
             </div>
           </div>
           <div className="font-serif text-3xl font-medium text-[#2A2421] tabular-nums">
-            ${stats.grossRevenue.toLocaleString()}
+            {formatKES(stats.grossRevenue, null)}
           </div>
-          <span className="text-xs text-[#736B66] mt-1 block">Gross pass sales</span>
+          <span className="text-xs text-[#736B66] mt-1 block">Bookings × ticket price</span>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-[#E2DDD5] shadow-sand-sm">
           <div className="flex items-center justify-between text-[#736B66] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Passes Issued</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Tickets Issued</span>
             <div className="p-2 rounded-xl bg-[#F4F1EA] text-[#C85A40]">
               <Ticket className="w-4 h-4" />
             </div>
@@ -141,7 +144,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           <div className="font-serif text-3xl font-medium text-[#2A2421] tabular-nums">
             {stats.ticketsSold}
           </div>
-          <span className="text-xs text-[#736B66] mt-1 block">Across all tiers</span>
+          <span className="text-xs text-[#736B66] mt-1 block">Across all ticket types</span>
         </div>
       </div>
 
@@ -202,11 +205,9 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                 >
                   {/* Event Meta & Info */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-                    <img
-                      src={event.imageUrl}
-                      alt={event.title}
-                      className="w-20 h-20 rounded-2xl object-cover border border-[#E2DDD5] shrink-0"
-                    />
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden border border-[#E2DDD5] shrink-0">
+                      <EventArtwork imageUrl={event.imageUrl} title={event.title} category={event.category} />
+                    </div>
 
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -214,8 +215,13 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                           variant={event.status === 'published' ? 'terracotta' : 'sand'}
                           size="sm"
                         >
-                          {event.status === 'published' ? 'Published' : 'Draft'}
+                          {event.status === 'published' ? 'Published' : event.status === 'sold_out' ? 'Sold Out' : 'Draft'}
                         </Badge>
+                        {event.isFree && (
+                          <Badge variant="sage" size="sm">
+                            Free
+                          </Badge>
+                        )}
                         <span className="text-xs text-[#736B66] font-medium">
                           {event.category}
                         </span>
@@ -234,7 +240,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                         <span>{event.venue.name}</span>
                         <span>·</span>
                         <span className="font-semibold text-[#2A2421] tabular-nums">
-                          ${event.pricing.startingPrice}
+                          {event.isFree ? 'Free' : formatKES(event.pricing.startingPrice)}
                         </span>
                       </div>
                     </div>
@@ -243,7 +249,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                   {/* Attendance Gauge */}
                   <div className="min-w-[140px] space-y-1.5">
                     <div className="flex justify-between text-xs text-[#736B66]">
-                      <span>Guest Capacity</span>
+                      <span>Attendees</span>
                       <span className="font-medium text-[#2A2421] tabular-nums">
                         {event.attendeeCount} / {event.capacity}
                       </span>
@@ -309,7 +315,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                     ) : (
                       <button
                         onClick={() => setDeleteConfirmId(event.id)}
-                        title="Delete gathering"
+                        title="Delete event"
                         className="p-2.5 rounded-full text-[#736B66] hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -327,10 +333,10 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
               <Sparkles className="w-8 h-8" />
             </div>
             <h3 className="font-serif text-2xl font-medium text-[#2A2421] mb-2">
-              No gatherings in this view
+              No events here yet
             </h3>
             <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
-              You haven't created any gatherings in this category yet. Begin drafting an experience to bring lovers of craft together.
+              Events you create will appear here. Add the details, agenda and ticket price, and publish it for people across Kenya to find.
             </p>
             <Button
               variant="primary"
@@ -338,7 +344,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
               icon={<PlusCircle className="w-4 h-4" />}
               onClick={onCreateEvent}
             >
-              Create Your First Gathering
+              Create Your First Event
             </Button>
           </div>
         )}

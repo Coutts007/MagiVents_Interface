@@ -1,7 +1,9 @@
 import React from 'react';
 import { X, Calendar, MapPin, Trash2, ArrowRight, Bookmark, Share2 } from 'lucide-react';
 import { EventItem } from '../../types';
+import { formatKES } from '../../utils/format';
 import { Button } from '../ui/Button';
+import { EventArtwork } from '../ui/EventArtwork';
 
 export interface BookmarksDrawerProps {
   isOpen: boolean;
@@ -37,7 +39,7 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
             <div className="flex items-center gap-2">
               <Bookmark className="w-5 h-5 text-[#C85A40]" />
               <h3 className="font-serif text-xl font-medium text-[#2A2421]">
-                Saved Gatherings ({savedEvents.length})
+                Saved Events ({savedEvents.length})
               </h3>
             </div>
             <button
@@ -58,11 +60,9 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                   className="bg-[#F4F1EA]/40 rounded-2xl p-4 border border-[#E2DDD5] hover:border-[#C85A40] transition-all flex flex-col justify-between gap-3 group"
                 >
                   <div className="flex gap-3">
-                    <img
-                      src={event.imageUrl}
-                      alt={event.title}
-                      className="w-16 h-16 rounded-xl object-cover shrink-0 border border-[#E2DDD5]"
-                    />
+                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-[#E2DDD5]">
+                      <EventArtwork imageUrl={event.imageUrl} title={event.title} category={event.category} />
+                    </div>
                     <div className="flex-1 min-w-0">
                       <span className="text-[10px] uppercase tracking-wider font-semibold text-[#C85A40] block">
                         {event.category}
@@ -79,7 +79,7 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
 
                   <div className="flex items-center justify-between pt-2 border-t border-[#E2DDD5]/60 text-xs">
                     <span className="font-semibold text-[#2A2421] tabular-nums">
-                      from ${event.pricing.startingPrice}
+                      {event.isFree ? 'Free' : `From ${formatKES(event.pricing.startingPrice)}`}
                     </span>
 
                     <div className="flex items-center gap-1.5">
@@ -87,7 +87,7 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                         <button
                           type="button"
                           onClick={() => onShareEvent(event)}
-                          title="Share gathering"
+                          title="Share event"
                           className="p-1.5 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-lg transition-colors cursor-pointer"
                         >
                           <Share2 className="w-3.5 h-3.5" />
@@ -122,10 +122,10 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
                   <Bookmark className="w-5 h-5 text-[#C85A40]" />
                 </div>
                 <h4 className="font-serif text-lg font-medium text-[#2A2421] mb-1">
-                  No saved gatherings
+                  No saved events
                 </h4>
                 <p className="text-xs text-[#736B66]">
-                  Click the bookmark icon on any gathering card to save it for later review or coordination.
+                  Tap the bookmark icon on any event to save it here for later.
                 </p>
               </div>
             )}
@@ -135,7 +135,7 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
           {savedEvents.length > 0 && (
             <div className="p-4 border-t border-[#E2DDD5] bg-[#F4F1EA]/50 text-center">
               <span className="text-xs text-[#736B66]">
-                Passes and pricing remain guaranteed while editions remain in inventory.
+                Saved events are not reserved. Book early, tickets can sell out.
               </span>
             </div>
           )}

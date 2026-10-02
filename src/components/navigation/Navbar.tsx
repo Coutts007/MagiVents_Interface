@@ -6,14 +6,15 @@ import {
   PlusCircle,
   Compass,
   Calendar,
-  Building,
-  Sparkles,
+  LayoutDashboard,
   User,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Search
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
+import { Avatar } from '../ui/Avatar';
 
 export interface NavbarProps {
   currentView: 'discover' | 'details' | 'organizer' | 'profile';
@@ -22,6 +23,8 @@ export interface NavbarProps {
   onOpenSaved: () => void;
   onCreateEvent: () => void;
   onOpenAuth: () => void;
+  /** Opens the site-wide event search */
+  onOpenSearch: () => void;
   discoverTab?: 'grid' | 'calendar';
 }
 
@@ -32,6 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSaved,
   onCreateEvent,
   onOpenAuth,
+  onOpenSearch,
   discoverTab = 'grid'
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -54,17 +58,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       active: currentView === 'discover' && discoverTab === 'calendar'
     },
     {
-      label: 'Curated Series',
-      view: 'discover' as const,
-      tab: 'grid' as const,
-      icon: Sparkles,
-      active: false
-    },
-    {
-      label: 'Organizer Portal',
+      label: 'Organizer Dashboard',
       view: 'organizer' as const,
       tab: 'grid' as const,
-      icon: PlusCircle,
+      icon: LayoutDashboard,
       active: currentView === 'organizer'
     }
   ];
@@ -110,6 +107,27 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Zone 3: Actions */}
         <div className="flex items-center gap-3 sm:gap-4">
+          {/* Search: labelled field on wide screens, icon on small ones */}
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            aria-label="Search events"
+            title="Search events (press /)"
+            className="hidden lg:flex items-center gap-2.5 w-56 xl:w-64 pl-4 pr-2 py-2 rounded-full border border-[#E2DDD5] bg-white text-left text-xs text-[#736B66] hover:border-[#736B66] transition-colors cursor-pointer shadow-xs min-h-[44px]"
+          >
+            <Search className="w-4 h-4 shrink-0" />
+            <span className="flex-1 truncate">Search events</span>
+            <kbd className="text-[10px] font-medium border border-[#E2DDD5] rounded-md px-1.5 py-0.5">/</kbd>
+          </button>
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            aria-label="Search events"
+            className="lg:hidden p-2.5 rounded-full text-[#736B66] hover:text-[#2A2421] hover:bg-[#E2DDD5]/50 transition-colors duration-300 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+
           {/* Bookmark Button */}
           <button
             onClick={onOpenSaved}
@@ -132,11 +150,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="flex items-center gap-2.5 p-1.5 pl-2.5 pr-2 rounded-full border border-[#E2DDD5] bg-white hover:border-[#736B66] transition-colors cursor-pointer shadow-xs min-h-[44px]"
                 aria-label="User profile menu"
               >
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="w-7 h-7 rounded-full object-cover border border-[#E2DDD5]"
-                />
+                <Avatar name={user.name} src={user.avatarUrl} size="sm" />
                 <span className="hidden lg:inline text-xs font-medium text-[#2A2421] max-w-[120px] truncate">
                   {user.name.split(' ')[0]}
                 </span>
@@ -170,7 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     }`}
                   >
                     <User className="w-4 h-4 text-[#C85A40]" />
-                    <span>My Profile & Passes</span>
+                    <span>My Profile & Tickets</span>
                   </button>
 
                   <button
@@ -181,7 +195,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#2A2421] hover:bg-[#F4F1EA]/60 transition-colors flex items-center gap-2 cursor-pointer"
                   >
                     <Calendar className="w-4 h-4 text-[#736B66]" />
-                    <span>Organizer Portal</span>
+                    <span>Organizer Dashboard</span>
                   </button>
 
                   <div className="pt-1 mt-1 border-t border-[#E2DDD5]">
@@ -193,7 +207,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       className="w-full px-4 py-2.5 text-xs text-left font-medium text-red-700 hover:bg-red-50 transition-colors flex items-center gap-2 cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>Sign Out</span>
+                      <span>Sign out</span>
                     </button>
                   </div>
                 </div>
@@ -206,7 +220,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               icon={<User className="w-4 h-4" />}
               onClick={onOpenAuth}
             >
-              Sign In
+              Sign in
             </Button>
           )}
 
@@ -218,7 +232,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               icon={<PlusCircle className="w-4 h-4" />}
               onClick={onCreateEvent}
             >
-              Host Gathering
+              Create event
             </Button>
           </div>
 
@@ -250,12 +264,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : 'text-[#2A2421] hover:bg-white/60'
                 }`}
               >
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="w-6 h-6 rounded-full object-cover border border-[#E2DDD5]"
-                />
-                <span>My Profile & Passes</span>
+                <Avatar name={user.name} src={user.avatarUrl} size="xs" />
+                <span>My Profile & Tickets</span>
               </button>
             )}
 
@@ -289,7 +299,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setMobileMenuOpen(false);
                   }}
                 >
-                  Sign In / Register
+                  Sign in / Create account
                 </Button>
               ) : (
                 <Button
@@ -303,7 +313,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }}
                   className="text-red-700"
                 >
-                  Sign Out
+                  Sign out
                 </Button>
               )}
 
@@ -317,7 +327,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setMobileMenuOpen(false);
                 }}
               >
-                Host a Gathering
+                Create event
               </Button>
             </div>
           </nav>

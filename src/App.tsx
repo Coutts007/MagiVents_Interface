@@ -21,6 +21,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { BookmarksDrawer } from './components/bookmarks/BookmarksDrawer';
 import { ShareModal } from './components/share/ShareModal';
 import { Footer } from './components/common/Footer';
+import { SearchDialog } from './components/search/SearchDialog';
 
 function toEventInput(event: EventItem): EventInput {
   const { id, attendeeCount, organizerId, ...input } = event;
@@ -50,6 +51,26 @@ function MainLayout() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
+  // Site-wide search: the panel and the Discover search box share one query
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // "/" or Ctrl/Cmd+K opens search, unless the user is typing in a field
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        !!target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+      const isShortcut = (e.key === 'k' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !isTyping);
+      if (isShortcut) {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Modals
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<EventItem | null>(null);
@@ -76,7 +97,7 @@ function MainLayout() {
     try {
       setEvents(await gatheringsApi.list());
     } catch (err) {
-      setNotice(getApiErrorMessage(err, 'Could not load gatherings.'));
+      setNotice(getApiErrorMessage(err, 'Could not load events.'));
     } finally {
       setIsEventsLoading(false);
     }
@@ -99,11 +120,11 @@ function MainLayout() {
     bookmarksApi
       .list()
       .then(setBookmarkedIds)
-      .catch((err) => setNotice(getApiErrorMessage(err, 'Could not load your saved gatherings.')));
+      .catch((err) => setNotice(getApiErrorMessage(err, 'Could not load your saved events.')));
     bookingsApi
       .list()
       .then(setBookings)
-      .catch((err) => setNotice(getApiErrorMessage(err, 'Could not load your passes.')));
+      .catch((err) => setNotice(getApiErrorMessage(err, 'Could not load your tickets.')));
   }, [user?.id]);
 
   // Deep linking: Sync ?event=<id> from URL on initial load and popstate
@@ -176,6 +197,24 @@ function MainLayout() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  /** Shows every match for `query` in the Discover grid and scrolls to the results. */
+  const handleShowAllResults = (query: string) => {
+    setSearchQuery(query);
+    setDiscoverTab('grid');
+    setCurrentView('discover');
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('event');
+      window.history.pushState({}, '', url.toString());
+    } catch (e) {
+      console.warn('Could not update history state', e);
+    }
+    // Wait for the Discover view to render before scrolling to its results
+    setTimeout(() => {
+      document.getElementById('event-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
   const handleOpenShare = (event: EventItem) => {
     setShareTargetEvent(event);
     setIsShareModalOpen(true);
@@ -192,7 +231,7 @@ function MainLayout() {
       await bookmarksApi.toggle(event.id);
     } catch (err) {
       setBookmarkedIds(previous);
-      setNotice(getApiErrorMessage(err, 'Could not update your saved gatherings.'));
+      setNotice(getApiErrorMessage(err, 'Could not update your saved events.'));
     }
   };
 
@@ -212,11 +251,11 @@ function MainLayout() {
   const handleQuickBook = (event: EventItem) => {
     const tier = event.pricing.tiers[0] || {
       id: '',
-      name: 'General Admission',
-      price: event.pricing.startingPrice,
-      description: 'Standard admission',
+      name: event.isFree ? 'Free Entry' : 'General Admission',
+      price: event.isFree ? 0 : event.pricing.startingPrice,
+      description: '',
       available: event.capacity - event.attendeeCount,
-      perks: ['Full program entry']
+      perks: []
     };
     openCheckout(event, tier, 1);
   };
@@ -257,7 +296,7 @@ function MainLayout() {
     try {
       await gatheringsApi.remove(eventId);
     } catch (err) {
-      setNotice(getApiErrorMessage(err, 'Could not delete this gathering.'));
+      setNotice(getApiErrorMessage(err, 'Could not delete this event.'));
       return;
     }
     setEvents((prev) => prev.filter((e) => e.id !== eventId));
@@ -275,7 +314,7 @@ function MainLayout() {
       const updated = await gatheringsApi.setStatus(eventId, event.status === 'published' ? 'draft' : 'published');
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
     } catch (err) {
-      setNotice(getApiErrorMessage(err, 'Could not change the status of this gathering.'));
+      setNotice(getApiErrorMessage(err, 'Could not change the status of this event.'));
     }
   };
 
@@ -286,7 +325,7 @@ function MainLayout() {
         ? await gatheringsApi.update(eventToEdit.id, toEventInput(savedItem))
         : await gatheringsApi.create(toEventInput(savedItem));
     } catch (err) {
-      throw new Error(getApiErrorMessage(err, 'Could not save this gathering.'));
+      throw new Error(getApiErrorMessage(err, 'Could not save this event.'));
     }
     setEvents((prev) => {
       const exists = prev.some((e) => e.id === saved.id);
@@ -299,7 +338,7 @@ function MainLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F4F1EA] text-[#2A2421] selection:bg-[#C85A40] selection:text-white">
-      {/* Universal Glassmorphic Navigation Bar */}
+      {/* Navigation bar */}
       <Navbar
         currentView={currentView}
         discoverTab={discoverTab}
@@ -314,6 +353,7 @@ function MainLayout() {
         onOpenSaved={() => setIsSavedDrawerOpen(true)}
         onCreateEvent={handleOpenCreateEvent}
         onOpenAuth={() => handleOpenAuth('login')}
+        onOpenSearch={() => setIsSearchOpen(true)}
       />
 
       {notice && (
@@ -343,6 +383,8 @@ function MainLayout() {
             onTabChange={setDiscoverTab}
             isLoading={isEventsLoading}
             onRefresh={loadEvents}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
         )}
 
@@ -389,10 +431,13 @@ function MainLayout() {
         )}
       </main>
 
-      {/* Editorial Footer */}
+      {/* Footer */}
       <Footer
-        onNavigate={(view) => {
+        onNavigate={(view, tab) => {
           setCurrentView(view);
+          if (tab) {
+            setDiscoverTab(tab);
+          }
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
@@ -434,6 +479,16 @@ function MainLayout() {
         onRemoveBookmark={handleRemoveBookmark}
         onSelectEvent={handleSelectEvent}
         onShareEvent={handleOpenShare}
+      />
+
+      {/* Site-wide Event Search */}
+      <SearchDialog
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        events={events}
+        initialQuery={searchQuery}
+        onSelectEvent={handleSelectEvent}
+        onShowAll={handleShowAllResults}
       />
 
       {/* Social Sharing Modal */}

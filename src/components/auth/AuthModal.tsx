@@ -41,7 +41,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
 
   // States
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -114,7 +113,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMessage(null);
     try {
       await resetPassword(email);
-      setSuccessNotice(`A password recovery dispatch has been issued to ${email}. Follow the instructions to choose a new phrase.`);
+      setSuccessNotice(`If an account exists for ${email}, we have sent a link to reset your password. Check your inbox and spam folder.`);
       setMode('reset-sent');
     } catch (err: any) {
       setErrorMessage(err.message || 'Could not initiate reset. Please check your email.');
@@ -130,9 +129,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     if (/[0-9]/.test(pass)) score++;
     if (/[^A-Za-z0-9]/.test(pass)) score++;
 
-    if (score <= 1) return { score: 1, label: 'Modest', color: 'bg-amber-400' };
-    if (score <= 3) return { score: 2, label: 'Balanced', color: 'bg-emerald-500' };
-    return { score: 3, label: 'Robust', color: 'bg-[#C85A40]' };
+    if (score <= 1) return { score: 1, label: 'Weak', color: 'bg-amber-400' };
+    if (score <= 3) return { score: 2, label: 'Good', color: 'bg-emerald-500' };
+    return { score: 3, label: 'Strong', color: 'bg-[#C85A40]' };
   };
 
   const strength = getPasswordStrength(password);
@@ -146,15 +145,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         mode === 'login'
           ? 'Welcome to MagiVents'
           : mode === 'signup'
-          ? 'Join the Curatorial Circle'
-          : 'Reset Your Credentials'
+          ? 'Create your account'
+          : 'Reset your password'
       }
       subtitle={
         mode === 'login'
-          ? 'Sign in to access your digital passes, saved salons, and invitations.'
+          ? 'Sign in to see your tickets, saved events and the events you organize.'
           : mode === 'signup'
-          ? 'Create a patron profile to reserve limited seating and save gatherings.'
-          : 'Enter your email address to receive secure reset instructions.'
+          ? 'Create a free account to book tickets, save events and publish your own.'
+          : 'Enter the email you registered with and we will send you a reset link.'
       }
     >
       <div className="space-y-6">
@@ -173,7 +172,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   : 'text-[#736B66] hover:text-[#2A2421]'
               }`}
             >
-              Sign In
+              Sign in
             </button>
             <button
               type="button"
@@ -187,7 +186,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   : 'text-[#736B66] hover:text-[#2A2421]'
               }`}
             >
-              New Patron Registration
+              Create account
             </button>
           </div>
         )}
@@ -226,7 +225,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                Email Address
+                Email address
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-[#736B66] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -235,7 +234,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="patron@domain.com"
+                  placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40] focus:ring-1 focus:ring-[#C85A40]"
                 />
               </div>
@@ -254,7 +253,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                   className="text-xs text-[#C85A40] hover:underline cursor-pointer"
                 >
-                  Forgot phrase?
+                  Forgot password?
                 </button>
               </div>
               <div className="relative">
@@ -264,7 +263,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="Your password"
                   className="w-full pl-10 pr-10 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40] focus:ring-1 focus:ring-[#C85A40]"
                 />
                 <button
@@ -278,18 +277,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-[#736B66] pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-[#E2DDD5] text-[#C85A40] focus:ring-[#C85A40]"
-                />
-                <span>Remember me on this workstation</span>
-              </label>
-            </div>
-
             <div className="pt-2">
               <Button
                 variant="primary"
@@ -300,7 +287,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 icon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
                 iconPosition="right"
               >
-                {isLoading ? 'Verifying Patron...' : 'Enter MagiVents'}
+                {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </div>
           </form>
@@ -326,14 +313,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="w-full border-t border-[#E2DDD5]" />
             </div>
             <div className="relative bg-[#FAF8F5] px-3 text-[10px] uppercase tracking-wider text-[#736B66] font-medium rounded-full">
-              or register with password credentials
+              or sign up with email
             </div>
           </div>
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                Full Legal Name
+                Full name
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-[#736B66] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -342,7 +329,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Alistair Finch"
+                  placeholder="Your first and last name"
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
                 />
               </div>
@@ -350,7 +337,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                Email Address
+                Email address
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-[#736B66] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -359,7 +346,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="alistair@finch.org"
+                  placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
                 />
               </div>
@@ -367,7 +354,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                Security Password (Min 8 Characters)
+                Password (at least 8 characters)
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-[#736B66] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -376,7 +363,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="Mix letters, numbers and symbols"
                   className="w-full pl-10 pr-10 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
                 />
                 <button
@@ -400,7 +387,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     />
                   </div>
                   <div className="flex justify-between text-[11px] text-[#736B66]">
-                    <span>Password Strength:</span>
+                    <span>Password strength:</span>
                     <span className="font-semibold text-[#2A2421]">{strength.label}</span>
                   </div>
                 </div>
@@ -409,7 +396,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                Confirm Password
+                Confirm password
               </label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-[#736B66] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -418,14 +405,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••••••"
+                  placeholder="Type the password again"
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
                 />
               </div>
             </div>
 
             <p className="text-xs text-[#736B66] leading-relaxed pt-1">
-              By registering, you honor the MagiVents Acoustic Code and respect limited-capacity salon bookings.
+              By creating an account you agree to use MagiVents responsibly. Questions? Email magiventskenya@gmail.com.
             </p>
 
             <div className="pt-2">
@@ -437,7 +424,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 disabled={isLoading}
                 icon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               >
-                {isLoading ? 'Creating Patron Account...' : 'Complete Registration'}
+                {isLoading ? 'Creating account...' : 'Create account'}
               </Button>
             </div>
           </form>
@@ -449,7 +436,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
-                Account Email Address
+                Email address
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-[#736B66] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -458,7 +445,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="patron@domain.com"
+                  placeholder="you@example.com"
                   className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
                 />
               </div>
@@ -473,7 +460,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 disabled={isLoading}
                 icon={isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : undefined}
               >
-                {isLoading ? 'Issuing Instructions...' : 'Send Recovery Dispatch'}
+                {isLoading ? 'Sending...' : 'Send reset link'}
               </Button>
 
               <button
@@ -484,7 +471,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 }}
                 className="text-xs text-[#736B66] hover:text-[#2A2421] text-center cursor-pointer py-1"
               >
-                ← Return to Sign In
+                ← Back to sign in
               </button>
             </div>
           </form>
@@ -497,10 +484,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <CheckCircle className="w-6 h-6" />
             </div>
             <h4 className="font-serif text-xl font-medium text-[#2A2421]">
-              Recovery Dispatch Sent
+              Check your email
             </h4>
             <p className="text-sm text-[#736B66] leading-relaxed max-w-sm mx-auto">
-              {successNotice || 'Please verify your inbox for the reset link to choose a new secure passphrase.'}
+              {successNotice || 'Open the link in the email to choose a new password.'}
             </p>
             <div className="pt-2">
               <Button
@@ -511,7 +498,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setSuccessNotice(null);
                 }}
               >
-                Return to Sign In
+                Back to sign in
               </Button>
             </div>
           </div>

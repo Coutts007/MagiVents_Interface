@@ -48,9 +48,12 @@ export const LocationMap: React.FC<LocationMapProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Format coordinates
-  const lat = venue.coordinates?.lat ?? 43.9113;
-  const lng = venue.coordinates?.lng ?? 5.2003;
+  // Format coordinates (Nairobi CBD when the organizer gave none)
+  const lat = venue.coordinates?.lat ?? -1.2864;
+  const lng = venue.coordinates?.lng ?? 36.8172;
+  const hasCoordinates = Boolean(venue.coordinates);
+  const area = [venue.neighborhood, venue.city].filter(Boolean).join(' · ');
+  const fullAddress = [venue.name, venue.address, venue.neighborhood, venue.city].filter(Boolean).join(', ');
   const latFormatted = `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'}`;
   const lngFormatted = `${Math.abs(lng).toFixed(4)}° ${lng >= 0 ? 'E' : 'W'}`;
   const coordsString = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
@@ -65,15 +68,18 @@ export const LocationMap: React.FC<LocationMapProps> = ({
 
   const handleCopyAddress = () => {
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(`${venue.name}, ${venue.address}, ${venue.neighborhood}, ${venue.city}`);
+      navigator.clipboard.writeText(fullAddress);
       setCopiedAddress(true);
       setTimeout(() => setCopiedAddress(false), 2000);
     }
   };
 
   const openGoogleMaps = () => {
-    const query = encodeURIComponent(`${venue.name}, ${venue.address}, ${venue.city}`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+    // Exact coordinates when the organizer set them, otherwise search by name and address
+    const query = encodeURIComponent(
+      hasCoordinates ? coordsString : [venue.name, venue.address, venue.city, 'Kenya'].filter(Boolean).join(', ')
+    );
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank', 'noopener');
   };
 
   // Mouse pan handlers
@@ -152,13 +158,12 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 <h3 className="font-serif text-lg font-medium text-[#2A2421]">
                   {venue.name}
                 </h3>
-                <span className="hidden sm:inline-block text-[11px] px-2 py-0.5 rounded-full bg-[#E2DDD5]/70 text-[#2A2421] font-mono">
-                  Verified Venue
-                </span>
               </div>
-              <p className="text-xs text-[#736B66]">
-                {venue.neighborhood} · {venue.city}
-              </p>
+              {area && (
+                <p className="text-xs text-[#736B66]">
+                  {area}
+                </p>
+              )}
             </div>
           </div>
 
@@ -285,7 +290,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                     opacity="0.8"
                   />
                   <text x="215" y="375" fontSize="10" fill="#697D6B" fontFamily="serif" fontStyle="italic">
-                    Historic Grove
+                    Park
                   </text>
 
                   <path
@@ -294,7 +299,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                     opacity="0.85"
                   />
                   <text x="730" y="230" fontSize="10" fill="#697D6B" fontFamily="serif" fontStyle="italic">
-                    Villa Gardens
+                    Green space
                   </text>
 
                   {/* Secondary Roads & Alleyways */}
@@ -327,13 +332,13 @@ export const LocationMap: React.FC<LocationMapProps> = ({
 
                   {/* Landmark Labels */}
                   <text x="310" y="260" fontSize="11" fill="#736B66" fontFamily="sans-serif" letterSpacing="0.05em">
-                    WEST ATELIER GATE
+                    SIDE ROAD
                   </text>
                   <text x="630" y="295" fontSize="11" fill="#736B66" fontFamily="sans-serif" letterSpacing="0.05em">
-                    CANAL ESPLANADE
+                    RIVERSIDE
                   </text>
                   <text x="515" y="440" fontSize="11" fill="#736B66" fontFamily="sans-serif" letterSpacing="0.05em">
-                    OLD MONASTERY WAY
+                    ACCESS ROAD
                   </text>
                 </>
               )}
@@ -348,7 +353,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                   </defs>
                   <rect width="1000" height="600" fill="url(#blueprint-grid)" />
 
-                  {/* Acoustic / Architectural site circles */}
+                  {/* Venue site circles */}
                   <g fill="none" stroke="#485B6B" strokeWidth="1.5" strokeDasharray="4 4">
                     <circle cx="500" cy="300" r="160" />
                     <circle cx="500" cy="300" r="90" />
@@ -366,7 +371,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                   <rect x="440" y="250" width="120" height="100" fill="#2E3942" stroke="#87A4BC" strokeWidth="2" rx="4" />
                   <rect x="470" y="280" width="60" height="40" fill="#3D4D59" stroke="#C85A40" strokeWidth="1.5" />
                   <text x="500" y="235" textAnchor="middle" fontSize="11" fill="#A4C2DC" fontFamily="monospace">
-                    PRIMARY PERISTYLE & STAGE
+                    VENUE
                   </text>
                 </>
               )}
@@ -385,9 +390,6 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                   </g>
                   {/* Hill Summit Ring */}
                   <ellipse cx="500" cy="300" rx="90" ry="60" fill="#DFD6C9" stroke="#9E8D7B" strokeWidth="1.5" />
-                  <text x="500" y="305" textAnchor="middle" fontSize="10" fill="#756555" fontFamily="monospace">
-                    ELEV. +324m (CREST)
-                  </text>
                 </>
               )}
 
@@ -434,7 +436,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                   <div className="pointer-events-auto absolute bottom-14 left-1/2 -translate-x-1/2 w-64 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#E2DDD5] shadow-sand-lg text-left animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#C85A40]">
-                        {category || 'Venue Pinpoint'}
+                        {category || 'Venue'}
                       </span>
                       <span className="text-[10px] font-mono text-[#736B66]">
                         {latFormatted}
@@ -446,13 +448,13 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                     </h4>
 
                     <p className="text-[11px] text-[#736B66] mt-1 line-clamp-1">
-                      {venue.address}, {venue.neighborhood}
+                      {[venue.address, venue.neighborhood].filter(Boolean).join(', ') || venue.city}
                     </p>
 
                     <div className="mt-2.5 pt-2 border-t border-[#E2DDD5]/70 flex items-center justify-between">
                       <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block animate-pulse" />
-                        Access Validated
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block" />
+                        {hasCoordinates ? 'Pinned by organizer' : 'Approximate location'}
                       </span>
                       <button
                         type="button"
@@ -523,7 +525,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
           {/* Drag instruction notice (brief hint) */}
           <div className="absolute top-4 left-4 z-10 hidden sm:flex items-center gap-1.5 bg-white/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] text-[#736B66] border border-[#E2DDD5]/70 pointer-events-none">
             <Navigation className="w-3 h-3 text-[#C85A40]" />
-            <span>Interactive Venue Cartography · Drag to Pan</span>
+            <span>Illustrative map · Drag to pan · Use Google Maps for directions</span>
           </div>
         </div>
 
@@ -533,7 +535,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-sm text-[#2A2421]">
-                  {venue.address}
+                  {venue.address || venue.name}
                 </span>
                 <button
                   type="button"
@@ -550,9 +552,11 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                   )}
                 </button>
               </div>
-              <p className="text-xs text-[#736B66] mt-0.5">
-                {venue.neighborhood} · {venue.city}
-              </p>
+              {area && (
+                <p className="text-xs text-[#736B66] mt-0.5">
+                  {area}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3">
@@ -562,7 +566,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 onClick={handleCopyAddress}
                 icon={<Copy className="w-3.5 h-3.5" />}
               >
-                Copy Address
+                Copy address
               </Button>
               <Button
                 variant="primary"
@@ -570,7 +574,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 onClick={openGoogleMaps}
                 icon={<ExternalLink className="w-3.5 h-3.5" />}
               >
-                Open in Maps
+                Directions
               </Button>
             </div>
           </div>
@@ -588,7 +592,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 }`}
               >
                 <Info className="w-3 h-3" />
-                Arrival Protocol
+                Arrival
               </button>
               <button
                 type="button"
@@ -600,7 +604,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 }`}
               >
                 <Car className="w-3 h-3" />
-                Parking & Valet
+                Parking
               </button>
               <button
                 type="button"
@@ -612,27 +616,28 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 }`}
               >
                 <Train className="w-3 h-3" />
-                Regional Transit
+                Getting there
               </button>
             </div>
 
             <div className="bg-[#FAF8F5] p-3.5 rounded-2xl border border-[#E2DDD5] text-xs text-[#736B66] leading-relaxed">
               {activeTransitTab === 'arrival' && (
                 <p>
-                  <strong className="text-[#2A2421] font-medium">Curator Note: </strong>
-                  {venue.mapNote || 'Please arrive 20 minutes prior to call time. Guests will be received at the stone peristyle entrance with botanical infusions. Comfortable footwear suitable for gravel walkways is recommended.'}
+                  <strong className="text-[#2A2421] font-medium">From the organizer: </strong>
+                  {venue.mapNote?.trim() ||
+                    'Arrive early to allow time for check-in, and have your ticket code ready on your phone or printed.'}
                 </p>
               )}
               {activeTransitTab === 'parking' && (
                 <p>
-                  <strong className="text-[#2A2421] font-medium">Designated Parking: </strong>
-                  Complimentary valet and reserved patron bays are situated immediately south of the entrance pavilion. EV charging pedestals (Type 2, 22kW) are available upon request to the venue host.
+                  <strong className="text-[#2A2421] font-medium">Parking: </strong>
+                  Parking arrangements at {venue.name} are set by the venue. Check with the organizer before you travel, or use public transport or ride-hailing.
                 </p>
               )}
               {activeTransitTab === 'transit' && (
                 <p>
-                  <strong className="text-[#2A2421] font-medium">Connecting Rail & Shuttle: </strong>
-                  Dedicated MagiVents electric shuttles run between the central rail terminal and {venue.name} every 15 minutes starting one hour before the gathering commences.
+                  <strong className="text-[#2A2421] font-medium">Getting there: </strong>
+                  {venue.name} is in {[venue.neighborhood, venue.city].filter(Boolean).join(', ') || 'the location shown'}. Use Directions for a route by car, matatu, boda boda or ride-hailing.
                 </p>
               )}
             </div>
