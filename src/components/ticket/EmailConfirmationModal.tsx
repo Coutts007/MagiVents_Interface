@@ -60,11 +60,11 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
       <div className="space-y-6">
         {/* Recipient */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block">
+          <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block">
             Send to
           </label>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#C85A40] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-[#8A4F33] text-white flex items-center justify-center shrink-0 shadow-xs">
               <Mail className="w-5 h-5" />
             </div>
             <input
@@ -72,10 +72,10 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
               value={recipientEmail}
               onChange={(e) => setRecipientEmail(e.target.value)}
               placeholder="Recipient's email address"
-              className="flex-1 px-3.5 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+              className="flex-1 px-3.5 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
             />
           </div>
-          <p className="text-[11px] text-[#736B66]">
+          <p className="text-[11px] text-[#675A50]">
             This opens your email app with the confirmation ready to send.
           </p>
         </div>
@@ -83,62 +83,62 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
         {/* Email Preview Container */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-[#736B66] font-semibold">
+            <span className="text-xs uppercase tracking-wider text-[#675A50] font-semibold">
               Preview
             </span>
             <button
               type="button"
               onClick={handleCopyText}
-              className="text-xs text-[#736B66] hover:text-[#2A2421] flex items-center gap-1 cursor-pointer"
+              className="text-xs text-[#675A50] hover:text-[#1E1814] flex items-center gap-1 cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied' : 'Copy text'}</span>
             </button>
           </div>
 
-          <div className="bg-white border border-[#E2DDD5] rounded-2xl p-5 shadow-xs space-y-4 font-sans text-xs">
-            <div className="border-b border-[#E2DDD5] pb-3">
-              <span className="text-[11px] text-[#736B66] block">Subject:</span>
-              <span className="font-serif text-sm font-semibold text-[#2A2421]">
+          <div className="bg-ivory border border-[#D8CDBC] rounded-2xl p-5 shadow-xs space-y-4 font-sans text-xs">
+            <div className="border-b border-[#D8CDBC] pb-3">
+              <span className="text-[11px] text-[#675A50] block">Subject:</span>
+              <span className="font-serif text-sm font-semibold text-[#1E1814]">
                 {subject}
               </span>
             </div>
 
-            <div className="space-y-3 text-[#2A2421]">
+            <div className="space-y-3 text-[#1E1814]">
               <p>
                 Hello <strong>{booking.attendeeName}</strong>,
               </p>
-              <p className="text-[#736B66] leading-relaxed">
+              <p className="text-[#675A50] leading-relaxed">
                 Your booking on MagiVents is confirmed for <strong>{booking.eventTitle}</strong>.
               </p>
 
               {/* Condensed ticket details */}
-              <div className="p-3.5 bg-[#FAF8F5] rounded-xl border border-[#E2DDD5] space-y-2">
-                <div className="flex justify-between items-center border-b border-[#E2DDD5] pb-2">
-                  <span className="font-mono text-xs font-bold text-[#C85A40]">
+              <div className="p-3.5 bg-[#EFE8DD] rounded-xl border border-[#D8CDBC] space-y-2">
+                <div className="flex justify-between items-center border-b border-[#D8CDBC] pb-2">
+                  <span className="font-mono text-xs font-bold text-[#8A4F33]">
                     TICKET: {booking.ticketCode}
                   </span>
                   <span className="text-[10px] text-emerald-700 font-bold uppercase">
                     {payment.isFree ? 'Free entry' : 'Paid'}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px] text-[#736B66]">
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-[#675A50]">
                   <div>
-                    <span className="block text-[#2A2421] font-semibold">Date & Time</span>
+                    <span className="block text-[#1E1814] font-semibold">Date & Time</span>
                     <span>{booking.eventDate} ({booking.eventTime})</span>
                   </div>
                   <div>
-                    <span className="block text-[#2A2421] font-semibold">Venue</span>
+                    <span className="block text-[#1E1814] font-semibold">Venue</span>
                     <span>{booking.venueName}</span>
                   </div>
                   <div>
-                    <span className="block text-[#2A2421] font-semibold">Ticket</span>
+                    <span className="block text-[#1E1814] font-semibold">Ticket</span>
                     <span>
                       {booking.tierName} ({booking.quantity} {booking.quantity === 1 ? 'person' : 'people'})
                     </span>
                   </div>
                   <div>
-                    <span className="block text-[#2A2421] font-semibold">Payment</span>
+                    <span className="block text-[#1E1814] font-semibold">Payment</span>
                     <span>
                       {payment.isFree
                         ? 'Free entry'
@@ -148,9 +148,9 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
                 </div>
               </div>
 
-              <p className="text-[11px] text-[#736B66] leading-relaxed">
+              <p className="text-[11px] text-[#675A50] leading-relaxed">
                 Show your ticket code at the entrance, on your phone or printed. Need help? Email{' '}
-                <a href={`mailto:${MAGIVENTS_CONTACT_EMAIL}`} className="text-[#C85A40] hover:underline">
+                <a href={`mailto:${MAGIVENTS_CONTACT_EMAIL}`} className="text-[#8A4F33] hover:underline">
                   {MAGIVENTS_CONTACT_EMAIL}
                 </a>
                 .

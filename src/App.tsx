@@ -242,8 +242,8 @@ function MainLayout() {
     }
   };
 
+  // Booking is open to guests: no account is needed to register or buy tickets
   const openCheckout = (event: EventItem, tier: TicketTier, quantity: number) => {
-    if (!requireAuth()) return;
     setCheckoutTarget({ event, tier, quantity });
     setIsCheckoutOpen(true);
   };
@@ -337,7 +337,7 @@ function MainLayout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F4F1EA] text-[#2A2421] selection:bg-[#C85A40] selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#E9E2D6] text-[#1E1814] selection:bg-[#8A4F33] selection:text-white">
       {/* Navigation bar */}
       <Navbar
         currentView={currentView}
@@ -359,7 +359,7 @@ function MainLayout() {
       {notice && (
         <div
           role="alert"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[calc(100%-2rem)] px-4 py-3 rounded-2xl bg-[#2A2421] text-white text-xs shadow-lg flex items-start gap-3"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[calc(100%-2rem)] px-4 py-3 rounded-2xl bg-[#1E1814] text-white text-xs shadow-lg flex items-start gap-3"
         >
           <span className="flex-1 leading-relaxed">{notice}</span>
           <button type="button" onClick={() => setNotice(null)} className="text-white/70 hover:text-white cursor-pointer">

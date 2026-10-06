@@ -79,13 +79,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (!user) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center animate-in fade-in">
-        <div className="w-16 h-16 mx-auto rounded-full bg-white border border-[#E2DDD5] flex items-center justify-center text-[#C85A40] mb-4 shadow-sand-sm">
+        <div className="w-16 h-16 mx-auto rounded-full bg-ivory border border-[#D8CDBC] flex items-center justify-center text-[#8A4F33] mb-4 shadow-sand-sm">
           <User className="w-8 h-8" />
         </div>
-        <h2 className="font-serif text-3xl font-medium text-[#2A2421] mb-2">
+        <h2 className="font-serif text-3xl font-medium text-[#1E1814] mb-2">
           Your profile
         </h2>
-        <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
+        <p className="text-sm text-[#675A50] max-w-md mx-auto mb-6">
           Sign in or create an account to see your tickets, saved events and profile details.
         </p>
         <Button variant="primary" onClick={() => onNavigate('discover')}>
@@ -172,7 +172,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-28 animate-in fade-in duration-500">
       {/* Profile Header Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-10 border border-[#E2DDD5] shadow-sand-sm mb-10 relative overflow-hidden">
+      <div className="bg-ivory rounded-3xl p-6 sm:p-10 border border-[#D8CDBC] shadow-sand-sm mb-10 relative overflow-hidden">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           {/* Avatar & Basic Info */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
@@ -181,7 +181,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 name={user.name}
                 src={user.avatarUrl}
                 size="xl"
-                className="sm:w-28 sm:h-28 border-2 border-[#E2DDD5] shadow-sand-sm"
+                className="sm:w-28 sm:h-28 border-2 border-[#D8CDBC] shadow-sand-sm"
               />
               <button
                 onClick={handleOpenEdit}
@@ -198,7 +198,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-serif text-2xl sm:text-3xl font-medium text-[#2A2421]">
+                <h1 className="font-serif text-2xl sm:text-3xl font-medium text-[#1E1814]">
                   {user.name}
                 </h1>
                 <Badge variant="terracotta" size="sm">
@@ -206,29 +206,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </Badge>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#736B66]">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#675A50]">
                 <span className="flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-[#C85A40]" />
+                  <Mail className="w-3.5 h-3.5 text-[#8A4F33]" />
                   {user.email}
                 </span>
                 {user.city && (
                   <>
                     <span>·</span>
                     <span className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-[#736B66]" />
+                      <MapPin className="w-3.5 h-3.5 text-[#675A50]" />
                       {user.city}
                     </span>
                   </>
                 )}
                 <span>·</span>
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-[#736B66]" />
+                  <Calendar className="w-3.5 h-3.5 text-[#675A50]" />
                   Member since {user.joinedDate}
                 </span>
               </div>
 
               {user.bio && (
-                <p className="text-sm text-[#736B66] max-w-xl leading-relaxed pt-1">
+                <p className="text-sm text-[#675A50] max-w-xl leading-relaxed pt-1">
                   "{user.bio}"
                 </p>
               )}
@@ -236,7 +236,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
 
           {/* Quick Actions */}
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end border-t md:border-t-0 pt-4 md:pt-0 border-[#E2DDD5]">
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end border-t md:border-t-0 pt-4 md:pt-0 border-[#D8CDBC]">
             <Button
               variant="secondary"
               size="md"
@@ -258,21 +258,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         {/* Aggregate Stats */}
-        <div className="mt-8 pt-6 border-t border-[#E2DDD5] grid grid-cols-2 gap-4 max-w-md">
-          <div className="p-4 rounded-2xl bg-[#F4F1EA]/60 border border-[#E2DDD5]/70">
-            <span className="text-xs uppercase tracking-wider text-[#736B66] font-semibold block">
+        <div className="mt-8 pt-6 border-t border-[#D8CDBC] grid grid-cols-2 gap-4 max-w-md">
+          <div className="p-4 rounded-2xl bg-[#E9E2D6]/60 border border-[#D8CDBC]/70">
+            <span className="text-xs uppercase tracking-wider text-[#675A50] font-semibold block">
               Tickets booked
             </span>
-            <span className="font-serif text-2xl font-bold text-[#2A2421] tabular-nums mt-1 block">
+            <span className="font-serif text-2xl font-bold text-[#1E1814] tabular-nums mt-1 block">
               {purchasedBookings.length}
             </span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#F4F1EA]/60 border border-[#E2DDD5]/70">
-            <span className="text-xs uppercase tracking-wider text-[#736B66] font-semibold block">
+          <div className="p-4 rounded-2xl bg-[#E9E2D6]/60 border border-[#D8CDBC]/70">
+            <span className="text-xs uppercase tracking-wider text-[#675A50] font-semibold block">
               Saved events
             </span>
-            <span className="font-serif text-2xl font-bold text-[#2A2421] tabular-nums mt-1 block">
+            <span className="font-serif text-2xl font-bold text-[#1E1814] tabular-nums mt-1 block">
               {savedEvents.length}
             </span>
           </div>
@@ -280,49 +280,49 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       {/* Tabs Navigation */}
-      <div className="border-b border-[#E2DDD5] flex gap-8 mb-8">
+      <div className="border-b border-[#D8CDBC] flex gap-8 mb-8">
         <button
           onClick={() => setActiveTab('passes')}
           className={`pb-4 text-sm font-medium transition-colors relative cursor-pointer ${
-            activeTab === 'passes' ? 'text-[#2A2421]' : 'text-[#736B66] hover:text-[#2A2421]'
+            activeTab === 'passes' ? 'text-[#1E1814]' : 'text-[#675A50] hover:text-[#1E1814]'
           }`}
         >
           <span className="flex items-center gap-2">
-            <Ticket className="w-4 h-4 text-[#C85A40]" />
+            <Ticket className="w-4 h-4 text-[#8A4F33]" />
             My tickets ({purchasedBookings.length})
           </span>
           {activeTab === 'passes' && (
-            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#C85A40]" />
+            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#8A4F33]" />
           )}
         </button>
 
         <button
           onClick={() => setActiveTab('saved')}
           className={`pb-4 text-sm font-medium transition-colors relative cursor-pointer ${
-            activeTab === 'saved' ? 'text-[#2A2421]' : 'text-[#736B66] hover:text-[#2A2421]'
+            activeTab === 'saved' ? 'text-[#1E1814]' : 'text-[#675A50] hover:text-[#1E1814]'
           }`}
         >
           <span className="flex items-center gap-2">
-            <Bookmark className="w-4 h-4 text-[#C85A40]" />
+            <Bookmark className="w-4 h-4 text-[#8A4F33]" />
             Saved events ({savedEvents.length})
           </span>
           {activeTab === 'saved' && (
-            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#C85A40]" />
+            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#8A4F33]" />
           )}
         </button>
 
         <button
           onClick={() => setActiveTab('security')}
           className={`pb-4 text-sm font-medium transition-colors relative cursor-pointer ${
-            activeTab === 'security' ? 'text-[#2A2421]' : 'text-[#736B66] hover:text-[#2A2421]'
+            activeTab === 'security' ? 'text-[#1E1814]' : 'text-[#675A50] hover:text-[#1E1814]'
           }`}
         >
           <span className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-[#C85A40]" />
+            <Shield className="w-4 h-4 text-[#8A4F33]" />
             Security
           </span>
           {activeTab === 'security' && (
-            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#C85A40]" />
+            <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#8A4F33]" />
           )}
         </button>
       </div>
@@ -335,34 +335,34 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {purchasedBookings.map((booking) => (
                 <div
                   key={booking.id}
-                  className="bg-white rounded-3xl p-6 border border-[#E2DDD5] shadow-sand-sm hover:border-[#C85A40] transition-all flex flex-col justify-between"
+                  className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm hover:border-[#8A4F33] transition-all flex flex-col justify-between"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-[#C85A40] bg-[#C85A40]/10 px-2.5 py-1 rounded-full">
+                      <span className="font-mono text-xs font-bold text-[#8A4F33] bg-[#8A4F33]/10 px-2.5 py-1 rounded-full">
                         {booking.ticketCode}
                       </span>
-                      <span className="text-xs text-[#736B66]">
+                      <span className="text-xs text-[#675A50]">
                         Booked {booking.bookingDate}
                       </span>
                     </div>
 
-                    <h3 className="font-serif text-xl font-medium text-[#2A2421] line-clamp-1">
+                    <h3 className="font-serif text-xl font-medium text-[#1E1814] line-clamp-1">
                       {booking.eventTitle}
                     </h3>
 
-                    <div className="text-xs text-[#736B66] space-y-1">
+                    <div className="text-xs text-[#675A50] space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-[#C85A40]" />
+                        <Calendar className="w-3.5 h-3.5 text-[#8A4F33]" />
                         <span>{booking.eventDate} · {booking.eventTime}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-[#736B66]" />
+                        <MapPin className="w-3.5 h-3.5 text-[#675A50]" />
                         <span className="truncate">{booking.venueName}</span>
                       </div>
                     </div>
 
-                    <div className="p-3 bg-[#F4F1EA] rounded-xl flex items-center justify-between text-xs text-[#2A2421]">
+                    <div className="p-3 bg-[#E9E2D6] rounded-xl flex items-center justify-between text-xs text-[#1E1814]">
                       <span>
                         {booking.tierName} × {booking.quantity}
                       </span>
@@ -380,13 +380,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="pt-5 mt-4 border-t border-[#E2DDD5] flex items-center justify-between gap-2">
+                  <div className="pt-5 mt-4 border-t border-[#D8CDBC] flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => setPrintBooking(booking)}
                         title="Print ticket"
-                        className="p-2 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-xl transition-colors cursor-pointer"
+                        className="p-2 text-[#675A50] hover:text-[#8A4F33] hover:bg-[#E9E2D6] rounded-xl transition-colors cursor-pointer"
                       >
                         <Printer className="w-4 h-4" />
                       </button>
@@ -394,7 +394,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         type="button"
                         onClick={() => setEmailBooking(booking)}
                         title="Email confirmation"
-                        className="p-2 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-xl transition-colors cursor-pointer"
+                        className="p-2 text-[#675A50] hover:text-[#8A4F33] hover:bg-[#E9E2D6] rounded-xl transition-colors cursor-pointer"
                       >
                         <Mail className="w-4 h-4" />
                       </button>
@@ -412,14 +412,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-3xl p-12 text-center border border-[#E2DDD5] shadow-sand-sm">
-              <div className="w-16 h-16 mx-auto rounded-full bg-[#F4F1EA] flex items-center justify-center text-[#C85A40] mb-4">
+            <div className="bg-ivory rounded-3xl p-12 text-center border border-[#D8CDBC] shadow-sand-sm">
+              <div className="w-16 h-16 mx-auto rounded-full bg-[#E9E2D6] flex items-center justify-center text-[#8A4F33] mb-4">
                 <Ticket className="w-8 h-8" />
               </div>
-              <h3 className="font-serif text-2xl font-medium text-[#2A2421] mb-2">
+              <h3 className="font-serif text-2xl font-medium text-[#1E1814] mb-2">
                 No tickets yet
               </h3>
-              <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
+              <p className="text-sm text-[#675A50] max-w-md mx-auto mb-6">
                 Tickets you book for paid or free events will appear here.
               </p>
               <Button variant="primary" onClick={() => onNavigate('discover')}>
@@ -438,7 +438,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {savedEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="bg-white rounded-3xl p-4 border border-[#E2DDD5] hover:border-[#C85A40] transition-all shadow-sand-sm flex flex-col justify-between group"
+                  className="bg-ivory rounded-3xl p-4 border border-[#D8CDBC] hover:border-[#8A4F33] transition-all shadow-sand-sm flex flex-col justify-between group"
                 >
                   <div>
                     <div className="relative aspect-[16/10] rounded-2xl overflow-hidden mb-4">
@@ -455,22 +455,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-xs text-[#736B66] mb-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-[#C85A40]" />
+                    <div className="flex items-center gap-1.5 text-xs text-[#675A50] mb-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#8A4F33]" />
                       <span>{event.date}</span>
                     </div>
 
-                    <h4 className="font-serif text-lg font-medium text-[#2A2421] line-clamp-1 mb-2">
+                    <h4 className="font-serif text-lg font-medium text-[#1E1814] line-clamp-1 mb-2">
                       {event.title}
                     </h4>
 
-                    <p className="text-xs text-[#736B66] line-clamp-2 leading-relaxed mb-4">
+                    <p className="text-xs text-[#675A50] line-clamp-2 leading-relaxed mb-4">
                       {event.description}
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-[#E2DDD5] flex items-center justify-between">
-                    <span className="text-xs font-semibold text-[#2A2421] tabular-nums">
+                  <div className="pt-3 border-t border-[#D8CDBC] flex items-center justify-between">
+                    <span className="text-xs font-semibold text-[#1E1814] tabular-nums">
                       {event.isFree ? 'Free' : `from ${formatKES(event.pricing.startingPrice)}`}
                     </span>
 
@@ -480,14 +480,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                           type="button"
                           onClick={() => onShareEvent(event)}
                           title="Share event"
-                          className="p-1.5 text-[#736B66] hover:text-[#C85A40] hover:bg-[#F4F1EA] rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-[#675A50] hover:text-[#8A4F33] hover:bg-[#E9E2D6] rounded-lg transition-colors cursor-pointer"
                         >
                           <Share2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                       <button
                         onClick={() => onRemoveBookmark(event.id)}
-                        className="text-xs text-[#736B66] hover:text-red-700 px-2 py-1 cursor-pointer"
+                        className="text-xs text-[#675A50] hover:text-red-700 px-2 py-1 cursor-pointer"
                       >
                         Remove
                       </button>
@@ -506,14 +506,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-3xl p-12 text-center border border-[#E2DDD5] shadow-sand-sm">
-              <div className="w-16 h-16 mx-auto rounded-full bg-[#F4F1EA] flex items-center justify-center text-[#736B66] mb-4">
-                <Bookmark className="w-8 h-8 text-[#C85A40]" />
+            <div className="bg-ivory rounded-3xl p-12 text-center border border-[#D8CDBC] shadow-sand-sm">
+              <div className="w-16 h-16 mx-auto rounded-full bg-[#E9E2D6] flex items-center justify-center text-[#675A50] mb-4">
+                <Bookmark className="w-8 h-8 text-[#8A4F33]" />
               </div>
-              <h3 className="font-serif text-2xl font-medium text-[#2A2421] mb-2">
+              <h3 className="font-serif text-2xl font-medium text-[#1E1814] mb-2">
                 No saved events
               </h3>
-              <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
+              <p className="text-sm text-[#675A50] max-w-md mx-auto mb-6">
                 Select the bookmark icon on any event to save it here for later.
               </p>
               <Button variant="primary" onClick={() => onNavigate('discover')}>
@@ -526,15 +526,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       {/* TAB 3: Security */}
       {activeTab === 'security' && (
-        <div className="max-w-2xl bg-white rounded-3xl p-6 sm:p-10 border border-[#E2DDD5] shadow-sand-sm space-y-8">
+        <div className="max-w-2xl bg-ivory rounded-3xl p-6 sm:p-10 border border-[#D8CDBC] shadow-sand-sm space-y-8">
           <div>
-            <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold block mb-1">
+            <span className="text-xs uppercase tracking-widest text-[#8A4F33] font-bold block mb-1">
               Account security
             </span>
-            <h3 className="font-serif text-2xl font-medium text-[#2A2421]">
+            <h3 className="font-serif text-2xl font-medium text-[#1E1814]">
               Change password
             </h3>
-            <p className="text-xs text-[#736B66] mt-1">
+            <p className="text-xs text-[#675A50] mt-1">
               {user.authProvider === 'google'
                 ? 'You sign in with Google, so your account has no MagiVents password to change.'
                 : 'Use at least 8 characters, mixing letters, numbers and symbols.'}
@@ -558,7 +558,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {user.authProvider !== 'google' && (
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+              <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                 Current password
               </label>
               <input
@@ -567,13 +567,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 value={currentPass}
                 onChange={(e) => setCurrentPass(e.target.value)}
                 placeholder="Your current password"
-                className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+                <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                   New password
                 </label>
                 <input
@@ -582,12 +582,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   value={newPass}
                   onChange={(e) => setNewPass(e.target.value)}
                   placeholder="At least 8 characters"
-                  className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                  className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+                <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                   Confirm new password
                 </label>
                 <input
@@ -596,7 +596,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   value={confirmNewPass}
                   onChange={(e) => setConfirmNewPass(e.target.value)}
                   placeholder="Type the new password again"
-                  className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                  className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
                 />
               </div>
             </div>
@@ -635,8 +635,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div className="pt-1 space-y-3">
             <div className="flex items-center gap-4">
               <Avatar name={editName || user.name} src={editAvatarUrl} size="lg" />
-              <div className="text-xs text-[#736B66] space-y-1">
-                <span className="block font-semibold text-[#2A2421]">Profile photo</span>
+              <div className="text-xs text-[#675A50] space-y-1">
+                <span className="block font-semibold text-[#1E1814]">Profile photo</span>
                 <span className="block">
                   {editAvatarUrl ? 'This photo is shown on your profile.' : 'Your initials are shown until you add a photo.'}
                 </span>
@@ -644,7 +644,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setEditAvatarUrl('')}
-                    className="text-[#C85A40] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-[#8A4F33] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
                     Remove photo
@@ -665,7 +665,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+            <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
               Full name *
             </label>
             <input
@@ -674,13 +674,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               placeholder="Your first and last name"
-              className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+              className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+              <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                 Email address *
               </label>
               <input
@@ -689,12 +689,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 value={editEmail}
                 onChange={(e) => setEditEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+              <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                 City / town
               </label>
               <input
@@ -702,13 +702,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 value={editCity}
                 onChange={(e) => setEditCity(e.target.value)}
                 placeholder="e.g. Nairobi, Kisumu, Mombasa"
-                className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+            <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
               Short bio
             </label>
             <textarea
@@ -716,11 +716,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               value={editBio}
               onChange={(e) => setEditBio(e.target.value)}
               placeholder="A sentence or two about you and the events you enjoy (optional)"
-              className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+              className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
             />
           </div>
 
-          <div className="pt-4 border-t border-[#E2DDD5] flex justify-end gap-3">
+          <div className="pt-4 border-t border-[#D8CDBC] flex justify-end gap-3">
             <Button variant="ghost" type="button" onClick={() => setIsEditModalOpen(false)}>
               Cancel
             </Button>
@@ -741,61 +741,61 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           maxWidth="lg"
         >
           <div className="space-y-6">
-            <div className="bg-[#FAF8F5] border-2 border-[#E2DDD5] rounded-3xl p-6 sm:p-8 relative overflow-hidden">
-              <div className="flex justify-between items-start pb-4 border-b border-dashed border-[#E2DDD5]">
+            <div className="bg-[#EFE8DD] border-2 border-[#D8CDBC] rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+              <div className="flex justify-between items-start pb-4 border-b border-dashed border-[#D8CDBC]">
                 <div>
-                  <span className="font-serif text-xl font-bold text-[#2A2421]">
+                  <span className="font-serif text-xl font-bold text-[#1E1814]">
                     MagiVents Ticket
                   </span>
-                  <span className="text-[11px] uppercase tracking-widest text-[#736B66] block">
+                  <span className="text-[11px] uppercase tracking-widest text-[#675A50] block">
                     Admission ticket
                   </span>
                 </div>
-                <span className="font-mono text-xs font-bold text-[#C85A40] bg-[#C85A40]/10 px-2.5 py-1 rounded-full">
+                <span className="font-mono text-xs font-bold text-[#8A4F33] bg-[#8A4F33]/10 px-2.5 py-1 rounded-full">
                   {selectedPass.ticketCode}
                 </span>
               </div>
 
               <div className="py-4 space-y-2">
-                <h3 className="font-serif text-xl font-medium text-[#2A2421]">
+                <h3 className="font-serif text-xl font-medium text-[#1E1814]">
                   {selectedPass.eventTitle}
                 </h3>
-                <div className="grid grid-cols-2 gap-4 text-xs text-[#736B66] pt-1">
+                <div className="grid grid-cols-2 gap-4 text-xs text-[#675A50] pt-1">
                   <div>
-                    <span className="font-semibold text-[#2A2421] block">Guest</span>
+                    <span className="font-semibold text-[#1E1814] block">Guest</span>
                     <span>{selectedPass.attendeeName}</span>
                   </div>
                   <div>
-                    <span className="font-semibold text-[#2A2421] block">Tier</span>
+                    <span className="font-semibold text-[#1E1814] block">Tier</span>
                     <span>
                       {selectedPass.tierName} ({selectedPass.quantity} {selectedPass.quantity === 1 ? 'person' : 'people'})
                     </span>
                   </div>
                   <div>
-                    <span className="font-semibold text-[#2A2421] block">Date</span>
+                    <span className="font-semibold text-[#1E1814] block">Date</span>
                     <span>{selectedPass.eventDate} · {selectedPass.eventTime}</span>
                   </div>
                   <div>
-                    <span className="font-semibold text-[#2A2421] block">Location</span>
+                    <span className="font-semibold text-[#1E1814] block">Location</span>
                     <span className="truncate block">{selectedPass.venueName}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-dashed border-[#E2DDD5] flex items-center justify-between">
+              <div className="pt-4 border-t border-dashed border-[#D8CDBC] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white rounded-xl border border-[#E2DDD5] flex items-center justify-center text-[#2A2421]">
+                  <div className="w-12 h-12 bg-ivory rounded-xl border border-[#D8CDBC] flex items-center justify-center text-[#1E1814]">
                     <QrCode className="w-8 h-8" />
                   </div>
-                  <div className="text-[11px] text-[#736B66]">
+                  <div className="text-[11px] text-[#675A50]">
                     <span>Show at the entrance</span>
-                    <span className="block font-medium text-[#2A2421]">
+                    <span className="block font-medium text-[#1E1814]">
                       Issued {selectedPass.bookingDate}
                     </span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="font-serif text-lg font-bold text-[#2A2421] tabular-nums block">
+                  <span className="font-serif text-lg font-bold text-[#1E1814] tabular-nums block">
                     {selectedPass.totalPrice > 0 ? `${formatKES(selectedPass.totalPrice)} paid` : 'Free'}
                   </span>
                 </div>
@@ -808,7 +808,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     <span className="font-semibold">Paid with M-Pesa</span>
                   </div>
                   {selectedPass.mpesaReceiptNumber && (
-                    <span className="font-mono text-[11px] text-[#2A2421]">
+                    <span className="font-mono text-[11px] text-[#1E1814]">
                       Ref: {selectedPass.mpesaReceiptNumber}
                     </span>
                   )}
@@ -821,7 +821,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Button
                 variant="outline"
                 fullWidth
-                icon={<Printer className="w-4 h-4 text-[#C85A40]" />}
+                icon={<Printer className="w-4 h-4 text-[#8A4F33]" />}
                 onClick={() => setPrintBooking(selectedPass)}
               >
                 Print ticket
@@ -830,7 +830,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Button
                 variant="outline"
                 fullWidth
-                icon={<Mail className="w-4 h-4 text-[#C85A40]" />}
+                icon={<Mail className="w-4 h-4 text-[#8A4F33]" />}
                 onClick={() => setEmailBooking(selectedPass)}
               >
                 Email confirmation
@@ -842,7 +842,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <Button
                   variant="outline"
                   fullWidth
-                  icon={<Share2 className="w-4 h-4 text-[#C85A40]" />}
+                  icon={<Share2 className="w-4 h-4 text-[#8A4F33]" />}
                   onClick={() => {
                     const matchedEvent = allEvents.find((e) => e.id === selectedPass.eventId) ||
                       savedEvents.find((e) => e.id === selectedPass.eventId);

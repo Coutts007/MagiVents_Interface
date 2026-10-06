@@ -143,24 +143,24 @@ export const LocationMap: React.FC<LocationMapProps> = ({
   }, [isFullscreen]);
 
   return (
-    <div className={`space-y-6 ${isFullscreen ? 'fixed inset-0 z-50 p-4 sm:p-8 bg-[#2A2421]/80 backdrop-blur-md flex flex-col justify-center max-w-none' : ''}`}>
+    <div className={`space-y-6 ${isFullscreen ? 'fixed inset-0 z-50 p-4 sm:p-8 bg-[#1E1814]/80 backdrop-blur-md flex flex-col justify-center max-w-none' : ''}`}>
       {/* Location Map Card */}
-      <div className={`bg-white rounded-3xl border border-[#E2DDD5] shadow-sand-md overflow-hidden flex flex-col ${isFullscreen ? 'h-[92vh] max-w-6xl mx-auto w-full' : ''}`}>
+      <div className={`bg-ivory rounded-3xl border border-[#D8CDBC] shadow-sand-md overflow-hidden flex flex-col ${isFullscreen ? 'h-[92vh] max-w-6xl mx-auto w-full' : ''}`}>
         
         {/* Map Header / Actions Bar */}
-        <div className="px-6 py-4 border-b border-[#E2DDD5] flex flex-wrap items-center justify-between gap-3 bg-[#FAF8F5]">
+        <div className="px-6 py-4 border-b border-[#D8CDBC] flex flex-wrap items-center justify-between gap-3 bg-[#EFE8DD]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#C85A40]/10 flex items-center justify-center text-[#C85A40]">
+            <div className="w-8 h-8 rounded-full bg-[#8A4F33]/10 flex items-center justify-center text-[#8A4F33]">
               <MapPin className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-serif text-lg font-medium text-[#2A2421]">
+                <h3 className="font-serif text-lg font-medium text-[#1E1814]">
                   {venue.name}
                 </h3>
               </div>
               {area && (
-                <p className="text-xs text-[#736B66]">
+                <p className="text-xs text-[#675A50]">
                   {area}
                 </p>
               )}
@@ -169,14 +169,14 @@ export const LocationMap: React.FC<LocationMapProps> = ({
 
           <div className="flex items-center gap-2">
             {/* Theme switcher */}
-            <div className="hidden sm:flex items-center bg-[#F4F1EA] p-1 rounded-xl border border-[#E2DDD5]">
+            <div className="hidden sm:flex items-center bg-[#E9E2D6] p-1 rounded-xl border border-[#D8CDBC]">
               <button
                 type="button"
                 onClick={() => setMapTheme('editorial')}
                 className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors cursor-pointer ${
                   mapTheme === 'editorial'
-                    ? 'bg-white text-[#2A2421] shadow-xs'
-                    : 'text-[#736B66] hover:text-[#2A2421]'
+                    ? 'bg-ivory text-[#1E1814] shadow-xs'
+                    : 'text-[#675A50] hover:text-[#1E1814]'
                 }`}
               >
                 Editorial
@@ -186,8 +186,8 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 onClick={() => setMapTheme('blueprint')}
                 className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors cursor-pointer ${
                   mapTheme === 'blueprint'
-                    ? 'bg-white text-[#2A2421] shadow-xs'
-                    : 'text-[#736B66] hover:text-[#2A2421]'
+                    ? 'bg-ivory text-[#1E1814] shadow-xs'
+                    : 'text-[#675A50] hover:text-[#1E1814]'
                 }`}
               >
                 Blueprint
@@ -197,8 +197,8 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 onClick={() => setMapTheme('topographic')}
                 className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-colors cursor-pointer ${
                   mapTheme === 'topographic'
-                    ? 'bg-white text-[#2A2421] shadow-xs'
-                    : 'text-[#736B66] hover:text-[#2A2421]'
+                    ? 'bg-ivory text-[#1E1814] shadow-xs'
+                    : 'text-[#675A50] hover:text-[#1E1814]'
                 }`}
               >
                 Contours
@@ -210,7 +210,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
               type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
               aria-label={isFullscreen ? 'Exit fullscreen' : 'Expand map full screen'}
-              className="p-2 rounded-xl bg-white border border-[#E2DDD5] text-[#736B66] hover:text-[#2A2421] hover:bg-[#F4F1EA] transition-colors cursor-pointer shadow-xs"
+              className="p-2 rounded-xl bg-ivory border border-[#D8CDBC] text-[#675A50] hover:text-[#1E1814] hover:bg-[#E9E2D6] transition-colors cursor-pointer shadow-xs"
               title={isFullscreen ? 'Exit fullscreen' : 'Expand map'}
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -256,7 +256,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
               {mapTheme === 'editorial' && (
                 <>
                   {/* Subtle Topographic Elevation Contours */}
-                  <g fill="none" stroke="#E2DDD5" strokeWidth="1.2" opacity="0.65">
+                  <g fill="none" stroke="#D8CDBC" strokeWidth="1.2" opacity="0.65">
                     <ellipse cx="500" cy="300" rx="340" ry="210" />
                     <ellipse cx="480" cy="310" rx="270" ry="170" />
                     <ellipse cx="510" cy="290" rx="200" ry="120" />
@@ -315,7 +315,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                     <path d="M -50,340 Q 250,320 500,300 T 1050,290" />
                     <path d="M 500,-50 L 500,650" />
                   </g>
-                  <g fill="none" stroke="#C85A40" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.35">
+                  <g fill="none" stroke="#8A4F33" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.35">
                     <path d="M -50,340 Q 250,320 500,300 T 1050,290" />
                     <path d="M 500,-50 L 500,650" />
                   </g>
@@ -331,13 +331,13 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                   </g>
 
                   {/* Landmark Labels */}
-                  <text x="310" y="260" fontSize="11" fill="#736B66" fontFamily="sans-serif" letterSpacing="0.05em">
+                  <text x="310" y="260" fontSize="11" fill="#675A50" fontFamily="sans-serif" letterSpacing="0.05em">
                     SIDE ROAD
                   </text>
-                  <text x="630" y="295" fontSize="11" fill="#736B66" fontFamily="sans-serif" letterSpacing="0.05em">
+                  <text x="630" y="295" fontSize="11" fill="#675A50" fontFamily="sans-serif" letterSpacing="0.05em">
                     RIVERSIDE
                   </text>
-                  <text x="515" y="440" fontSize="11" fill="#736B66" fontFamily="sans-serif" letterSpacing="0.05em">
+                  <text x="515" y="440" fontSize="11" fill="#675A50" fontFamily="sans-serif" letterSpacing="0.05em">
                     ACCESS ROAD
                   </text>
                 </>
@@ -369,7 +369,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
 
                   {/* Structural Footprint */}
                   <rect x="440" y="250" width="120" height="100" fill="#2E3942" stroke="#87A4BC" strokeWidth="2" rx="4" />
-                  <rect x="470" y="280" width="60" height="40" fill="#3D4D59" stroke="#C85A40" strokeWidth="1.5" />
+                  <rect x="470" y="280" width="60" height="40" fill="#3D4D59" stroke="#8A4F33" strokeWidth="1.5" />
                   <text x="500" y="235" textAnchor="middle" fontSize="11" fill="#A4C2DC" fontFamily="monospace">
                     VENUE
                   </text>
@@ -399,7 +399,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 cy="300"
                 r="44"
                 fill="none"
-                stroke="#C85A40"
+                stroke="#8A4F33"
                 strokeWidth="1"
                 strokeDasharray="4 3"
                 opacity="0.4"
@@ -410,11 +410,11 @@ export const LocationMap: React.FC<LocationMapProps> = ({
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full pointer-events-none">
               <div className="relative flex flex-col items-center">
                 {/* Glowing Pulse Ring */}
-                <span className="absolute -bottom-1 w-6 h-6 rounded-full bg-[#C85A40]/30 animate-ping" />
-                <span className="absolute -bottom-0.5 w-4 h-4 rounded-full bg-[#C85A40]/50" />
+                <span className="absolute -bottom-1 w-6 h-6 rounded-full bg-[#8A4F33]/30 animate-ping" />
+                <span className="absolute -bottom-0.5 w-4 h-4 rounded-full bg-[#8A4F33]/50" />
                 
                 {/* Pin Shadow */}
-                <div className="w-8 h-2 rounded-full bg-[#2A2421]/20 blur-xs mt-1" />
+                <div className="w-8 h-2 rounded-full bg-[#1E1814]/20 blur-xs mt-1" />
 
                 {/* The Terracotta Teardrop Pin Marker */}
                 <div
@@ -424,34 +424,34 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                   }}
                   className="pointer-events-auto cursor-pointer relative -mb-1 transform transition-transform hover:scale-110 active:scale-95 drop-shadow-md"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#C85A40] text-white flex items-center justify-center border-2 border-white shadow-lg">
-                    <MapPin className="w-5 h-5 fill-white text-[#C85A40]" />
+                  <div className="w-10 h-10 rounded-full bg-[#8A4F33] text-white flex items-center justify-center border-2 border-white shadow-lg">
+                    <MapPin className="w-5 h-5 fill-white text-[#8A4F33]" />
                   </div>
                   {/* Point of pin */}
-                  <div className="w-2.5 h-2.5 bg-[#C85A40] rotate-45 mx-auto -mt-1.5 border-r border-b border-white" />
+                  <div className="w-2.5 h-2.5 bg-[#8A4F33] rotate-45 mx-auto -mt-1.5 border-r border-b border-white" />
                 </div>
 
                 {/* Interactive Tooltip Card on the Pin */}
                 {showPinTooltip && (
-                  <div className="pointer-events-auto absolute bottom-14 left-1/2 -translate-x-1/2 w-64 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#E2DDD5] shadow-sand-lg text-left animate-in fade-in zoom-in-95 duration-200">
+                  <div className="pointer-events-auto absolute bottom-14 left-1/2 -translate-x-1/2 w-64 bg-ivory/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#D8CDBC] shadow-sand-lg text-left animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#C85A40]">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A4F33]">
                         {category || 'Venue'}
                       </span>
-                      <span className="text-[10px] font-mono text-[#736B66]">
+                      <span className="text-[10px] font-mono text-[#675A50]">
                         {latFormatted}
                       </span>
                     </div>
 
-                    <h4 className="font-serif text-sm font-medium text-[#2A2421] mt-0.5 leading-snug">
+                    <h4 className="font-serif text-sm font-medium text-[#1E1814] mt-0.5 leading-snug">
                       {venue.name}
                     </h4>
 
-                    <p className="text-[11px] text-[#736B66] mt-1 line-clamp-1">
+                    <p className="text-[11px] text-[#675A50] mt-1 line-clamp-1">
                       {[venue.address, venue.neighborhood].filter(Boolean).join(', ') || venue.city}
                     </p>
 
-                    <div className="mt-2.5 pt-2 border-t border-[#E2DDD5]/70 flex items-center justify-between">
+                    <div className="mt-2.5 pt-2 border-t border-[#D8CDBC]/70 flex items-center justify-between">
                       <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 inline-block" />
                         {hasCoordinates ? 'Pinned by organizer' : 'Approximate location'}
@@ -459,7 +459,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                       <button
                         type="button"
                         onClick={openGoogleMaps}
-                        className="text-[11px] font-medium text-[#C85A40] hover:text-[#A64831] inline-flex items-center gap-1 cursor-pointer"
+                        className="text-[11px] font-medium text-[#8A4F33] hover:text-[#6E3B22] inline-flex items-center gap-1 cursor-pointer"
                       >
                         Directions <ExternalLink className="w-3 h-3" />
                       </button>
@@ -472,22 +472,22 @@ export const LocationMap: React.FC<LocationMapProps> = ({
 
           {/* Floating Map Overlay Controls (Top Right) */}
           <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
-            <div className="bg-white/90 backdrop-blur-md rounded-2xl border border-[#E2DDD5] shadow-sand-sm p-1 flex flex-col">
+            <div className="bg-ivory/90 backdrop-blur-md rounded-2xl border border-[#D8CDBC] shadow-sand-sm p-1 flex flex-col">
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.min(2.5, z + 0.25))}
                 aria-label="Zoom in"
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-[#2A2421] hover:bg-[#F4F1EA] transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-[#1E1814] hover:bg-[#E9E2D6] transition-colors cursor-pointer"
                 title="Zoom in"
               >
                 <ZoomIn className="w-4 h-4" />
               </button>
-              <div className="h-px w-6 bg-[#E2DDD5] mx-auto my-0.5" />
+              <div className="h-px w-6 bg-[#D8CDBC] mx-auto my-0.5" />
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.max(0.8, z - 0.25))}
                 aria-label="Zoom out"
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-[#2A2421] hover:bg-[#F4F1EA] transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-[#1E1814] hover:bg-[#E9E2D6] transition-colors cursor-pointer"
                 title="Zoom out"
               >
                 <ZoomOut className="w-4 h-4" />
@@ -498,7 +498,7 @@ export const LocationMap: React.FC<LocationMapProps> = ({
               type="button"
               onClick={handleReset}
               aria-label="Recenter map"
-              className="w-9 h-9 bg-white/90 backdrop-blur-md rounded-2xl border border-[#E2DDD5] shadow-sand-sm flex items-center justify-center text-[#736B66] hover:text-[#2A2421] hover:bg-[#F4F1EA] transition-colors cursor-pointer"
+              className="w-9 h-9 bg-ivory/90 backdrop-blur-md rounded-2xl border border-[#D8CDBC] shadow-sand-sm flex items-center justify-center text-[#675A50] hover:text-[#1E1814] hover:bg-[#E9E2D6] transition-colors cursor-pointer"
               title="Reset center"
             >
               <RotateCcw className="w-4 h-4" />
@@ -507,15 +507,15 @@ export const LocationMap: React.FC<LocationMapProps> = ({
 
           {/* Floating Scale & Coordinates Badge (Bottom Left) */}
           <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2">
-            <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#E2DDD5] shadow-sand-sm flex items-center gap-2 text-[11px] text-[#2A2421] font-mono">
-              <Compass className="w-3.5 h-3.5 text-[#C85A40]" />
+            <div className="bg-ivory/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#D8CDBC] shadow-sand-sm flex items-center gap-2 text-[11px] text-[#1E1814] font-mono">
+              <Compass className="w-3.5 h-3.5 text-[#8A4F33]" />
               <span>{latFormatted}, {lngFormatted}</span>
             </div>
 
             <button
               type="button"
               onClick={handleCopyCoords}
-              className="bg-white/90 backdrop-blur-md p-1.5 rounded-xl border border-[#E2DDD5] shadow-sand-sm text-[#736B66] hover:text-[#2A2421] transition-colors cursor-pointer"
+              className="bg-ivory/90 backdrop-blur-md p-1.5 rounded-xl border border-[#D8CDBC] shadow-sand-sm text-[#675A50] hover:text-[#1E1814] transition-colors cursor-pointer"
               title="Copy Coordinates"
             >
               {copiedCoords ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -523,24 +523,24 @@ export const LocationMap: React.FC<LocationMapProps> = ({
           </div>
 
           {/* Drag instruction notice (brief hint) */}
-          <div className="absolute top-4 left-4 z-10 hidden sm:flex items-center gap-1.5 bg-white/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] text-[#736B66] border border-[#E2DDD5]/70 pointer-events-none">
-            <Navigation className="w-3 h-3 text-[#C85A40]" />
+          <div className="absolute top-4 left-4 z-10 hidden sm:flex items-center gap-1.5 bg-ivory/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] text-[#675A50] border border-[#D8CDBC]/70 pointer-events-none">
+            <Navigation className="w-3 h-3 text-[#8A4F33]" />
             <span>Illustrative map · Drag to pan · Use Google Maps for directions</span>
           </div>
         </div>
 
         {/* Venue Information & Directions Sub-Bar */}
-        <div className="p-5 sm:p-6 bg-white border-t border-[#E2DDD5] space-y-4">
+        <div className="p-5 sm:p-6 bg-ivory border-t border-[#D8CDBC] space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-[#2A2421]">
+                <span className="font-semibold text-sm text-[#1E1814]">
                   {venue.address || venue.name}
                 </span>
                 <button
                   type="button"
                   onClick={handleCopyAddress}
-                  className="text-xs text-[#736B66] hover:text-[#2A2421] p-1 rounded-md hover:bg-[#F4F1EA] transition-colors inline-flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-[#675A50] hover:text-[#1E1814] p-1 rounded-md hover:bg-[#E9E2D6] transition-colors inline-flex items-center gap-1 cursor-pointer"
                   title="Copy address"
                 >
                   {copiedAddress ? (
@@ -548,12 +548,12 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                       <Check className="w-3 h-3" /> Copied
                     </span>
                   ) : (
-                    <Copy className="w-3 h-3 text-[#736B66]" />
+                    <Copy className="w-3 h-3 text-[#675A50]" />
                   )}
                 </button>
               </div>
               {area && (
-                <p className="text-xs text-[#736B66] mt-0.5">
+                <p className="text-xs text-[#675A50] mt-0.5">
                   {area}
                 </p>
               )}
@@ -580,15 +580,15 @@ export const LocationMap: React.FC<LocationMapProps> = ({
           </div>
 
           {/* Transit and Arrival Guidance Tabs */}
-          <div className="pt-3 border-t border-[#E2DDD5]/60">
+          <div className="pt-3 border-t border-[#D8CDBC]/60">
             <div className="flex items-center gap-2 mb-3">
               <button
                 type="button"
                 onClick={() => setActiveTransitTab('arrival')}
                 className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                   activeTransitTab === 'arrival'
-                    ? 'bg-[#C85A40]/10 text-[#C85A40] border border-[#C85A40]/30 font-semibold'
-                    : 'text-[#736B66] hover:text-[#2A2421] bg-[#F4F1EA]'
+                    ? 'bg-[#8A4F33]/10 text-[#8A4F33] border border-[#8A4F33]/30 font-semibold'
+                    : 'text-[#675A50] hover:text-[#1E1814] bg-[#E9E2D6]'
                 }`}
               >
                 <Info className="w-3 h-3" />
@@ -599,8 +599,8 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 onClick={() => setActiveTransitTab('parking')}
                 className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                   activeTransitTab === 'parking'
-                    ? 'bg-[#C85A40]/10 text-[#C85A40] border border-[#C85A40]/30 font-semibold'
-                    : 'text-[#736B66] hover:text-[#2A2421] bg-[#F4F1EA]'
+                    ? 'bg-[#8A4F33]/10 text-[#8A4F33] border border-[#8A4F33]/30 font-semibold'
+                    : 'text-[#675A50] hover:text-[#1E1814] bg-[#E9E2D6]'
                 }`}
               >
                 <Car className="w-3 h-3" />
@@ -611,8 +611,8 @@ export const LocationMap: React.FC<LocationMapProps> = ({
                 onClick={() => setActiveTransitTab('transit')}
                 className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
                   activeTransitTab === 'transit'
-                    ? 'bg-[#C85A40]/10 text-[#C85A40] border border-[#C85A40]/30 font-semibold'
-                    : 'text-[#736B66] hover:text-[#2A2421] bg-[#F4F1EA]'
+                    ? 'bg-[#8A4F33]/10 text-[#8A4F33] border border-[#8A4F33]/30 font-semibold'
+                    : 'text-[#675A50] hover:text-[#1E1814] bg-[#E9E2D6]'
                 }`}
               >
                 <Train className="w-3 h-3" />
@@ -620,23 +620,23 @@ export const LocationMap: React.FC<LocationMapProps> = ({
               </button>
             </div>
 
-            <div className="bg-[#FAF8F5] p-3.5 rounded-2xl border border-[#E2DDD5] text-xs text-[#736B66] leading-relaxed">
+            <div className="bg-[#EFE8DD] p-3.5 rounded-2xl border border-[#D8CDBC] text-xs text-[#675A50] leading-relaxed">
               {activeTransitTab === 'arrival' && (
                 <p>
-                  <strong className="text-[#2A2421] font-medium">From the organizer: </strong>
+                  <strong className="text-[#1E1814] font-medium">From the organizer: </strong>
                   {venue.mapNote?.trim() ||
                     'Arrive early to allow time for check-in, and have your ticket code ready on your phone or printed.'}
                 </p>
               )}
               {activeTransitTab === 'parking' && (
                 <p>
-                  <strong className="text-[#2A2421] font-medium">Parking: </strong>
+                  <strong className="text-[#1E1814] font-medium">Parking: </strong>
                   Parking arrangements at {venue.name} are set by the venue. Check with the organizer before you travel, or use public transport or ride-hailing.
                 </p>
               )}
               {activeTransitTab === 'transit' && (
                 <p>
-                  <strong className="text-[#2A2421] font-medium">Getting there: </strong>
+                  <strong className="text-[#1E1814] font-medium">Getting there: </strong>
                   {venue.name} is in {[venue.neighborhood, venue.city].filter(Boolean).join(', ') || 'the location shown'}. Use Directions for a route by car, matatu, boda boda or ride-hailing.
                 </p>
               )}

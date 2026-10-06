@@ -54,31 +54,32 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-[#2A2421]/60 backdrop-blur-sm transition-opacity duration-300"
+        className="fixed inset-0 bg-[#1E1814]/60 backdrop-blur-sm transition-opacity duration-300"
         aria-hidden="true"
       />
 
       {/* Dialog Window */}
       <div
-        className={`relative w-full ${maxWidthStyles[maxWidth]} bg-white rounded-3xl border border-[#E2DDD5] shadow-sand-xl overflow-hidden z-10 transition-all duration-300 animate-in fade-in zoom-in-95 my-8`}
+        className={`relative w-full ${maxWidthStyles[maxWidth]} bg-ivory rounded-3xl border border-[#D8CDBC] shadow-sand-xl overflow-hidden z-10 transition-all duration-300 animate-in fade-in zoom-in-95 my-8`}
       >
+        <div aria-hidden="true" className="h-[3px] bg-brand-gold" />
         {/* Header */}
         {(title || subtitle) && (
-          <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[#E2DDD5] flex items-start justify-between bg-[#F4F1EA]/40">
+          <div className="px-6 py-5 sm:px-8 sm:py-6 border-b border-[#D8CDBC] flex items-start justify-between bg-[#E9E2D6]/40">
             <div>
               {title && (
-                <h3 className="font-serif text-2xl font-medium text-[#2A2421]">
+                <h3 className="font-serif text-2xl font-medium text-[#1E1814]">
                   {title}
                 </h3>
               )}
               {subtitle && (
-                <p className="text-sm text-[#736B66] mt-1 font-sans">{subtitle}</p>
+                <p className="text-sm text-[#675A50] mt-1 font-sans">{subtitle}</p>
               )}
             </div>
             <button
               onClick={onClose}
               aria-label="Close dialog"
-              className="p-2 -mr-2 text-[#736B66] hover:text-[#2A2421] hover:bg-[#E2DDD5]/60 rounded-full transition-colors cursor-pointer"
+              className="p-2 -mr-2 text-[#675A50] hover:text-[#1E1814] hover:bg-[#D8CDBC]/60 rounded-full transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -90,7 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="absolute top-4 right-4 z-20 p-2 text-[#736B66] hover:text-[#2A2421] bg-white/80 hover:bg-white rounded-full transition-colors shadow-sand-sm cursor-pointer"
+            className="absolute top-4 right-4 z-20 p-2 text-[#675A50] hover:text-[#1E1814] bg-ivory/80 hover:bg-ivory rounded-full transition-colors shadow-sand-sm cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

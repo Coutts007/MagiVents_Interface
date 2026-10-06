@@ -68,15 +68,15 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-in fade-in duration-500">
       {/* Header & Main Action */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-8 border-b border-[#E2DDD5]">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-8 border-b border-[#D8CDBC]">
         <div>
-          <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold block mb-1">
+          <span className="text-xs uppercase tracking-widest text-[#8A4F33] font-bold block mb-1">
             Organizer Portal
           </span>
-          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-[#2A2421]">
+          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-[#1E1814]">
             Organizer Dashboard
           </h1>
-          <p className="text-sm text-[#736B66] mt-1">
+          <p className="text-sm text-[#675A50] mt-1">
             Create and manage your events, track registrations and publish updates.
           </p>
         </div>
@@ -93,27 +93,27 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
 
       {/* Stats Overview Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 my-8">
-        <div className="bg-white rounded-3xl p-6 border border-[#E2DDD5] shadow-sand-sm">
-          <div className="flex items-center justify-between text-[#736B66] mb-3">
+        <div className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm">
+          <div className="flex items-center justify-between text-[#675A50] mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider">Total Events</span>
-            <div className="p-2 rounded-xl bg-[#F4F1EA] text-[#C85A40]">
+            <div className="p-2 rounded-xl bg-[#E9E2D6] text-[#8A4F33]">
               <Layers className="w-4 h-4" />
             </div>
           </div>
-          <div className="font-serif text-3xl font-medium text-[#2A2421] tabular-nums">
+          <div className="font-serif text-3xl font-medium text-[#1E1814] tabular-nums">
             {stats.totalEvents}
           </div>
-          <span className="text-xs text-[#736B66] mt-1 block">Created by you</span>
+          <span className="text-xs text-[#675A50] mt-1 block">Created by you</span>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 border border-[#E2DDD5] shadow-sand-sm">
-          <div className="flex items-center justify-between text-[#736B66] mb-3">
+        <div className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm">
+          <div className="flex items-center justify-between text-[#675A50] mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider">Registered Attendees</span>
-            <div className="p-2 rounded-xl bg-[#F4F1EA] text-[#C85A40]">
+            <div className="p-2 rounded-xl bg-[#E9E2D6] text-[#8A4F33]">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="font-serif text-3xl font-medium text-[#2A2421] tabular-nums">
+          <div className="font-serif text-3xl font-medium text-[#1E1814] tabular-nums">
             {stats.activeAttendees}
           </div>
           <span className="text-xs text-emerald-700 mt-1 block font-medium">
@@ -121,44 +121,44 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           </span>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 border border-[#E2DDD5] shadow-sand-sm">
-          <div className="flex items-center justify-between text-[#736B66] mb-3">
+        <div className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm">
+          <div className="flex items-center justify-between text-[#675A50] mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider">Estimated Revenue</span>
-            <div className="p-2 rounded-xl bg-[#F4F1EA] text-[#C85A40]">
+            <div className="p-2 rounded-xl bg-[#E9E2D6] text-[#8A4F33]">
               <Wallet className="w-4 h-4" />
             </div>
           </div>
-          <div className="font-serif text-3xl font-medium text-[#2A2421] tabular-nums">
+          <div className="font-serif text-3xl font-medium text-[#1E1814] tabular-nums">
             {formatKES(stats.grossRevenue, null)}
           </div>
-          <span className="text-xs text-[#736B66] mt-1 block">Bookings × ticket price</span>
+          <span className="text-xs text-[#675A50] mt-1 block">Bookings × ticket price</span>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 border border-[#E2DDD5] shadow-sand-sm">
-          <div className="flex items-center justify-between text-[#736B66] mb-3">
+        <div className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm">
+          <div className="flex items-center justify-between text-[#675A50] mb-3">
             <span className="text-xs font-semibold uppercase tracking-wider">Tickets Issued</span>
-            <div className="p-2 rounded-xl bg-[#F4F1EA] text-[#C85A40]">
+            <div className="p-2 rounded-xl bg-[#E9E2D6] text-[#8A4F33]">
               <Ticket className="w-4 h-4" />
             </div>
           </div>
-          <div className="font-serif text-3xl font-medium text-[#2A2421] tabular-nums">
+          <div className="font-serif text-3xl font-medium text-[#1E1814] tabular-nums">
             {stats.ticketsSold}
           </div>
-          <span className="text-xs text-[#736B66] mt-1 block">Across all ticket types</span>
+          <span className="text-xs text-[#675A50] mt-1 block">Across all ticket types</span>
         </div>
       </div>
 
       {/* Inventory Section */}
-      <div className="bg-white rounded-3xl border border-[#E2DDD5] shadow-sand-sm overflow-hidden mt-10">
+      <div className="bg-ivory rounded-3xl border border-[#D8CDBC] shadow-sand-sm overflow-hidden mt-10">
         {/* Table/List Filter Tabs */}
-        <div className="px-6 py-4 border-b border-[#E2DDD5] bg-[#F4F1EA]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="px-6 py-4 border-b border-[#D8CDBC] bg-[#E9E2D6]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab('all')}
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                 activeTab === 'all'
-                  ? 'bg-[#2A2421] text-white'
-                  : 'text-[#736B66] hover:text-[#2A2421]'
+                  ? 'bg-[#1E1814] text-white'
+                  : 'text-[#675A50] hover:text-[#1E1814]'
               }`}
             >
               All Events ({events.length})
@@ -167,8 +167,8 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
               onClick={() => setActiveTab('published')}
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                 activeTab === 'published'
-                  ? 'bg-[#2A2421] text-white'
-                  : 'text-[#736B66] hover:text-[#2A2421]'
+                  ? 'bg-[#1E1814] text-white'
+                  : 'text-[#675A50] hover:text-[#1E1814]'
               }`}
             >
               Published ({events.filter((e) => e.status === 'published').length})
@@ -177,22 +177,22 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
               onClick={() => setActiveTab('draft')}
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
                 activeTab === 'draft'
-                  ? 'bg-[#2A2421] text-white'
-                  : 'text-[#736B66] hover:text-[#2A2421]'
+                  ? 'bg-[#1E1814] text-white'
+                  : 'text-[#675A50] hover:text-[#1E1814]'
               }`}
             >
               Drafts ({events.filter((e) => e.status === 'draft').length})
             </button>
           </div>
 
-          <span className="text-xs text-[#736B66]">
+          <span className="text-xs text-[#675A50]">
             Showing {filteredEvents.length} items
           </span>
         </div>
 
         {/* Content: List or Empty State */}
         {filteredEvents.length > 0 ? (
-          <div className="divide-y divide-[#E2DDD5]">
+          <div className="divide-y divide-[#D8CDBC]">
             {filteredEvents.map((event) => {
               const fillPercentage = Math.round(
                 ((event.attendeeCount || 0) / event.capacity) * 100
@@ -201,11 +201,11 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
               return (
                 <div
                   key={event.id}
-                  className="p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 hover:bg-[#F4F1EA]/20 transition-colors"
+                  className="p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 hover:bg-[#E9E2D6]/20 transition-colors"
                 >
                   {/* Event Meta & Info */}
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden border border-[#E2DDD5] shrink-0">
+                    <div className="w-20 h-20 rounded-2xl overflow-hidden border border-[#D8CDBC] shrink-0">
                       <EventArtwork imageUrl={event.imageUrl} title={event.title} category={event.category} />
                     </div>
 
@@ -222,24 +222,24 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                             Free
                           </Badge>
                         )}
-                        <span className="text-xs text-[#736B66] font-medium">
+                        <span className="text-xs text-[#675A50] font-medium">
                           {event.category}
                         </span>
                       </div>
 
-                      <h3 className="font-serif text-lg sm:text-xl font-medium text-[#2A2421]">
+                      <h3 className="font-serif text-lg sm:text-xl font-medium text-[#1E1814]">
                         {event.title}
                       </h3>
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#736B66]">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#675A50]">
                         <span className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5 text-[#C85A40]" />
+                          <Calendar className="w-3.5 h-3.5 text-[#8A4F33]" />
                           {event.date}
                         </span>
                         <span>·</span>
                         <span>{event.venue.name}</span>
                         <span>·</span>
-                        <span className="font-semibold text-[#2A2421] tabular-nums">
+                        <span className="font-semibold text-[#1E1814] tabular-nums">
                           {event.isFree ? 'Free' : formatKES(event.pricing.startingPrice)}
                         </span>
                       </div>
@@ -248,15 +248,15 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
 
                   {/* Attendance Gauge */}
                   <div className="min-w-[140px] space-y-1.5">
-                    <div className="flex justify-between text-xs text-[#736B66]">
+                    <div className="flex justify-between text-xs text-[#675A50]">
                       <span>Attendees</span>
-                      <span className="font-medium text-[#2A2421] tabular-nums">
+                      <span className="font-medium text-[#1E1814] tabular-nums">
                         {event.attendeeCount} / {event.capacity}
                       </span>
                     </div>
-                    <div className="w-full bg-[#E2DDD5] h-2 rounded-full overflow-hidden">
+                    <div className="w-full bg-[#D8CDBC] h-2 rounded-full overflow-hidden">
                       <div
-                        className="bg-[#C85A40] h-full rounded-full transition-all duration-500"
+                        className="bg-[#8A4F33] h-full rounded-full transition-all duration-500"
                         style={{ width: `${Math.min(100, fillPercentage)}%` }}
                       />
                     </div>
@@ -267,7 +267,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                     <button
                       onClick={() => onViewEvent(event)}
                       title="View public event page"
-                      className="p-2.5 rounded-full text-[#736B66] hover:text-[#2A2421] hover:bg-[#E2DDD5]/60 transition-colors cursor-pointer"
+                      className="p-2.5 rounded-full text-[#675A50] hover:text-[#1E1814] hover:bg-[#D8CDBC]/60 transition-colors cursor-pointer"
                     >
                       <Eye className="w-4 h-4" />
                     </button>
@@ -275,7 +275,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                     <button
                       onClick={() => onToggleStatus(event.id)}
                       title={event.status === 'published' ? 'Switch to Draft' : 'Publish live'}
-                      className="p-2.5 rounded-full text-[#736B66] hover:text-[#2A2421] hover:bg-[#E2DDD5]/60 transition-colors cursor-pointer"
+                      className="p-2.5 rounded-full text-[#675A50] hover:text-[#1E1814] hover:bg-[#D8CDBC]/60 transition-colors cursor-pointer"
                     >
                       {event.status === 'published' ? (
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -307,7 +307,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                         </Button>
                         <button
                           onClick={() => setDeleteConfirmId(null)}
-                          className="text-xs text-[#736B66] hover:text-[#2A2421] px-2 py-1"
+                          className="text-xs text-[#675A50] hover:text-[#1E1814] px-2 py-1"
                         >
                           Cancel
                         </button>
@@ -316,7 +316,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                       <button
                         onClick={() => setDeleteConfirmId(event.id)}
                         title="Delete event"
-                        className="p-2.5 rounded-full text-[#736B66] hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
+                        className="p-2.5 rounded-full text-[#675A50] hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -329,13 +329,13 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
         ) : (
           /* Empty State for Organizer Inventory */
           <div className="py-20 px-6 text-center">
-            <div className="w-16 h-16 mx-auto rounded-full bg-[#F4F1EA] flex items-center justify-center text-[#C85A40] mb-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[#E9E2D6] flex items-center justify-center text-[#8A4F33] mb-4">
               <Sparkles className="w-8 h-8" />
             </div>
-            <h3 className="font-serif text-2xl font-medium text-[#2A2421] mb-2">
+            <h3 className="font-serif text-2xl font-medium text-[#1E1814] mb-2">
               No events here yet
             </h3>
-            <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
+            <p className="text-sm text-[#675A50] max-w-md mx-auto mb-6">
               Events you create will appear here. Add the details, agenda and ticket price, and publish it for people across Kenya to find.
             </p>
             <Button

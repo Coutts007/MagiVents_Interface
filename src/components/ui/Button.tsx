@@ -30,13 +30,13 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      'bg-[#C85A40] text-white hover:bg-[#A64831] shadow-sand-sm hover:shadow-sand-md focus-visible:ring-2 focus-visible:ring-[#C85A40] focus-visible:ring-offset-2',
+      'btn-brand shadow-sand-sm focus-visible:ring-2 focus-visible:ring-[#C7B173] focus-visible:ring-offset-2',
     secondary:
-      'bg-white text-[#2A2421] border border-[#E2DDD5] hover:border-[#736B66] hover:bg-[#F4F1EA]/80 shadow-sand-sm focus-visible:ring-2 focus-visible:ring-[#2A2421] focus-visible:ring-offset-2',
+      'bg-ivory text-[#1E1814] border border-[#D8CDBC] hover:border-[#675A50] hover:bg-[#E9E2D6]/80 shadow-sand-sm focus-visible:ring-2 focus-visible:ring-[#1E1814] focus-visible:ring-offset-2',
     outline:
-      'bg-transparent text-[#C85A40] border border-[#C85A40] hover:bg-[#C85A40] hover:text-white focus-visible:ring-2 focus-visible:ring-[#C85A40]',
+      'bg-transparent text-[#8A4F33] border border-[#8A4F33] hover:bg-[#8A4F33] hover:text-white focus-visible:ring-2 focus-visible:ring-[#8A4F33]',
     ghost:
-      'bg-transparent text-[#2A2421] hover:bg-[#E2DDD5]/50 focus-visible:ring-2 focus-visible:ring-[#2A2421]',
+      'bg-transparent text-[#1E1814] hover:bg-[#D8CDBC]/50 focus-visible:ring-2 focus-visible:ring-[#1E1814]',
     danger:
       'bg-red-50 text-red-700 border border-red-200 hover:bg-red-600 hover:text-white focus-visible:ring-2 focus-visible:ring-red-600'
   };

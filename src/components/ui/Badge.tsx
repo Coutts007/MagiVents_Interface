@@ -21,11 +21,11 @@ export const Badge: React.FC<BadgeProps> = ({
   };
 
   const variantStyles = {
-    terracotta: 'bg-[#C85A40]/10 text-[#C85A40] border border-[#C85A40]/25',
-    sand: 'bg-[#F4F1EA] text-[#736B66] border border-[#E2DDD5]',
-    neutral: 'bg-white/90 backdrop-blur-sm text-[#2A2421] border border-[#E2DDD5] shadow-xs',
+    terracotta: 'bg-brand-gold text-[#1E1814] border border-[#9D7B47]/40',
+    sand: 'bg-[#E9E2D6] text-[#675A50] border border-[#D8CDBC]',
+    neutral: 'bg-ivory/90 backdrop-blur-sm text-[#1E1814] border border-[#D8CDBC] shadow-xs',
     sage: 'bg-[#4A6741]/10 text-[#3A5532] border border-[#4A6741]/25',
-    charcoal: 'bg-[#2A2421] text-white border border-[#2A2421]'
+    charcoal: 'bg-[#110D0B] text-[#E3B5A1] border border-[#98613D]/40'
   };
 
   return (

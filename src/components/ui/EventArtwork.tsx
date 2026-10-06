@@ -39,7 +39,7 @@ export const EventArtwork: React.FC<EventArtworkProps> = ({
     <div
       role="img"
       aria-label={title}
-      className={`w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#2A2421] via-[#5A3A2E] to-[#C85A40] text-white/90 ${className}`}
+      className={`w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#1E1814] via-[#5A3A2E] to-[#8A4F33] text-white/90 ${className}`}
     >
       {placeholder === 'icon' && (
         <>

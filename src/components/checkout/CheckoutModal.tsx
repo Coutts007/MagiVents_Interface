@@ -218,34 +218,34 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         {step === 'form' ? (
           <form onSubmit={handleConfirmOrder} className="space-y-6">
             {/* Summary Box */}
-            <div className="bg-[#F4F1EA] rounded-2xl p-5 border border-[#E2DDD5] space-y-3">
+            <div className="bg-[#E9E2D6] rounded-2xl p-5 border border-[#D8CDBC] space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#C85A40]">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#8A4F33]">
                     {event.category}
                   </span>
-                  <h4 className="font-serif text-lg font-medium text-[#2A2421]">
+                  <h4 className="font-serif text-lg font-medium text-[#1E1814]">
                     {event.title}
                   </h4>
                 </div>
               </div>
 
-              <div className="text-xs text-[#736B66] space-y-1">
+              <div className="text-xs text-[#675A50] space-y-1">
                 <div className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-[#C85A40]" />
+                  <Calendar className="w-3.5 h-3.5 text-[#8A4F33]" />
                   <span>{event.date} · {event.time}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-[#C85A40]" />
+                  <MapPin className="w-3.5 h-3.5 text-[#8A4F33]" />
                   <span>{[event.venue.name, event.venue.city].filter(Boolean).join(', ')}</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#E2DDD5] flex justify-between items-center text-xs">
-                <span className="text-[#2A2421] font-medium">
+              <div className="pt-3 border-t border-[#D8CDBC] flex justify-between items-center text-xs">
+                <span className="text-[#1E1814] font-medium">
                   {tier.name} × {quantity}
                 </span>
-                <span className="font-serif font-bold text-[#2A2421] text-base tabular-nums">
+                <span className="font-serif font-bold text-[#1E1814] text-base tabular-nums">
                   {formatKES(baseTotal)}
                 </span>
               </div>
@@ -257,11 +257,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
               )}
 
-              <div className="pt-2 border-t border-[#E2DDD5] flex justify-between items-baseline">
-                <span className="text-xs uppercase tracking-wider font-semibold text-[#2A2421] block">
+              <div className="pt-2 border-t border-[#D8CDBC] flex justify-between items-baseline">
+                <span className="text-xs uppercase tracking-wider font-semibold text-[#1E1814] block">
                   Total
                 </span>
-                <span className="font-serif text-2xl font-bold text-[#C85A40] tabular-nums">
+                <span className="font-serif text-2xl font-bold text-[#8A4F33] tabular-nums">
                   {formatKES(finalTotal)}
                 </span>
               </div>
@@ -270,7 +270,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {/* Attendee Info Form */}
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+                <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                   Full Name *
                 </label>
                 <input
@@ -279,12 +279,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Name of the person attending"
-                  className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                  className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+                <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                   Email Address *
                 </label>
                 <input
@@ -293,12 +293,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Where we should send your ticket details"
-                  className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                  className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
                 />
+                {!user && (
+                  <p className="text-[11px] text-[#675A50] mt-1.5">
+                    No account needed. Sign in before booking if you want this ticket kept in your profile.
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+                <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                   Notes for the Organizer (Optional)
                 </label>
                 <input
@@ -306,7 +311,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Accessibility needs or anything the organizer should know"
-                  className="w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                  className="w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
                 />
               </div>
 
@@ -319,7 +324,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value)}
                       placeholder="Promo code (optional)"
-                      className="flex-1 px-4 py-2 bg-white border border-[#E2DDD5] rounded-xl text-xs text-[#2A2421] uppercase placeholder:normal-case focus:outline-none focus:border-[#C85A40]"
+                      className="flex-1 px-4 py-2 bg-ivory border border-[#D8CDBC] rounded-xl text-xs text-[#1E1814] uppercase placeholder:normal-case focus:outline-none focus:border-[#8A4F33]"
                     />
                     <Button variant="secondary" size="sm" type="button" onClick={applyPromo}>
                       Apply
@@ -363,8 +368,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   ? `Confirm booking · ${formatKES(finalTotal)} via M-Pesa`
                   : `Confirm booking · ${formatKES(finalTotal)} by card`}
               </Button>
-              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-[#736B66]">
-                <Info className="w-4 h-4 text-[#C85A40]" />
+              <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-[#675A50]">
+                <Info className="w-4 h-4 text-[#8A4F33]" />
                 <span>Questions about this event? Email magiventskenya@gmail.com</span>
               </div>
             </div>
@@ -376,12 +381,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="w-12 h-12 mx-auto rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3">
                 <CheckCircle className="w-6 h-6" />
               </div>
-              <h4 className="font-serif text-2xl font-medium text-[#2A2421]">
+              <h4 className="font-serif text-2xl font-medium text-[#1E1814]">
                 Booking Confirmed
               </h4>
-              <p className="text-sm text-[#736B66]">
-                Your ticket for <strong className="text-[#2A2421]">{confirmedBooking?.attendeeName}</strong> is saved
-                under <strong className="text-[#2A2421]">My Profile &amp; Passes</strong>.
+              <p className="text-sm text-[#675A50]">
+                {user ? (
+                  <>
+                    Your ticket for <strong className="text-[#1E1814]">{confirmedBooking?.attendeeName}</strong> is saved
+                    under <strong className="text-[#1E1814]">My Profile &amp; Passes</strong>.
+                  </>
+                ) : (
+                  <>
+                    Keep your ticket code <strong className="text-[#1E1814] font-mono">{confirmedBooking?.ticketCode}</strong>.
+                    You booked as a guest, so save or print this ticket now: it will not appear in a profile.
+                  </>
+                )}
               </p>
 
               {confirmedBooking?.paymentMethod === 'mpesa' && confirmedBooking.mpesaReceiptNumber && (
@@ -401,41 +415,41 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {/* Ticket Card */}
-            <div className="bg-[#FAF8F5] border-2 border-[#E2DDD5] rounded-3xl p-6 sm:p-8 shadow-sand-md relative overflow-hidden">
+            <div className="bg-[#EFE8DD] border-2 border-[#D8CDBC] rounded-3xl p-6 sm:p-8 shadow-sand-md relative overflow-hidden">
               {/* Cutout notches */}
-              <div className="absolute top-1/2 -left-3.5 w-7 h-7 rounded-full bg-white border-r-2 border-[#E2DDD5] -translate-y-1/2" />
-              <div className="absolute top-1/2 -right-3.5 w-7 h-7 rounded-full bg-white border-l-2 border-[#E2DDD5] -translate-y-1/2" />
+              <div className="absolute top-1/2 -left-3.5 w-7 h-7 rounded-full bg-ivory border-r-2 border-[#D8CDBC] -translate-y-1/2" />
+              <div className="absolute top-1/2 -right-3.5 w-7 h-7 rounded-full bg-ivory border-l-2 border-[#D8CDBC] -translate-y-1/2" />
 
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-5 border-b border-dashed border-[#E2DDD5]">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-5 border-b border-dashed border-[#D8CDBC]">
                 <div>
-                  <span className="font-serif text-xl font-bold tracking-tight text-[#2A2421]">
+                  <span className="font-serif text-xl font-bold tracking-tight text-[#1E1814]">
                     MagiVents Ticket
                   </span>
-                  <span className="text-[11px] uppercase tracking-widest text-[#736B66] block">
+                  <span className="text-[11px] uppercase tracking-widest text-[#675A50] block">
                     Admission ticket
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono text-xs font-bold text-[#C85A40] bg-[#C85A40]/10 px-2.5 py-1 rounded-full">
+                  <span className="font-mono text-xs font-bold text-[#8A4F33] bg-[#8A4F33]/10 px-2.5 py-1 rounded-full">
                     {confirmedBooking?.ticketCode}
                   </span>
                 </div>
               </div>
 
               <div className="py-5 space-y-3">
-                <h3 className="font-serif text-xl sm:text-2xl font-medium text-[#2A2421]">
+                <h3 className="font-serif text-xl sm:text-2xl font-medium text-[#1E1814]">
                   {confirmedBooking?.eventTitle}
                 </h3>
 
-                <div className="grid grid-cols-2 gap-4 text-xs text-[#736B66]">
+                <div className="grid grid-cols-2 gap-4 text-xs text-[#675A50]">
                   <div>
-                    <span className="uppercase tracking-wider font-semibold text-[#2A2421] block">
+                    <span className="uppercase tracking-wider font-semibold text-[#1E1814] block">
                       Attendee
                     </span>
                     <span>{confirmedBooking?.attendeeName}</span>
                   </div>
                   <div>
-                    <span className="uppercase tracking-wider font-semibold text-[#2A2421] block">
+                    <span className="uppercase tracking-wider font-semibold text-[#1E1814] block">
                       Ticket
                     </span>
                     <span>
@@ -443,13 +457,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     </span>
                   </div>
                   <div>
-                    <span className="uppercase tracking-wider font-semibold text-[#2A2421] block">
+                    <span className="uppercase tracking-wider font-semibold text-[#1E1814] block">
                       Date & Time
                     </span>
                     <span>{confirmedBooking?.eventDate} · {confirmedBooking?.eventTime}</span>
                   </div>
                   <div>
-                    <span className="uppercase tracking-wider font-semibold text-[#2A2421] block">
+                    <span className="uppercase tracking-wider font-semibold text-[#1E1814] block">
                       Venue
                     </span>
                     <span className="truncate">{confirmedBooking?.venueName}</span>
@@ -457,24 +471,24 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-dashed border-[#E2DDD5] flex items-center justify-between">
+              <div className="pt-4 border-t border-dashed border-[#D8CDBC] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white rounded-xl border border-[#E2DDD5] flex items-center justify-center text-[#2A2421]">
+                  <div className="w-12 h-12 bg-ivory rounded-xl border border-[#D8CDBC] flex items-center justify-center text-[#1E1814]">
                     <QrCode className="w-8 h-8" />
                   </div>
-                  <div className="text-[11px] text-[#736B66]">
+                  <div className="text-[11px] text-[#675A50]">
                     <span>Show this ticket code at the entrance</span>
-                    <span className="block font-medium text-[#2A2421]">
+                    <span className="block font-medium text-[#1E1814]">
                       Issued {confirmedBooking?.bookingDate}
                     </span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="font-serif text-lg font-bold text-[#2A2421] tabular-nums block">
+                  <span className="font-serif text-lg font-bold text-[#1E1814] tabular-nums block">
                     {bookingIsFree ? 'Free entry' : `${formatKES(confirmedBooking?.totalPrice ?? 0, null)} paid`}
                   </span>
                   {!bookingIsFree && (
-                    <span className="text-[11px] text-[#736B66]">
+                    <span className="text-[11px] text-[#675A50]">
                       {confirmedBooking?.paymentMethod === 'mpesa' ? 'M-Pesa' : 'Card'}
                     </span>
                   )}
@@ -487,7 +501,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <Button
                 variant="outline"
                 fullWidth
-                icon={<Printer className="w-4 h-4 text-[#C85A40]" />}
+                icon={<Printer className="w-4 h-4 text-[#8A4F33]" />}
                 onClick={() => setIsPrintModalOpen(true)}
               >
                 Print Ticket
@@ -496,7 +510,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <Button
                 variant="outline"
                 fullWidth
-                icon={<Mail className="w-4 h-4 text-[#C85A40]" />}
+                icon={<Mail className="w-4 h-4 text-[#8A4F33]" />}
                 onClick={() => setIsEmailModalOpen(true)}
               >
                 Email Confirmation
@@ -517,7 +531,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <Button
                   variant="outline"
                   fullWidth
-                  icon={<Share2 className="w-4 h-4 text-[#C85A40]" />}
+                  icon={<Share2 className="w-4 h-4 text-[#8A4F33]" />}
                   onClick={() => onShareEvent(event)}
                 >
                   Invite Friends

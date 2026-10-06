@@ -3,27 +3,50 @@
 @theme {
   --font-serif: "Playfair Display", Georgia, serif;
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
-  --color-sand-base: #F4F1EA;
-  --color-sand-card: #FFFFFF;
-  --color-espresso: #2A2421;
-  --color-mocha: #736B66;
-  --color-terracotta: #C85A40;
-  --color-terracotta-hover: #A64831;
-  --color-border-sand: #E2DDD5;
+
+  /* Surfaces: softened, low-glare parchment tones instead of pure white */
+  --color-sand-base: #E9E2D6;
+  --color-sand-card: #F4EFE7;
+  --color-ivory: #F4EFE7;
+  --color-espresso: #1E1814;
+  --color-mocha: #675A50;
+  --color-border-sand: #D8CDBC;
+
+  /* Brand accents sampled from the MagiVents logo */
+  --color-terracotta: #8A4F33;
+  --color-terracotta-hover: #6E3B22;
+  --color-copper: #98613D;
+  --color-rose-gold: #E3B5A1;
+  --color-gold: #C7B173;
+  --color-gold-light: #F6EEA6;
+  --color-onyx: #110D0B;
 }
 
 :root {
-  --bg-sand-base: #F4F1EA;
-  --bg-sand-card: #FFFFFF;
-  --text-espresso: #2A2421;
-  --text-mocha: #736B66;
-  --accent-terracotta: #C85A40;
-  --accent-terracotta-hover: #A64831;
-  --border-sand: #E2DDD5;
+  --bg-sand-base: #E9E2D6;
+  --bg-sand-card: #F4EFE7;
+  --text-espresso: #1E1814;
+  --text-mocha: #675A50;
+  --accent-terracotta: #8A4F33;
+  --accent-terracotta-hover: #6E3B22;
+  --border-sand: #D8CDBC;
+
+  /* Logo gradients: copper wordmark and gold underline bar */
+  --gradient-copper: linear-gradient(90deg, #98613D 0%, #C39177 30%, #E3B5A1 50%, #C6947A 70%, #9B6441 100%);
+  --gradient-gold: linear-gradient(90deg, #9D7B47 0%, #D5C382 30%, #F6EEA6 50%, #CDB87A 72%, #9C7945 100%);
+  --gradient-button: linear-gradient(135deg, #6E3B22 0%, #8A4F33 45%, #9A5B37 100%);
+  --gradient-button-hover: linear-gradient(135deg, #5A2F1B 0%, #74412A 45%, #864D2F 100%);
+
+  color-scheme: light;
 }
 
 body {
   background-color: var(--bg-sand-base);
+  /* Faint copper and gold glows keep the page from reading as flat, bright paper */
+  background-image:
+    radial-gradient(1200px 600px at 100% -10%, rgba(227, 181, 161, 0.22), transparent 60%),
+    radial-gradient(900px 500px at -10% 30%, rgba(199, 177, 115, 0.12), transparent 60%);
+  background-attachment: fixed;
   color: var(--text-espresso);
   font-family: var(--font-sans);
   min-height: 100vh;
@@ -32,21 +55,91 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+::selection {
+  background: rgba(227, 181, 161, 0.55);
+  color: #1E1814;
+}
+
+/* Brand gradient utilities */
+.bg-brand-copper {
+  background-image: var(--gradient-copper);
+}
+
+.bg-brand-gold {
+  background-image: var(--gradient-gold);
+}
+
+/* Footer: solid cocoa at the bottom, easing to nothing at its gold top line */
+.bg-footer-fade {
+  background-image:
+    radial-gradient(700px 220px at 85% 100%, rgba(199, 177, 115, 0.08), transparent 70%),
+    linear-gradient(
+      to top,
+      rgba(43, 33, 28, 0.88) 0,
+      rgba(43, 33, 28, 0.85) calc(100% - 200px),
+      rgba(43, 33, 28, 0.62) calc(100% - 130px),
+      rgba(43, 33, 28, 0.3) calc(100% - 65px),
+      rgba(43, 33, 28, 0.08) calc(100% - 20px),
+      rgba(43, 33, 28, 0) 100%
+    );
+}
+
+.text-brand-gradient {
+  background-image: var(--gradient-copper);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gold-gradient {
+  background-image: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The logo's gold underline bar, ending in its small copper square */
+.brand-rule {
+  position: relative;
+  height: 3px;
+  background-image: var(--gradient-gold);
+}
+
+.brand-rule::after {
+  content: '';
+  position: absolute;
+  right: -10px;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  background: #864D25;
+}
+
+.btn-brand {
+  background-image: var(--gradient-button);
+  color: #FFFFFF;
+}
+
+.btn-brand:hover {
+  background-image: var(--gradient-button-hover);
+  box-shadow: 0 6px 20px -4px rgba(152, 97, 61, 0.55), inset 0 -2px 0 rgba(246, 238, 166, 0.35);
+}
+
 /* Warm diffused shadows with subtle amber undertone */
 .shadow-sand-sm {
-  box-shadow: 0 1px 3px 0 rgba(42, 36, 33, 0.05), 0 1px 2px -1px rgba(42, 36, 33, 0.05);
+  box-shadow: 0 1px 3px 0 rgba(30, 24, 20, 0.07), 0 1px 2px -1px rgba(30, 24, 20, 0.06);
 }
 
 .shadow-sand-md {
-  box-shadow: 0 4px 16px -2px rgba(42, 36, 33, 0.08), 0 2px 6px -2px rgba(42, 36, 33, 0.04);
+  box-shadow: 0 4px 16px -2px rgba(30, 24, 20, 0.11), 0 2px 6px -2px rgba(30, 24, 20, 0.06);
 }
 
 .shadow-sand-lg {
-  box-shadow: 0 12px 32px -4px rgba(42, 36, 33, 0.12), 0 4px 12px -2px rgba(42, 36, 33, 0.06);
+  box-shadow: 0 12px 32px -4px rgba(30, 24, 20, 0.16), 0 4px 12px -2px rgba(30, 24, 20, 0.08);
 }
 
 .shadow-sand-xl {
-  box-shadow: 0 20px 48px -6px rgba(42, 36, 33, 0.16), 0 8px 24px -4px rgba(42, 36, 33, 0.08);
+  box-shadow: 0 20px 48px -6px rgba(30, 24, 20, 0.22), 0 8px 24px -4px rgba(30, 24, 20, 0.1);
 }
 
 /* Warm sand shimmer skeleton animation */
@@ -60,7 +153,7 @@ body {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, #EBE6DF 0%, #F5F2EC 50%, #EBE6DF 100%);
+  background: linear-gradient(90deg, #DFD6C8 0%, #EEE6DA 50%, #DFD6C8 100%);
   background-size: 200% 100%;
   animation: sand-shimmer 1.8s infinite ease-in-out;
 }

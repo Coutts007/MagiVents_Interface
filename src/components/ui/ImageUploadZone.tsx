@@ -152,11 +152,11 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
     <div className="space-y-3">
       {label && (
         <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block">
+          <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block">
             {label}
           </label>
           {helperText && (
-            <span className="text-[11px] text-[#736B66]">
+            <span className="text-[11px] text-[#675A50]">
               {helperText}
             </span>
           )}
@@ -173,8 +173,8 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
         }}
         className={`relative border-2 border-dashed rounded-2xl transition-all p-4 text-center cursor-pointer select-none group ${
           isDragging
-            ? 'border-[#C85A40] bg-[#C85A40]/10 scale-[1.01]'
-            : 'border-[#E2DDD5] bg-[#FAF8F5] hover:border-[#C85A40] hover:bg-[#F4F1EA]/80'
+            ? 'border-[#8A4F33] bg-[#8A4F33]/10 scale-[1.01]'
+            : 'border-[#D8CDBC] bg-[#EFE8DD] hover:border-[#8A4F33] hover:bg-[#E9E2D6]/80'
         }`}
       >
         <input
@@ -189,7 +189,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
           {/* Circular or thumbnail preview */}
           {value ? (
             <div
-              className={`relative overflow-hidden border border-[#E2DDD5] shadow-xs shrink-0 ${
+              className={`relative overflow-hidden border border-[#D8CDBC] shadow-xs shrink-0 ${
                 shape === 'circle' ? 'w-16 h-16 rounded-full' : 'w-24 h-16 rounded-xl'
               }`}
             >
@@ -207,23 +207,23 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
               </div>
             </div>
           ) : (
-            <div className="w-12 h-12 rounded-2xl bg-[#EBE6DF] text-[#C85A40] flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#DFD6C8] text-[#8A4F33] flex items-center justify-center shrink-0">
               <Upload className="w-5 h-5" />
             </div>
           )}
 
           <div className="text-left space-y-0.5 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#2A2421] group-hover:text-[#C85A40] transition-colors">
+              <span className="text-xs font-semibold text-[#1E1814] group-hover:text-[#8A4F33] transition-colors">
                 {uploadButtonText}
               </span>
               {isCustomUpload && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C85A40] text-white">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8A4F33] text-white">
                   Uploaded
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-[#736B66]">
+            <p className="text-[11px] text-[#675A50]">
               Drag & drop or click to browse · PNG, JPG, WebP, GIF (up to 10MB)
             </p>
             {uploadedInfo?.fileName && (
@@ -237,7 +237,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
 
         {/* Processing Spinner Overlay */}
         {isProcessing && (
-          <div className="absolute inset-0 bg-white/80 rounded-2xl backdrop-blur-xs flex items-center justify-center gap-2 text-xs font-semibold text-[#C85A40] z-10">
+          <div className="absolute inset-0 bg-ivory/80 rounded-2xl backdrop-blur-xs flex items-center justify-center gap-2 text-xs font-semibold text-[#8A4F33] z-10">
             <RotateCw className="w-4 h-4 animate-spin" />
             <span>Processing image…</span>
           </div>
@@ -249,7 +249,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
         <button
           type="button"
           onClick={handleClear}
-          className="text-[11px] text-[#736B66] hover:text-red-700 flex items-center gap-1 cursor-pointer transition-colors"
+          className="text-[11px] text-[#675A50] hover:text-red-700 flex items-center gap-1 cursor-pointer transition-colors"
         >
           <Trash2 className="w-3 h-3" />
           <span>Remove image</span>
@@ -267,13 +267,13 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
       {/* Presets Grid (if provided) */}
       {presets.length > 0 && (
         <div className="space-y-2 pt-1">
-          <div className="flex items-center justify-between text-[11px] text-[#736B66]">
+          <div className="flex items-center justify-between text-[11px] text-[#675A50]">
             <span>Or choose one of these images:</span>
             {isCustomUpload && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-[#C85A40] hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-[#8A4F33] hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Trash2 className="w-3 h-3" />
                 Use a suggested image
@@ -298,8 +298,8 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
                   }}
                   className={`relative ${getAspectClass()} overflow-hidden border-2 cursor-pointer transition-all group/preset ${
                     isSelected
-                      ? 'border-[#C85A40] ring-2 ring-[#C85A40]/30 scale-[1.02] shadow-sand-sm'
-                      : 'border-[#E2DDD5] hover:border-[#736B66]'
+                      ? 'border-[#8A4F33] ring-2 ring-[#8A4F33]/30 scale-[1.02] shadow-sand-sm'
+                      : 'border-[#D8CDBC] hover:border-[#675A50]'
                   }`}
                 >
                   <img
@@ -314,7 +314,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
                     </span>
                   </div>
                   {isSelected && (
-                    <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#C85A40] text-white flex items-center justify-center shadow-xs">
+                    <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#8A4F33] text-white flex items-center justify-center shadow-xs">
                       <Check className="w-3 h-3" />
                     </div>
                   )}
@@ -332,7 +332,7 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
             <button
               type="button"
               onClick={() => setShowUrlInput(true)}
-              className="text-[11px] text-[#736B66] hover:text-[#C85A40] flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-[11px] text-[#675A50] hover:text-[#8A4F33] flex items-center gap-1 cursor-pointer transition-colors"
             >
               <LinkIcon className="w-3 h-3" />
               <span>Paste image web link instead</span>
@@ -344,19 +344,19 @@ export const ImageUploadZone: React.FC<ImageUploadZoneProps> = ({
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
                 placeholder="https://example.com/poster.jpg"
-                className="flex-1 px-3 py-1.5 bg-white border border-[#E2DDD5] rounded-xl text-xs text-[#2A2421] focus:outline-none focus:border-[#C85A40]"
+                className="flex-1 px-3 py-1.5 bg-ivory border border-[#D8CDBC] rounded-xl text-xs text-[#1E1814] focus:outline-none focus:border-[#8A4F33]"
               />
               <button
                 type="button"
                 onClick={handleApplyUrl}
-                className="px-3 py-1.5 bg-[#2A2421] hover:bg-[#C85A40] text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+                className="px-3 py-1.5 bg-[#1E1814] hover:bg-[#8A4F33] text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors"
               >
                 Apply
               </button>
               <button
                 type="button"
                 onClick={() => setShowUrlInput(false)}
-                className="p-1.5 text-[#736B66] hover:text-[#2A2421] cursor-pointer"
+                className="p-1.5 text-[#675A50] hover:text-[#1E1814] cursor-pointer"
                 title="Cancel"
               >
                 <X className="w-3.5 h-3.5" />

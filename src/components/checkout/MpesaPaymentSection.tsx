@@ -125,10 +125,10 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
   return (
     <div className="space-y-4 pt-2">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block">
+        <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block">
           Choose Payment Method *
         </label>
-        <span className="text-[11px] text-[#736B66] font-mono">
+        <span className="text-[11px] text-[#675A50] font-mono">
           Amount due: {amountLabel}
         </span>
       </div>
@@ -148,28 +148,28 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
           className={`p-3.5 rounded-2xl border-2 transition-all text-left flex items-start gap-3 cursor-pointer select-none relative ${
             state.method === 'mpesa'
               ? 'border-[#00A34D] bg-[#00A34D]/5 shadow-sand-sm'
-              : 'border-[#E2DDD5] bg-white hover:border-[#736B66]'
+              : 'border-[#D8CDBC] bg-ivory hover:border-[#675A50]'
           }`}
         >
           <div
             className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs ${
               state.method === 'mpesa'
                 ? 'bg-[#00A34D] text-white shadow-xs'
-                : 'bg-[#F4F1EA] text-[#2A2421]'
+                : 'bg-[#E9E2D6] text-[#1E1814]'
             }`}
           >
             <Smartphone className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#2A2421] flex items-center gap-1.5">
+              <span className="text-xs font-bold text-[#1E1814] flex items-center gap-1.5">
                 M-Pesa
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#00A34D] text-white">
                 Recommended
               </span>
             </div>
-            <span className="text-[11px] text-[#736B66] block mt-0.5">
+            <span className="text-[11px] text-[#675A50] block mt-0.5">
               {amountLabel} · STK Push / Paybill
             </span>
           </div>
@@ -187,24 +187,24 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
           }}
           className={`p-3.5 rounded-2xl border-2 transition-all text-left flex items-start gap-3 cursor-pointer select-none ${
             state.method === 'card'
-              ? 'border-[#C85A40] bg-[#C85A40]/5 shadow-sand-sm'
-              : 'border-[#E2DDD5] bg-white hover:border-[#736B66]'
+              ? 'border-[#8A4F33] bg-[#8A4F33]/5 shadow-sand-sm'
+              : 'border-[#D8CDBC] bg-ivory hover:border-[#675A50]'
           }`}
         >
           <div
             className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs ${
               state.method === 'card'
-                ? 'bg-[#C85A40] text-white shadow-xs'
-                : 'bg-[#F4F1EA] text-[#2A2421]'
+                ? 'bg-[#8A4F33] text-white shadow-xs'
+                : 'bg-[#E9E2D6] text-[#1E1814]'
             }`}
           >
             <CreditCard className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-xs font-bold text-[#2A2421] block">
+            <span className="text-xs font-bold text-[#1E1814] block">
               Card (Visa / Mastercard)
             </span>
-            <span className="text-[11px] text-[#736B66] block mt-0.5">
+            <span className="text-[11px] text-[#675A50] block mt-0.5">
               {amountLabel}
             </span>
           </div>
@@ -213,18 +213,18 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
 
       {/* M-Pesa Interactive Flow */}
       {state.method === 'mpesa' && (
-        <div className="p-4 bg-[#FAF8F5] border border-[#00A34D]/30 rounded-2xl space-y-4 animate-in fade-in duration-200">
+        <div className="p-4 bg-[#EFE8DD] border border-[#00A34D]/30 rounded-2xl space-y-4 animate-in fade-in duration-200">
           {/* M-Pesa Header & Mode Selector */}
-          <div className="flex items-center justify-between border-b border-[#E2DDD5] pb-3">
+          <div className="flex items-center justify-between border-b border-[#D8CDBC] pb-3">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-[#00A34D] animate-pulse" />
-              <span className="text-xs font-bold text-[#2A2421]">
+              <span className="text-xs font-bold text-[#1E1814]">
                 Lipa na M-Pesa
               </span>
             </div>
 
             {/* Mode switch: STK Push vs Paybill Manual */}
-            <div className="flex items-center gap-1 bg-[#EBE6DF] p-0.5 rounded-xl text-[11px]">
+            <div className="flex items-center gap-1 bg-[#DFD6C8] p-0.5 rounded-xl text-[11px]">
               <button
                 type="button"
                 onClick={() =>
@@ -232,8 +232,8 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
                 }
                 className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
                   state.mpesaMode === 'stk'
-                    ? 'bg-white text-[#2A2421] font-semibold shadow-xs'
-                    : 'text-[#736B66] hover:text-[#2A2421]'
+                    ? 'bg-ivory text-[#1E1814] font-semibold shadow-xs'
+                    : 'text-[#675A50] hover:text-[#1E1814]'
                 }`}
               >
                 STK Push
@@ -245,8 +245,8 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
                 }
                 className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
                   state.mpesaMode === 'paybill'
-                    ? 'bg-white text-[#2A2421] font-semibold shadow-xs'
-                    : 'text-[#736B66] hover:text-[#2A2421]'
+                    ? 'bg-ivory text-[#1E1814] font-semibold shadow-xs'
+                    : 'text-[#675A50] hover:text-[#1E1814]'
                 }`}
               >
                 Paybill / Till
@@ -258,7 +258,7 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
           {state.mpesaMode === 'stk' ? (
             <div className="space-y-3">
               <div>
-                <label className="text-[11px] font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+                <label className="text-[11px] font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                   Safaricom M-Pesa Number *
                 </label>
                 <input
@@ -267,9 +267,9 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
                   onChange={handlePhoneChange}
                   placeholder="Safaricom number, e.g. 07XX XXX XXX"
                   disabled={stkStatus === 'initiating' || stkStatus === 'waiting_pin'}
-                  className="w-full px-3.5 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm font-mono text-[#2A2421] focus:outline-none focus:border-[#00A34D]"
+                  className="w-full px-3.5 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm font-mono text-[#1E1814] focus:outline-none focus:border-[#00A34D]"
                 />
-                <p className="text-[11px] text-[#736B66] mt-1">
+                <p className="text-[11px] text-[#675A50] mt-1">
                   We will send a payment request to this number. Approve it with your M-Pesa PIN.
                 </p>
                 {phoneError && (
@@ -293,11 +293,11 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
               )}
 
               {stkStatus === 'initiating' && (
-                <div className="p-3 bg-white rounded-xl border border-[#E2DDD5] flex items-center gap-3 animate-in fade-in">
+                <div className="p-3 bg-ivory rounded-xl border border-[#D8CDBC] flex items-center gap-3 animate-in fade-in">
                   <Loader2 className="w-5 h-5 text-[#00A34D] animate-spin shrink-0" />
-                  <div className="text-xs text-[#2A2421]">
+                  <div className="text-xs text-[#1E1814]">
                     <span className="font-semibold block">Sending payment request…</span>
-                    <span className="text-[#736B66] text-[11px]">This takes a few seconds</span>
+                    <span className="text-[#675A50] text-[11px]">This takes a few seconds</span>
                   </div>
                 </div>
               )}
@@ -335,7 +335,7 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
                   <button
                     type="button"
                     onClick={() => setStkStatus('idle')}
-                    className="text-[11px] text-[#736B66] hover:text-[#2A2421] underline cursor-pointer"
+                    className="text-[11px] text-[#675A50] hover:text-[#1E1814] underline cursor-pointer"
                   >
                     Reset
                   </button>
@@ -345,21 +345,21 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
           ) : (
             /* Mode 2: Manual Paybill / Buy Goods */
             <div className="space-y-3">
-              <div className="p-3 bg-white rounded-xl border border-[#E2DDD5] text-xs space-y-2">
-                <span className="font-semibold text-[#2A2421] block">
+              <div className="p-3 bg-ivory rounded-xl border border-[#D8CDBC] text-xs space-y-2">
+                <span className="font-semibold text-[#1E1814] block">
                   Pay with Paybill:
                 </span>
-                <ol className="list-decimal list-inside text-[11px] text-[#736B66] space-y-1">
+                <ol className="list-decimal list-inside text-[11px] text-[#675A50] space-y-1">
                   <li>Go to M-Pesa menu &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Paybill</strong></li>
-                  <li>Enter Business No: <strong className="text-[#2A2421] font-mono">522522</strong></li>
-                  <li>Enter Account No: <strong className="text-[#2A2421] font-mono">{accountRef}</strong></li>
-                  <li>Enter Amount: <strong className="text-[#2A2421] font-mono">{amountLabel}</strong></li>
+                  <li>Enter Business No: <strong className="text-[#1E1814] font-mono">522522</strong></li>
+                  <li>Enter Account No: <strong className="text-[#1E1814] font-mono">{accountRef}</strong></li>
+                  <li>Enter Amount: <strong className="text-[#1E1814] font-mono">{amountLabel}</strong></li>
                   <li>Enter your M-Pesa PIN and confirm payment</li>
                 </ol>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-[#2A2421] uppercase tracking-wider block mb-1">
+                <label className="text-[11px] font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
                   M-Pesa Confirmation Code *
                 </label>
                 <div className="flex gap-2">
@@ -371,7 +371,7 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
                       setPaybillError('');
                     }}
                     placeholder="10-character code from the M-Pesa SMS"
-                    className="flex-1 px-3.5 py-2 bg-white border border-[#E2DDD5] rounded-xl text-xs font-mono uppercase text-[#2A2421] focus:outline-none focus:border-[#00A34D]"
+                    className="flex-1 px-3.5 py-2 bg-ivory border border-[#D8CDBC] rounded-xl text-xs font-mono uppercase text-[#1E1814] focus:outline-none focus:border-[#00A34D]"
                   />
                   <button
                     type="button"
@@ -394,7 +394,7 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 text-[11px] text-[#736B66] pt-1">
+          <div className="flex items-center gap-1.5 text-[11px] text-[#675A50] pt-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#00A34D] shrink-0" />
             <span>Keep your M-Pesa confirmation SMS until after the event.</span>
           </div>

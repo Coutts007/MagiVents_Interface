@@ -72,7 +72,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
       onMouseEnter={() => setIsPlaying(false)}
       onMouseLeave={() => setIsPlaying(true)}
     >
-      <div className="relative w-full aspect-[16/10] sm:aspect-[21/9] md:aspect-[2.4/1] min-h-[460px] sm:min-h-[500px] rounded-3xl overflow-hidden shadow-sand-xl border border-[#E2DDD5] bg-[#2A2421]">
+      <div className="relative w-full aspect-[16/10] sm:aspect-[21/9] md:aspect-[2.4/1] min-h-[460px] sm:min-h-[500px] rounded-3xl overflow-hidden shadow-sand-xl border border-[#D8CDBC] bg-[#1E1814]">
         {/* Slide Images */}
         {displayEvents.map((event, index) => {
           const isActive = index === currentIndex;
@@ -93,7 +93,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               />
 
               {/* Scrim Gradient Overlay for 4.5:1 text contrast */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1F1916]/95 via-[#1F1916]/55 to-black/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#140F0C]/95 via-[#140F0C]/55 to-black/20" />
             </div>
           );
         })}
@@ -106,7 +106,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               <Badge variant="terracotta" size="md">
                 {currentEvent.category}
               </Badge>
-              <span className="text-xs uppercase tracking-widest text-[#F4F1EA]/80 font-medium">
+              <span className="text-xs uppercase tracking-widest text-[#F3E9DE]/80 font-medium">
                 Just added on MagiVents
               </span>
             </div>
@@ -114,26 +114,26 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
             {/* Event Title */}
             <h1
               style={{ textWrap: 'balance' }}
-              className="font-serif text-2xl sm:text-4xl md:text-5xl lg:text-5xl font-medium tracking-tight text-[#F4F1EA] leading-[1.15]"
+              className="font-serif text-2xl sm:text-4xl md:text-5xl lg:text-5xl font-medium tracking-tight text-[#F3E9DE] leading-[1.15]"
             >
               {currentEvent.title}
             </h1>
 
             {/* Subtitle */}
-            <p className="text-sm sm:text-base md:text-lg text-[#F4F1EA]/85 font-light line-clamp-2 max-w-2xl">
+            <p className="text-sm sm:text-base md:text-lg text-[#F3E9DE]/85 font-light line-clamp-2 max-w-2xl">
               {currentEvent.subtitle}
             </p>
 
             {/* Metadata Bar */}
-            <div className="flex flex-wrap items-center gap-y-2 gap-x-5 text-xs sm:text-sm text-[#F4F1EA]/80 pt-1">
+            <div className="flex flex-wrap items-center gap-y-2 gap-x-5 text-xs sm:text-sm text-[#F3E9DE]/80 pt-1">
               <div className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-[#C85A40]" />
+                <Calendar className="w-4 h-4 text-[#E3B5A1]" />
                 <span>{currentEvent.date}</span>
                 <span className="text-white/40">·</span>
                 <span>{currentEvent.time}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-[#C85A40]" />
+                <MapPin className="w-4 h-4 text-[#E3B5A1]" />
                 <span className="truncate max-w-[220px]">{currentEvent.venue.name}</span>
                 <span className="text-white/40">·</span>
                 <span>{currentEvent.venue.city}</span>
@@ -158,7 +158,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 variant="secondary"
                 size="md"
                 onClick={() => onSelectEvent(currentEvent)}
-                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm"
+                className="bg-ivory/10 hover:bg-ivory/20 text-white border-white/20 backdrop-blur-sm"
               >
                 View details
               </Button>
@@ -169,7 +169,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   onClick={() => onShare(currentEvent)}
                   aria-label="Share this event"
                   title="Share event link"
-                  className="p-3 rounded-full bg-white/10 hover:bg-white/25 text-white border border-white/20 backdrop-blur-sm transition-all duration-200 cursor-pointer shadow-xs active:scale-95 flex items-center justify-center"
+                  className="p-3 rounded-full bg-ivory/10 hover:bg-ivory/25 text-white border border-white/20 backdrop-blur-sm transition-all duration-200 cursor-pointer shadow-xs active:scale-95 flex items-center justify-center"
                 >
                   <Share2 className="w-4 h-4" />
                 </button>
@@ -216,7 +216,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
               onClick={() => setCurrentIndex(idx)}
               aria-label={`Go to slide ${idx + 1}`}
               className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                idx === currentIndex ? 'w-8 bg-[#C85A40]' : 'w-2 bg-white/40 hover:bg-white/70'
+                idx === currentIndex ? 'w-8 bg-brand-gold' : 'w-2 bg-ivory/40 hover:bg-ivory/70'
               }`}
             />
           ))}

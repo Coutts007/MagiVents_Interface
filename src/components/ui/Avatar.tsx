@@ -24,7 +24,7 @@ export const Avatar: React.FC<AvatarProps> = ({ name, src, size = 'md', classNam
 
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 select-none bg-[#C85A40] text-white font-semibold tracking-wide ${sizeStyles[size]} ${className}`}
+      className={`inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 select-none bg-[#8A4F33] text-white font-semibold tracking-wide ${sizeStyles[size]} ${className}`}
       aria-label={name}
       title={name}
     >

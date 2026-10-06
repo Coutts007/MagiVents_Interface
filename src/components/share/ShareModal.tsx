@@ -95,8 +95,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     >
       <div className="space-y-6">
         {/* Event Preview Card */}
-        <div className="p-4 bg-[#FAF8F5] rounded-2xl border border-[#E2DDD5] flex gap-4 items-center">
-          <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-[#E2DDD5] shrink-0">
+        <div className="p-4 bg-[#EFE8DD] rounded-2xl border border-[#D8CDBC] flex gap-4 items-center">
+          <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-[#D8CDBC] shrink-0">
             <EventArtwork imageUrl={event.imageUrl} title={event.title} category={event.category} />
           </div>
           <div className="min-w-0 flex-1">
@@ -104,16 +104,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               <Badge variant="terracotta" size="sm">
                 {event.category}
               </Badge>
-              <span className="text-[11px] text-[#736B66] font-mono">
+              <span className="text-[11px] text-[#675A50] font-mono">
                 {event.isFree ? 'Free' : `From ${formatKES(event.pricing.startingPrice)}`}
               </span>
             </div>
-            <h4 className="font-serif text-base font-medium text-[#2A2421] truncate">
+            <h4 className="font-serif text-base font-medium text-[#1E1814] truncate">
               {event.title}
             </h4>
-            <div className="flex items-center gap-2 text-xs text-[#736B66] mt-1">
+            <div className="flex items-center gap-2 text-xs text-[#675A50] mt-1">
               <span className="flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-[#C85A40]" />
+                <Calendar className="w-3 h-3 text-[#8A4F33]" />
                 {event.date.split(',')[1] || event.date}
               </span>
               <span>·</span>
@@ -127,16 +127,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
         {/* Primary Native Share Sheet Button (if supported by browser/device) */}
         {webShareSupported && (
-          <div className="p-3.5 bg-[#C85A40]/5 rounded-2xl border border-[#C85A40]/20 flex items-center justify-between gap-3">
+          <div className="p-3.5 bg-[#8A4F33]/5 rounded-2xl border border-[#8A4F33]/20 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-[#C85A40] text-white flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-[#8A4F33] text-white flex items-center justify-center shrink-0">
                 <Smartphone className="w-4 h-4" />
               </div>
               <div>
-                <span className="text-xs font-semibold text-[#2A2421] block">
+                <span className="text-xs font-semibold text-[#1E1814] block">
                   Share from your device
                 </span>
-                <span className="text-[11px] text-[#736B66]">
+                <span className="text-[11px] text-[#675A50]">
                   Messages, WhatsApp and other installed apps
                 </span>
               </div>
@@ -155,11 +155,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
         {/* Unique Event Link Box */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider block">
+          <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block">
             Event Link
           </label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-white border border-[#E2DDD5] rounded-xl px-3.5 py-2.5 text-xs text-[#736B66] font-mono truncate select-all">
+            <div className="flex-1 bg-ivory border border-[#D8CDBC] rounded-xl px-3.5 py-2.5 text-xs text-[#675A50] font-mono truncate select-all">
               {shareUrl}
             </div>
             <Button
@@ -181,7 +181,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         {/* Social Sharing Channels Grid */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-[#2A2421] uppercase tracking-wider">
+            <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider">
               Share on
             </label>
           </div>
@@ -194,7 +194,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   key={ch.id}
                   type="button"
                   onClick={() => handleSocialClick(url)}
-                  className="p-3 bg-white hover:bg-[#FAF8F5] border border-[#E2DDD5] hover:border-[#736B66] rounded-xl flex items-center gap-2.5 transition-all text-left cursor-pointer group shadow-2xs hover:-translate-y-0.5"
+                  className="p-3 bg-ivory hover:bg-[#EFE8DD] border border-[#D8CDBC] hover:border-[#675A50] rounded-xl flex items-center gap-2.5 transition-all text-left cursor-pointer group shadow-2xs hover:-translate-y-0.5"
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-white font-bold text-xs"
@@ -208,10 +208,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     {ch.id === 'email' && <Mail className="w-4 h-4" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="text-xs font-medium text-[#2A2421] block group-hover:text-[#C85A40] transition-colors truncate">
+                    <span className="text-xs font-medium text-[#1E1814] block group-hover:text-[#8A4F33] transition-colors truncate">
                       {ch.name}
                     </span>
-                    <span className="text-[10px] text-[#736B66] flex items-center gap-0.5">
+                    <span className="text-[10px] text-[#675A50] flex items-center gap-0.5">
                       Share <ExternalLink className="w-2.5 h-2.5 opacity-60" />
                     </span>
                   </div>
@@ -222,10 +222,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         </div>
 
         {/* Copy Formatted Personal Invitation Text */}
-        <div className="p-3.5 bg-[#FAF8F5] rounded-2xl border border-[#E2DDD5] flex items-center justify-between gap-3">
+        <div className="p-3.5 bg-[#EFE8DD] rounded-2xl border border-[#D8CDBC] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#C85A40] shrink-0" />
-            <span className="text-xs text-[#736B66]">
+            <Sparkles className="w-4 h-4 text-[#8A4F33] shrink-0" />
+            <span className="text-xs text-[#675A50]">
               Copy a ready-made invitation for SMS or group chats.
             </span>
           </div>

@@ -94,7 +94,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ onCreden
 
   if (!GOOGLE_CLIENT_ID || loadFailed) {
     return (
-      <p className="text-[11px] text-center text-[#736B66] py-2">
+      <p className="text-[11px] text-center text-[#675A50] py-2">
         {GOOGLE_CLIENT_ID
           ? 'Google Sign-In is unavailable right now. Please use your email and password.'
           : 'Google Sign-In is not configured (set VITE_GOOGLE_CLIENT_ID).'}

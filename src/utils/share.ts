@@ -61,7 +61,7 @@ export const SOCIAL_CHANNELS: SocialShareChannel[] = [
     name: 'X (Twitter)',
     color: '#000000',
     hoverColor: '#1a1a1a',
-    iconBg: '#F4F1EA',
+    iconBg: '#E9E2D6',
     getUrl: (url, event) => {
       const text = encodeURIComponent(
         `Join me at ${event.title} on ${event.date} at ${placeLabel(event)}. Get tickets on MagiVents:`
@@ -116,9 +116,9 @@ export const SOCIAL_CHANNELS: SocialShareChannel[] = [
   {
     id: 'email',
     name: 'Email',
-    color: '#C85A40',
-    hoverColor: '#A64831',
-    iconBg: '#FAEDE9',
+    color: '#8A4F33',
+    hoverColor: '#6E3B22',
+    iconBg: '#EEDDCF',
     getUrl: (url, event) => {
       const subject = encodeURIComponent(`Join me at ${event.title} on ${event.date}`);
       const venue = [event.venue.name, event.venue.address, event.venue.city].filter(Boolean).join(', ');

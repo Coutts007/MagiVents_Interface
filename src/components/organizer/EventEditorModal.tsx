@@ -20,9 +20,9 @@ interface AgendaRow extends AgendaItem {
 }
 
 const inputClass =
-  'w-full px-4 py-2.5 bg-white border border-[#E2DDD5] rounded-xl text-sm text-[#2A2421] placeholder-[#736B66]/60 focus:outline-none focus:border-[#C85A40] focus:ring-1 focus:ring-[#C85A40] disabled:bg-[#F4F1EA] disabled:text-[#736B66]';
-const labelClass = 'text-xs font-semibold text-[#2A2421] uppercase tracking-wider block mb-1';
-const hintClass = 'text-[11px] text-[#736B66] mt-1';
+  'w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] placeholder-[#675A50]/60 focus:outline-none focus:border-[#8A4F33] focus:ring-1 focus:ring-[#8A4F33] disabled:bg-[#E9E2D6] disabled:text-[#675A50]';
+const labelClass = 'text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1';
+const hintClass = 'text-[11px] text-[#675A50] mt-1';
 
 let rowCounter = 0;
 const newRow = (item: Partial<AgendaItem> = {}): AgendaRow => ({
@@ -117,15 +117,15 @@ const CategoryCombobox: React.FC<{ value: EventCategory | ''; onChange: (value: 
         onKeyDown={handleKeyDown}
         className={`${inputClass} pr-9`}
       />
-      <ChevronDown className="w-4 h-4 text-[#736B66] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <ChevronDown className="w-4 h-4 text-[#675A50] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
       {isOpen && (
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-[#E2DDD5] rounded-xl shadow-sand-md py-1"
+          className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto bg-ivory border border-[#D8CDBC] rounded-xl shadow-sand-md py-1"
         >
           {options.length === 0 ? (
-            <li className="px-4 py-2 text-xs text-[#736B66]">No matching category</li>
+            <li className="px-4 py-2 text-xs text-[#675A50]">No matching category</li>
           ) : (
             options.map((option, index) => (
               <li
@@ -140,11 +140,11 @@ const CategoryCombobox: React.FC<{ value: EventCategory | ''; onChange: (value: 
                 }}
                 onMouseEnter={() => setActiveIndex(index)}
                 className={`px-4 py-2 text-sm cursor-pointer flex items-center justify-between ${
-                  index === activeIndex ? 'bg-[#F4F1EA] text-[#2A2421]' : 'text-[#2A2421]'
+                  index === activeIndex ? 'bg-[#E9E2D6] text-[#1E1814]' : 'text-[#1E1814]'
                 }`}
               >
                 <span>{option}</span>
-                {option === value && <Check className="w-4 h-4 text-[#C85A40]" />}
+                {option === value && <Check className="w-4 h-4 text-[#8A4F33]" />}
               </li>
             ))
           )}
@@ -492,9 +492,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
               type="checkbox"
               checked={isFree}
               onChange={(e) => setIsFree(e.target.checked)}
-              className="w-4 h-4 accent-[#C85A40] cursor-pointer"
+              className="w-4 h-4 accent-[#8A4F33] cursor-pointer"
             />
-            <span className="text-sm font-medium text-[#2A2421]">This is a free event</span>
+            <span className="text-sm font-medium text-[#1E1814]">This is a free event</span>
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -565,7 +565,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           <div className="flex items-center justify-between gap-3">
             <div>
               <span className={labelClass}>Agenda</span>
-              <p className="text-[11px] text-[#736B66]">Optional · add the programme in the order it happens</p>
+              <p className="text-[11px] text-[#675A50]">Optional · add the programme in the order it happens</p>
             </div>
             <Button
               type="button"
@@ -579,15 +579,15 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           </div>
 
           {agenda.length === 0 ? (
-            <div className="p-4 rounded-xl border border-dashed border-[#E2DDD5] bg-[#FAF8F5] text-xs text-[#736B66] text-center">
+            <div className="p-4 rounded-xl border border-dashed border-[#D8CDBC] bg-[#EFE8DD] text-xs text-[#675A50] text-center">
               No agenda yet. Select <strong>Add item</strong> to add sessions such as registration, talks or performances.
             </div>
           ) : (
             <ol className="space-y-3">
               {agenda.map((row, index) => (
-                <li key={row.key} className="p-3 rounded-xl border border-[#E2DDD5] bg-[#FAF8F5] space-y-2">
+                <li key={row.key} className="p-3 rounded-xl border border-[#D8CDBC] bg-[#EFE8DD] space-y-2">
                   <div className="flex items-start gap-2">
-                    <span className="mt-2.5 w-5 text-xs font-semibold text-[#736B66] shrink-0">{index + 1}.</span>
+                    <span className="mt-2.5 w-5 text-xs font-semibold text-[#675A50] shrink-0">{index + 1}.</span>
                     <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-2 flex-1">
                       <input
                         type="time"
@@ -611,7 +611,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                         onClick={() => moveAgendaRow(index, -1)}
                         disabled={index === 0}
                         aria-label={`Move agenda item ${index + 1} up`}
-                        className="p-2 rounded-lg text-[#736B66] hover:text-[#2A2421] hover:bg-white disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                        className="p-2 rounded-lg text-[#675A50] hover:text-[#1E1814] hover:bg-ivory disabled:opacity-30 cursor-pointer disabled:cursor-default"
                       >
                         <ArrowUp className="w-4 h-4" />
                       </button>
@@ -620,7 +620,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                         onClick={() => moveAgendaRow(index, 1)}
                         disabled={index === agenda.length - 1}
                         aria-label={`Move agenda item ${index + 1} down`}
-                        className="p-2 rounded-lg text-[#736B66] hover:text-[#2A2421] hover:bg-white disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                        className="p-2 rounded-lg text-[#675A50] hover:text-[#1E1814] hover:bg-ivory disabled:opacity-30 cursor-pointer disabled:cursor-default"
                       >
                         <ArrowDown className="w-4 h-4" />
                       </button>
@@ -628,7 +628,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                         type="button"
                         onClick={() => removeAgendaRow(row.key)}
                         aria-label={`Remove agenda item ${index + 1}`}
-                        className="p-2 rounded-lg text-[#736B66] hover:text-red-700 hover:bg-white cursor-pointer"
+                        className="p-2 rounded-lg text-[#675A50] hover:text-red-700 hover:bg-ivory cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -708,7 +708,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         )}
 
         {/* Actions */}
-        <div className="pt-4 border-t border-[#E2DDD5] flex items-center justify-end gap-3">
+        <div className="pt-4 border-t border-[#D8CDBC] flex items-center justify-end gap-3">
           <Button variant="ghost" onClick={onClose} type="button">
             Cancel
           </Button>

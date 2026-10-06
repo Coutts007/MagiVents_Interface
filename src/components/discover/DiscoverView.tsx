@@ -180,34 +180,35 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
       {/* Discovery Catalog Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-8 border-b border-[#E2DDD5]">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-8 border-b border-[#D8CDBC]">
           <div>
-            <span className="text-xs uppercase tracking-widest text-[#736B66] font-semibold flex items-center gap-1.5 mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-[#C85A40]" />
+            <span className="text-xs uppercase tracking-widest text-[#675A50] font-semibold flex items-center gap-1.5 mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-[#8A4F33]" />
               Events across Kenya
             </span>
             <h2
               style={{ textWrap: 'balance' }}
-              className="font-serif text-3xl sm:text-4xl font-medium text-[#2A2421]"
+              className="font-serif text-3xl sm:text-4xl font-medium text-[#1E1814]"
             >
               Find your next event
             </h2>
+            <div aria-hidden="true" className="brand-rule w-24 mt-3 rounded-l-full" />
           </div>
 
           {/* Segmented View Mode Tabs & Shimmer Simulation */}
           <div className="flex flex-wrap items-center gap-3">
             {/* View Mode Segmented Tab: Directory Grid vs Calendar Schedule */}
-            <div className="bg-[#FAF8F5] p-1 rounded-2xl border border-[#E2DDD5] flex items-center shadow-xs">
+            <div className="bg-[#EFE8DD] p-1 rounded-2xl border border-[#D8CDBC] flex items-center shadow-xs">
               <button
                 type="button"
                 onClick={() => handleTabChange('grid')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
                   activeTab === 'grid'
-                    ? 'bg-white text-[#2A2421] shadow-sand-sm font-semibold'
-                    : 'text-[#736B66] hover:text-[#2A2421]'
+                    ? 'bg-ivory text-[#1E1814] shadow-sand-sm font-semibold'
+                    : 'text-[#675A50] hover:text-[#1E1814]'
                 }`}
               >
-                <LayoutGrid className="w-3.5 h-3.5 text-[#C85A40]" />
+                <LayoutGrid className="w-3.5 h-3.5 text-[#8A4F33]" />
                 <span>Grid</span>
               </button>
               <button
@@ -215,11 +216,11 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 onClick={() => handleTabChange('calendar')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none ${
                   activeTab === 'calendar'
-                    ? 'bg-white text-[#2A2421] shadow-sand-sm font-semibold'
-                    : 'text-[#736B66] hover:text-[#2A2421]'
+                    ? 'bg-ivory text-[#1E1814] shadow-sand-sm font-semibold'
+                    : 'text-[#675A50] hover:text-[#1E1814]'
                 }`}
               >
-                <CalendarDays className="w-3.5 h-3.5 text-[#C85A40]" />
+                <CalendarDays className="w-3.5 h-3.5 text-[#8A4F33]" />
                 <span>Calendar</span>
               </button>
             </div>
@@ -273,20 +274,20 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
           <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between pt-2">
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#736B66]" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#675A50]" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search events, categories, venues, towns or organizers"
                 aria-label="Search events"
-                className="w-full pl-11 pr-10 py-2.5 bg-white border border-[#E2DDD5] rounded-full text-sm text-[#2A2421] placeholder-[#736B66]/70 focus:outline-none focus:border-[#C85A40] focus:ring-1 focus:ring-[#C85A40] transition-colors shadow-sand-sm"
+                className="w-full pl-11 pr-10 py-2.5 bg-ivory border border-[#D8CDBC] rounded-full text-sm text-[#1E1814] placeholder-[#675A50]/70 focus:outline-none focus:border-[#8A4F33] focus:ring-1 focus:ring-[#8A4F33] transition-colors shadow-sand-sm"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search"
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-[#736B66] hover:text-[#2A2421] rounded-full"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 text-[#675A50] hover:text-[#1E1814] rounded-full"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -295,7 +296,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
 
             {/* Quick Sort & Time Window Filter */}
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-[#736B66]">
+              <div className="flex items-center gap-1.5 text-xs text-[#675A50]">
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span className="font-medium">Sort:</span>
               </div>
@@ -303,14 +304,14 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-white border border-[#E2DDD5] rounded-full px-4 py-2 text-xs font-medium text-[#2A2421] focus:outline-none focus:border-[#C85A40] cursor-pointer shadow-sand-sm"
+                className="bg-ivory border border-[#D8CDBC] rounded-full px-4 py-2 text-xs font-medium text-[#1E1814] focus:outline-none focus:border-[#8A4F33] cursor-pointer shadow-sand-sm"
               >
                 <option value="date">Date: Upcoming first</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
               </select>
 
-              <div className="flex items-center bg-white border border-[#E2DDD5] rounded-full p-1 shadow-sand-sm overflow-x-auto">
+              <div className="flex items-center bg-ivory border border-[#D8CDBC] rounded-full p-1 shadow-sand-sm overflow-x-auto">
                 {DATE_FILTERS.map((filter) => (
                   <button
                     key={filter.id}
@@ -318,8 +319,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                     onClick={() => setSelectedDateFilter(filter.id)}
                     className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
                       selectedDateFilter === filter.id
-                        ? 'bg-[#2A2421] text-white'
-                        : 'text-[#736B66] hover:text-[#2A2421]'
+                        ? 'bg-[#1E1814] text-white'
+                        : 'text-[#675A50] hover:text-[#1E1814]'
                     }`}
                   >
                     {filter.label}
@@ -334,7 +335,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                 className={`px-3.5 py-2 rounded-full text-xs font-medium border transition-colors cursor-pointer shadow-sand-sm ${
                   freeOnly
                     ? 'bg-emerald-600 border-emerald-600 text-white'
-                    : 'bg-white border-[#E2DDD5] text-[#736B66] hover:text-[#2A2421]'
+                    : 'bg-ivory border-[#D8CDBC] text-[#675A50] hover:text-[#1E1814]'
                 }`}
               >
                 Free only
@@ -369,14 +370,14 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
           </div>
         ) : (
           /* Empty Search/Filter State */
-          <div className="py-20 text-center bg-white rounded-3xl border border-[#E2DDD5] p-8 sm:p-12 shadow-sand-sm my-6">
-            <div className="w-16 h-16 mx-auto rounded-full bg-[#F4F1EA] flex items-center justify-center text-[#736B66] mb-4">
-              <Search className="w-8 h-8 text-[#C85A40]" />
+          <div className="py-20 text-center bg-ivory rounded-3xl border border-[#D8CDBC] p-8 sm:p-12 shadow-sand-sm my-6">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[#E9E2D6] flex items-center justify-center text-[#675A50] mb-4">
+              <Search className="w-8 h-8 text-[#8A4F33]" />
             </div>
-            <h3 className="font-serif text-2xl font-medium text-[#2A2421] mb-2">
+            <h3 className="font-serif text-2xl font-medium text-[#1E1814] mb-2">
               No events match your search
             </h3>
-            <p className="text-sm text-[#736B66] max-w-md mx-auto mb-6">
+            <p className="text-sm text-[#675A50] max-w-md mx-auto mb-6">
               We couldn't find any events {selectedCategory !== 'all' ? `in "${selectedCategory}" ` : ''}matching your filters. Try different words or reset the filters.
             </p>
             <Button variant="primary" onClick={resetFilters}>
@@ -390,30 +391,30 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
 
       {/* About MagiVents strip, with live figures from the event list */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20">
-        <div className="bg-[#EBE6DF]/70 rounded-3xl p-8 sm:p-12 border border-[#E2DDD5] flex flex-col md:flex-row items-center justify-between gap-8">
+        <div className="bg-[#DFD6C8]/70 rounded-3xl p-8 sm:p-12 border border-[#D8CDBC] flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-2xl">
-            <span className="text-xs uppercase tracking-widest text-[#C85A40] font-bold">
+            <span className="text-xs uppercase tracking-widest text-[#8A4F33] font-bold">
               About MagiVents
             </span>
-            <h3 className="font-serif text-2xl sm:text-3xl font-medium text-[#2A2421] mt-2 mb-3">
+            <h3 className="font-serif text-2xl sm:text-3xl font-medium text-[#1E1814] mt-2 mb-3">
               Kenya's events, in one place
             </h3>
-            <p className="text-sm text-[#736B66] leading-relaxed">
+            <p className="text-sm text-[#675A50] leading-relaxed">
               Discover sports, music, business, tech, education, arts, community and civic events near you. Book in Kenyan shillings and pay with M-Pesa, or register for free events in a few taps.
             </p>
           </div>
           <div className="shrink-0 flex flex-col sm:flex-row items-center gap-3">
-            <div className="text-center px-4 py-2 border-r border-[#E2DDD5]/80 last:border-none">
-              <span className="font-serif text-3xl font-medium text-[#2A2421] block tabular-nums">{stats.upcoming}</span>
-              <span className="text-xs text-[#736B66] uppercase tracking-wider">Upcoming events</span>
+            <div className="text-center px-4 py-2 border-r border-[#D8CDBC]/80 last:border-none">
+              <span className="font-serif text-3xl font-medium text-[#1E1814] block tabular-nums">{stats.upcoming}</span>
+              <span className="text-xs text-[#675A50] uppercase tracking-wider">Upcoming events</span>
             </div>
-            <div className="text-center px-4 py-2 border-r border-[#E2DDD5]/80 last:border-none">
-              <span className="font-serif text-3xl font-medium text-[#2A2421] block tabular-nums">{stats.cities}</span>
-              <span className="text-xs text-[#736B66] uppercase tracking-wider">{stats.cities === 1 ? 'Town' : 'Towns'}</span>
+            <div className="text-center px-4 py-2 border-r border-[#D8CDBC]/80 last:border-none">
+              <span className="font-serif text-3xl font-medium text-[#1E1814] block tabular-nums">{stats.cities}</span>
+              <span className="text-xs text-[#675A50] uppercase tracking-wider">{stats.cities === 1 ? 'Town' : 'Towns'}</span>
             </div>
-            <div className="text-center px-4 py-2 border-r border-[#E2DDD5]/80 last:border-none">
-              <span className="font-serif text-3xl font-medium text-[#2A2421] block tabular-nums">{stats.free}</span>
-              <span className="text-xs text-[#736B66] uppercase tracking-wider">Free events</span>
+            <div className="text-center px-4 py-2 border-r border-[#D8CDBC]/80 last:border-none">
+              <span className="font-serif text-3xl font-medium text-[#1E1814] block tabular-nums">{stats.free}</span>
+              <span className="text-xs text-[#675A50] uppercase tracking-wider">Free events</span>
             </div>
           </div>
         </div>

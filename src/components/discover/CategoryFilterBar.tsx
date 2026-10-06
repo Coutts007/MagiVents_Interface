@@ -38,21 +38,21 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
     <div className="w-full space-y-4">
       {/* Category search */}
       <div className="relative w-full sm:max-w-xs">
-        <Search className="w-3.5 h-3.5 text-[#736B66] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-3.5 h-3.5 text-[#675A50] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="search"
           value={categoryQuery}
           onChange={(e) => setCategoryQuery(e.target.value)}
           placeholder="Search categories, e.g. tech, sports"
           aria-label="Search categories"
-          className="w-full pl-9 pr-8 py-2 bg-white border border-[#E2DDD5] rounded-full text-xs text-[#2A2421] placeholder-[#736B66]/70 focus:outline-none focus:border-[#C85A40] focus:ring-1 focus:ring-[#C85A40] transition-colors"
+          className="w-full pl-9 pr-8 py-2 bg-ivory border border-[#D8CDBC] rounded-full text-xs text-[#1E1814] placeholder-[#675A50]/70 focus:outline-none focus:border-[#8A4F33] focus:ring-1 focus:ring-[#8A4F33] transition-colors"
         />
         {categoryQuery && (
           <button
             type="button"
             onClick={() => setCategoryQuery('')}
             aria-label="Clear category search"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#736B66] hover:text-[#2A2421] cursor-pointer"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#675A50] hover:text-[#1E1814] cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -73,17 +73,17 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
               onClick={() => onSelectCategory(cat.id)}
               className={`whitespace-nowrap rounded-full px-4 py-2.5 text-xs font-medium transition-all duration-300 ease-out cursor-pointer flex items-center gap-2 select-none shrink-0 ${
                 isSelected
-                  ? 'bg-[#C85A40] text-white shadow-sand-md ring-2 ring-[#C85A40]/20'
-                  : 'bg-white text-[#736B66] border border-[#E2DDD5] hover:border-[#736B66] hover:text-[#2A2421] shadow-sand-sm'
+                  ? 'bg-[#8A4F33] text-white shadow-sand-md ring-2 ring-[#8A4F33]/20'
+                  : 'bg-ivory text-[#675A50] border border-[#D8CDBC] hover:border-[#675A50] hover:text-[#1E1814] shadow-sand-sm'
               }`}
             >
-              <CategoryIcon category={cat.id} className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#C85A40]'}`} />
+              <CategoryIcon category={cat.id} className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#8A4F33]'}`} />
               <span className="font-medium">{cat.label}</span>
               <span
                 className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono tabular-nums ${
                   isSelected
-                    ? 'bg-white/20 text-white'
-                    : 'bg-[#F4F1EA] text-[#736B66] border border-[#E2DDD5]'
+                    ? 'bg-ivory/20 text-white'
+                    : 'bg-[#E9E2D6] text-[#675A50] border border-[#D8CDBC]'
                 }`}
               >
                 {count}
@@ -92,27 +92,27 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
           );
         })}
         {!hasMatches && (
-          <span className="text-xs text-[#736B66] px-2 whitespace-nowrap">No matching category</span>
+          <span className="text-xs text-[#675A50] px-2 whitespace-nowrap">No matching category</span>
         )}
       </div>
 
       {/* Category banner when a specific category is active */}
       {activeDef && activeDef.id !== 'all' && (
-        <div className="bg-[#FAF8F5] rounded-2xl p-5 border border-[#E2DDD5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-300">
+        <div className="bg-[#EFE8DD] rounded-2xl p-5 border border-[#D8CDBC] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-300">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] uppercase tracking-widest font-bold text-[#C85A40]">
+              <span className="text-[11px] uppercase tracking-widest font-bold text-[#8A4F33]">
                 Category
               </span>
-              <span className="text-[#E2DDD5]">·</span>
-              <span className="text-xs text-[#736B66]">
+              <span className="text-[#D8CDBC]">·</span>
+              <span className="text-xs text-[#675A50]">
                 {categoryCounts[activeDef.id] || 0} {(categoryCounts[activeDef.id] || 0) === 1 ? 'event' : 'events'}
               </span>
             </div>
-            <h3 className="font-serif text-lg font-medium text-[#2A2421]">
+            <h3 className="font-serif text-lg font-medium text-[#1E1814]">
               {activeDef.tagline}
             </h3>
-            <p className="text-xs text-[#736B66] max-w-2xl leading-relaxed">
+            <p className="text-xs text-[#675A50] max-w-2xl leading-relaxed">
               {activeDef.description}
             </p>
           </div>
@@ -121,7 +121,7 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
             {activeTag && onClearTag && (
               <button
                 onClick={onClearTag}
-                className="inline-flex items-center gap-1 text-xs text-[#C85A40] bg-[#C85A40]/10 px-3 py-1.5 rounded-full border border-[#C85A40]/20 hover:bg-[#C85A40]/20 transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-[#8A4F33] bg-[#8A4F33]/10 px-3 py-1.5 rounded-full border border-[#8A4F33]/20 hover:bg-[#8A4F33]/20 transition-colors"
               >
                 <span>Tag: #{activeTag}</span>
                 <X className="w-3 h-3" />
@@ -130,7 +130,7 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
 
             <button
               onClick={() => onSelectCategory('all')}
-              className="text-xs text-[#736B66] hover:text-[#2A2421] px-3 py-1.5 rounded-full border border-[#E2DDD5] hover:bg-white bg-white/60 transition-colors cursor-pointer"
+              className="text-xs text-[#675A50] hover:text-[#1E1814] px-3 py-1.5 rounded-full border border-[#D8CDBC] hover:bg-ivory bg-ivory/60 transition-colors cursor-pointer"
             >
               Show all
             </button>
