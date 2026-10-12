@@ -189,6 +189,20 @@ export function getPublicConfig(): Promise<PublicConfig> {
   return configPromise;
 }
 
+// --- Address search (server proxy to OpenStreetMap Nominatim) -------------------
+
+export interface PlaceResult {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export const geocodeApi = {
+  /** Run only when the organizer presses Search: the OSM policy forbids search-as-you-type */
+  search: (query: string) =>
+    API.get<{ results: PlaceResult[] }>('/geocode/', { params: { q: query } }).then((r) => r.data.results)
+};
+
 // --- Gatherings ---------------------------------------------------------------
 
 /** Event payload sent to the backend; server-managed fields are omitted. */

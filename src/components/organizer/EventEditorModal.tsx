@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { ImageUploadZone } from '../ui/ImageUploadZone';
+import { Coordinates, CoordinatePicker } from './CoordinatePicker';
 
 export interface EventEditorModalProps {
   isOpen: boolean;
@@ -197,6 +198,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [venueName, setVenueName] = useState('');
   const [venueAddress, setVenueAddress] = useState('');
   const [venueCity, setVenueCity] = useState('');
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [isFree, setIsFree] = useState(false);
   const [tiers, setTiers] = useState<TierRow[]>([]);
   const [imageUrl, setImageUrl] = useState('');
@@ -222,6 +224,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       setVenueName(eventToEdit.venue.name);
       setVenueAddress(eventToEdit.venue.address);
       setVenueCity(eventToEdit.venue.city);
+      setCoordinates(eventToEdit.venue.coordinates ?? null);
       setIsFree(Boolean(eventToEdit.isFree));
       setTiers(
         eventToEdit.pricing.tiers.length
@@ -246,6 +249,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       setVenueName('');
       setVenueAddress('');
       setVenueCity('');
+      setCoordinates(null);
       setIsFree(false);
       setTiers([newTierRow()]);
       setImageUrl('');
@@ -400,7 +404,8 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         ...eventToEdit?.venue,
         name: venueName.trim(),
         address: venueAddress.trim(),
-        city: venueCity.trim()
+        city: venueCity.trim(),
+        coordinates: coordinates ?? undefined
       },
       isFree,
       pricing: {
@@ -538,6 +543,13 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
             />
           </div>
         </div>
+
+        {/* Map pin */}
+        <CoordinatePicker
+          value={coordinates}
+          onChange={setCoordinates}
+          suggestedQuery={[venueName, venueAddress, venueCity].map((part) => part.trim()).filter(Boolean).join(', ')}
+        />
 
         {/* Ticket types & capacity */}
         <div className="space-y-3">
