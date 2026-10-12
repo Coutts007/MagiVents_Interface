@@ -13,7 +13,8 @@ import {
   Sparkles,
   Layers,
   BadgePercent,
-  CalendarDays
+  CalendarDays,
+  ScanLine
 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
@@ -21,6 +22,7 @@ import { EventArtwork } from '../ui/EventArtwork';
 import { formatKES } from '../../utils/format';
 import { Button } from '../ui/Button';
 import { PromoCodesPanel } from './PromoCodesPanel';
+import { CheckInPanel } from './CheckInPanel';
 
 export interface OrganizerDashboardProps {
   events: EventItem[];
@@ -34,11 +36,12 @@ export interface OrganizerDashboardProps {
   onBecomeOrganizer: () => void;
 }
 
-type DashboardSection = 'events' | 'promos';
+type DashboardSection = 'events' | 'promos' | 'checkin';
 
 const SECTIONS: { id: DashboardSection; label: string; icon: React.ElementType }[] = [
   { id: 'events', label: 'Events', icon: CalendarDays },
-  { id: 'promos', label: 'Promo codes', icon: BadgePercent }
+  { id: 'promos', label: 'Promo codes', icon: BadgePercent },
+  { id: 'checkin', label: 'Check-in', icon: ScanLine }
 ];
 
 export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
@@ -141,6 +144,8 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           </button>
         ))}
       </div>
+
+      {section === 'checkin' && <CheckInPanel events={events} />}
 
       {section === 'promos' && (
         <div className="my-8">

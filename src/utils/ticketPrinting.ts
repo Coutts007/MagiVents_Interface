@@ -39,46 +39,6 @@ export function getPaymentSummary(booking: TicketBooking): PaymentSummary {
 
 const guestsLabel = (quantity: number) => `${quantity} ${quantity === 1 ? 'person' : 'people'}`;
 
-/** Plain-text ticket for the "download" button. */
-export function buildTicketText(booking: TicketBooking): string {
-  const payment = getPaymentSummary(booking);
-  const paymentLines = payment.isFree
-    ? 'Payment:        Free entry'
-    : [
-        `Payment:        ${payment.method}`,
-        payment.reference ? `M-Pesa receipt: ${payment.reference}` : null,
-        booking.mpesaPhoneNumber ? `M-Pesa phone:   ${booking.mpesaPhoneNumber}` : null,
-        `Amount paid:    ${payment.amount}`
-      ]
-        .filter(Boolean)
-        .join('\n');
-
-  return `================================================
-MAGIVENTS TICKET
-================================================
-Ticket code:    ${booking.ticketCode}
-Status:         Confirmed
-
-Event:          ${booking.eventTitle}
-Date & time:    ${booking.eventDate} · ${booking.eventTime}
-Venue:          ${booking.venueName}
-Attendee:       ${booking.attendeeName}
-Email:          ${booking.attendeeEmail}
-Ticket type:    ${booking.tierName}
-Admits:         ${guestsLabel(booking.quantity)}
-
-${paymentLines}
-Booked on:      ${booking.bookingDate}
-
-AT THE ENTRANCE:
-1. Show this ticket on your phone or printed, with the ticket code.
-2. Arrive early to allow time for check-in.
-================================================
-MagiVents · Kenya's events platform
-Help: ${MAGIVENTS_CONTACT_EMAIL}
-`;
-}
-
 /**
  * Generates an email subject and body for the booking confirmation
  */

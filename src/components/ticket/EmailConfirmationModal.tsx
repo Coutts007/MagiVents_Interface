@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Mail, Check, Copy, ExternalLink } from 'lucide-react';
+import { Mail, Check, Copy, ExternalLink, Send } from 'lucide-react';
 import { TicketBooking } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { generateBookingEmailContent, getPaymentSummary, MAGIVENTS_CONTACT_EMAIL } from '../../utils/ticketPrinting';
+import { getApiErrorMessage, ticketsApi } from '../../services/api';
 
 export interface EmailConfirmationModalProps {
   isOpen: boolean;
@@ -18,12 +19,16 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
 }) => {
   const [recipientEmail, setRecipientEmail] = useState(booking?.attendeeEmail || '');
   const [copied, setCopied] = useState(false);
+  const [resendState, setResendState] = useState<{ status: 'idle' | 'sending' | 'sent' | 'error'; message?: string }>({
+    status: 'idle'
+  });
 
   // Sync recipientEmail when booking changes
   React.useEffect(() => {
     if (booking?.attendeeEmail) {
       setRecipientEmail(booking.attendeeEmail);
     }
+    setResendState({ status: 'idle' });
   }, [booking]);
 
   if (!booking) return null;
@@ -41,6 +46,17 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
     }
   };
 
+  // MagiVents emails the ticket (with the PDF) to the attendee's own address again
+  const handleResend = async () => {
+    setResendState({ status: 'sending' });
+    try {
+      const message = await ticketsApi.resend(booking.id);
+      setResendState({ status: 'sent', message });
+    } catch (err) {
+      setResendState({ status: 'error', message: getApiErrorMessage(err, 'The email could not be sent. Please try again later.') });
+    }
+  };
+
   // Opens the user's own email app with the confirmation filled in
   const handleOpenMailClient = () => {
     const mailtoUrl = `mailto:${encodeURIComponent(recipientEmail.trim())}?subject=${encodeURIComponent(
@@ -54,14 +70,44 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Email Your Ticket"
-      subtitle="Send the booking confirmation to yourself or someone else."
+      subtitle="Get the confirmation again, or forward it to someone else."
       maxWidth="lg"
     >
       <div className="space-y-6">
+        {/* Server resend to the attendee */}
+        <div className="p-4 rounded-2xl bg-[#E9E2D6] border border-[#D8CDBC] space-y-3">
+          <p className="text-xs text-[#675A50] leading-relaxed">
+            We emailed this ticket, with a PDF copy, to{' '}
+            <strong className="text-[#1E1814]">{booking.attendeeEmail}</strong> when it was booked. Not in your inbox
+            or spam folder?
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Send className="w-3.5 h-3.5" />}
+              onClick={handleResend}
+              disabled={resendState.status === 'sending'}
+            >
+              {resendState.status === 'sending' ? 'Sending…' : 'Resend confirmation email'}
+            </Button>
+            {resendState.status === 'sent' && (
+              <span role="status" className="text-xs text-emerald-700 font-medium">
+                ✓ {resendState.message}
+              </span>
+            )}
+            {resendState.status === 'error' && (
+              <span role="alert" className="text-xs text-red-700">
+                {resendState.message}
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Recipient */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block">
-            Send to
+            Forward to someone else
           </label>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#8A4F33] text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -76,7 +122,7 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
             />
           </div>
           <p className="text-[11px] text-[#675A50]">
-            This opens your email app with the confirmation ready to send.
+            This opens your own email app with the confirmation ready to send.
           </p>
         </div>
 
@@ -165,7 +211,7 @@ export const EmailConfirmationModal: React.FC<EmailConfirmationModalProps> = ({
             Close
           </Button>
           <Button
-            variant="primary"
+            variant="outline"
             size="md"
             icon={<ExternalLink className="w-4 h-4" />}
             onClick={handleOpenMailClient}

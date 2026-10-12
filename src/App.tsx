@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { EventItem, TicketTier, TicketBooking } from './types';
+import { AppView, EventItem, TicketTier, TicketBooking } from './types';
 import { AuthModalMode } from './types/auth';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
@@ -8,7 +8,8 @@ import {
   bookingsApi,
   bookmarksApi,
   gatheringsApi,
-  getApiErrorMessage
+  getApiErrorMessage,
+  ticketsApi
 } from './services/api';
 import { Navbar } from './components/navigation/Navbar';
 import { DiscoverView } from './components/discover/DiscoverView';
@@ -23,6 +24,7 @@ import { BookmarksDrawer } from './components/bookmarks/BookmarksDrawer';
 import { ShareModal } from './components/share/ShareModal';
 import { Footer } from './components/common/Footer';
 import { SearchDialog } from './components/search/SearchDialog';
+import { TicketView } from './components/ticket/TicketView';
 
 function toEventInput(event: EventItem): EventInput {
   const { id, attendeeCount, organizerId, organizerStats, ...input } = event;
@@ -46,8 +48,13 @@ function MainLayout() {
     return () => clearTimeout(timer);
   }, [notice]);
 
-  // Navigation State: 'discover' | 'details' | 'organizer' | 'profile'
-  const [currentView, setCurrentView] = useState<'discover' | 'details' | 'organizer' | 'profile'>('discover');
+  // Navigation State
+  const [currentView, setCurrentView] = useState<AppView>('discover');
+
+  // "Find my ticket" page: a ticket opened from its QR/email link (?ticket=<uuid>) or found by code + email
+  const [ticketViewBooking, setTicketViewBooking] = useState<TicketBooking | null>(null);
+  const [isTicketLoading, setIsTicketLoading] = useState(false);
+  const [ticketLoadError, setTicketLoadError] = useState<string | null>(null);
   const [discoverTab, setDiscoverTab] = useState<'grid' | 'calendar'>('grid');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -159,6 +166,28 @@ function MainLayout() {
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, [events]);
 
+  // Ticket links: ?ticket=<booking uuid> opens that ticket
+  useEffect(() => {
+    const openTicketFromUrl = () => {
+      const ticketId = new URLSearchParams(window.location.search).get('ticket');
+      if (!ticketId) return;
+      setCurrentView('ticket');
+      setIsTicketLoading(true);
+      setTicketLoadError(null);
+      ticketsApi
+        .get(ticketId)
+        .then(setTicketViewBooking)
+        .catch((err) => {
+          setTicketViewBooking(null);
+          setTicketLoadError(getApiErrorMessage(err, 'This ticket link could not be opened.'));
+        })
+        .finally(() => setIsTicketLoading(false));
+    };
+    openTicketFromUrl();
+    window.addEventListener('popstate', openTicketFromUrl);
+    return () => window.removeEventListener('popstate', openTicketFromUrl);
+  }, []);
+
   // Derived selected event
   const selectedEvent = events.find((e) => e.id === selectedEventId) || events[0];
 
@@ -199,6 +228,7 @@ function MainLayout() {
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete('event');
+      url.searchParams.delete('ticket');
       window.history.pushState({}, '', url.toString());
     } catch (e) {
       console.warn('Could not update history state', e);
@@ -439,6 +469,25 @@ function MainLayout() {
             onBecomeOrganizer={() => {
               if (requireAuth()) setBecomeOrganizer({ open: true, thenCreate: false });
             }}
+          />
+        )}
+
+        {currentView === 'ticket' && (
+          <TicketView
+            booking={ticketViewBooking}
+            onBookingFound={(booking) => {
+              setTicketViewBooking(booking);
+              setTicketLoadError(null);
+              if (!booking) {
+                // Leaving a ticket link: drop it from the address bar
+                const url = new URL(window.location.href);
+                url.searchParams.delete('ticket');
+                window.history.replaceState({}, '', url.toString());
+              }
+            }}
+            isLoading={isTicketLoading}
+            loadError={ticketLoadError}
+            onBrowseEvents={handleBackToDiscover}
           />
         )}
 

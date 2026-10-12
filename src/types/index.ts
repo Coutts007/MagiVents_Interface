@@ -1,3 +1,6 @@
+/** The pages App.tsx switches between */
+export type AppView = 'discover' | 'details' | 'organizer' | 'profile' | 'ticket';
+
 export type EventCategory =
   | 'Sports & Outdoors'
   | 'Entertainment & Music'
@@ -120,6 +123,10 @@ export interface TicketBooking {
   currency?: string;
   totalInKes?: number;
   notes?: string;
+  /** Link encoded in the ticket's QR code (contains the booking UUID) */
+  ticketUrl?: string;
+  /** Set when the ticket was scanned at the door */
+  checkedInAt?: string | null;
 }
 
 export interface OrganizerStats {

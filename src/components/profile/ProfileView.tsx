@@ -9,7 +9,6 @@ import {
   Shield,
   Edit3,
   LogOut,
-  QrCode,
   ArrowRight,
   CheckCircle,
   AlertCircle,
@@ -24,6 +23,7 @@ import { EventItem, TicketBooking } from '../../types';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { TicketQRCode } from '../ui/TicketQRCode';
 import { ImageUploadZone } from '../ui/ImageUploadZone';
 import { Avatar } from '../ui/Avatar';
 import { EventArtwork } from '../ui/EventArtwork';
@@ -784,9 +784,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
               <div className="pt-4 border-t border-dashed border-[#D8CDBC] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-ivory rounded-xl border border-[#D8CDBC] flex items-center justify-center text-[#1E1814]">
-                    <QrCode className="w-8 h-8" />
-                  </div>
+                  <TicketQRCode value={selectedPass.ticketUrl} size={96} />
                   <div className="text-[11px] text-[#675A50]">
                     <span>Show at the entrance</span>
                     <span className="block font-medium text-[#1E1814]">

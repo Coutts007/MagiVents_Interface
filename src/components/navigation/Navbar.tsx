@@ -10,16 +10,18 @@ import {
   User,
   LogOut,
   ChevronDown,
-  Search
+  Search,
+  Ticket
 } from 'lucide-react';
+import { AppView } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Avatar } from '../ui/Avatar';
 import { BrandLogo } from '../ui/BrandLogo';
 
 export interface NavbarProps {
-  currentView: 'discover' | 'details' | 'organizer' | 'profile';
-  onNavigate: (view: 'discover' | 'details' | 'organizer' | 'profile', tab?: 'grid' | 'calendar') => void;
+  currentView: AppView;
+  onNavigate: (view: AppView, tab?: 'grid' | 'calendar') => void;
   savedCount: number;
   onOpenSaved: () => void;
   onCreateEvent: () => void;
@@ -269,7 +271,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {navLinks.map((item) => (
+            {[
+              ...navLinks,
+              // Guests open their ticket with its code and email
+              { label: 'Find my ticket', view: 'ticket' as const, tab: undefined, icon: Ticket, active: currentView === 'ticket' }
+            ].map((item) => (
               <button
                 key={item.label}
                 onClick={() => {

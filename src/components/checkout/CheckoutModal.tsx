@@ -4,7 +4,6 @@ import {
   MapPin,
   CheckCircle,
   CalendarPlus,
-  QrCode,
   Info,
   Share2,
   Check,
@@ -21,6 +20,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { MpesaPaymentSection, MpesaPaymentState } from './MpesaPaymentSection';
 import { PrintableTicketModal } from '../ticket/PrintableTicketModal';
+import { TicketQRCode } from '../ui/TicketQRCode';
 import { EmailConfirmationModal } from '../ticket/EmailConfirmationModal';
 
 export interface CheckoutModalProps {
@@ -489,11 +489,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
               <div className="pt-4 border-t border-dashed border-[#D8CDBC] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-ivory rounded-xl border border-[#D8CDBC] flex items-center justify-center text-[#1E1814]">
-                    <QrCode className="w-8 h-8" />
-                  </div>
+                  <TicketQRCode value={confirmedBooking?.ticketUrl} size={96} />
                   <div className="text-[11px] text-[#675A50]">
-                    <span>Show this ticket code at the entrance</span>
+                    <span>Show this QR code at the entrance</span>
                     <span className="block font-medium text-[#1E1814]">
                       Issued {confirmedBooking?.bookingDate}
                     </span>

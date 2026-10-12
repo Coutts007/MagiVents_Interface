@@ -258,6 +258,53 @@ export const promoApi = {
   remove: (id: string) => API.delete(`/promo-codes/${id}/`)
 };
 
+// --- Tickets (by booking UUID) and check-in ------------------------------------
+
+export interface AttendeeRow {
+  id: string;
+  ticketCode: string;
+  attendeeName: string;
+  attendeeEmail: string;
+  tierName: string;
+  quantity: number;
+  bookingDate: string;
+  checkedInAt: string | null;
+}
+
+export interface AttendeeList {
+  counts: { bookings: number; people: number; checkedInBookings: number; checkedInPeople: number };
+  attendees: AttendeeRow[];
+}
+
+export interface CheckInResult {
+  result: 'checked_in' | 'already_checked_in' | 'wrong_event' | 'not_found';
+  message: string;
+  attendee?: AttendeeRow;
+}
+
+export const ticketsApi = {
+  get: (bookingId: string) => API.get<TicketBooking>(`/tickets/${bookingId}/`).then((r) => r.data),
+  /** Guests find a ticket with its code and the email they booked with */
+  lookup: (ticketCode: string, email: string) =>
+    API.post<TicketBooking>('/tickets/lookup/', { ticketCode, email }).then((r) => r.data),
+  resend: (bookingId: string) =>
+    API.post<{ message: string }>(`/tickets/${bookingId}/resend/`).then((r) => r.data.message),
+  pdfUrl: (bookingId: string) => `${BASE_URL}/tickets/${bookingId}/pdf/`
+};
+
+export const checkInApi = {
+  attendees: (eventId: string) => API.get<AttendeeList>(`/gatherings/${eventId}/attendees/`).then((r) => r.data),
+  /** `ticket` may be the scanned QR URL, a booking UUID or a typed ticket code */
+  checkIn: (eventId: string, ticket: string) =>
+    API.post<CheckInResult>(`/gatherings/${eventId}/check-in/`, { ticket })
+      .then((r) => r.data)
+      .catch((err) => {
+        // Already checked in / wrong event / not found come back as 4xx with a result
+        if (axios.isAxiosError(err) && err.response?.data?.result) return err.response.data as CheckInResult;
+        throw err;
+      })
+};
+
 export const bookmarksApi = {
   list: () => API.get<string[]>('/bookmarks/').then((r) => r.data),
   toggle: (eventId: string) =>

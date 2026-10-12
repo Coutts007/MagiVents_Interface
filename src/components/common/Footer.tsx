@@ -5,7 +5,7 @@ import { BrandLogo } from '../ui/BrandLogo';
 export const MAGIVENTS_EMAIL = 'magiventskenya@gmail.com';
 
 export interface FooterProps {
-  onNavigate: (view: 'discover' | 'organizer', tab?: 'grid' | 'calendar') => void;
+  onNavigate: (view: 'discover' | 'organizer' | 'ticket', tab?: 'grid' | 'calendar') => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
@@ -57,6 +57,14 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
                   className="hover:text-[#F3E9DE] transition-colors cursor-pointer"
                 >
                   Organizer dashboard
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => onNavigate('ticket')}
+                  className="hover:text-[#F3E9DE] transition-colors cursor-pointer"
+                >
+                  Find my ticket
                 </button>
               </li>
             </ul>
