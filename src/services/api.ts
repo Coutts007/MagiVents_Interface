@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { EventItem, TicketBooking } from '../types';
+import { BookingWithPayment, EventItem, TicketBooking } from '../types';
 import { UserProfile } from '../types/auth';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -167,6 +167,11 @@ export async function uploadAvatarFile(file: File): Promise<string> {
 export interface PublicConfig {
   mpesaPaybill: string;
   mpesaAccountName: string;
+  /** 'simulated' runs payments against a fake gateway: no real money moves */
+  paymentsMode: 'simulated' | 'live';
+  /** Which checkout options work with the server's configuration */
+  paymentMethods: { mpesaStk: boolean; mpesaPaybill: boolean; card: boolean };
+  paymentHoldMinutes: number;
 }
 
 let configPromise: Promise<PublicConfig> | null = null;
@@ -217,9 +222,22 @@ export interface BookingRequest {
   promoCode?: string;
 }
 
+export interface PayRequest {
+  paymentMethod: 'mpesa' | 'card';
+  mpesaMode?: 'stk' | 'paybill';
+  mpesaPhoneNumber?: string;
+}
+
 export const bookingsApi = {
+  /** Confirmed bookings of the signed-in user */
   list: () => API.get<TicketBooking[]>('/bookings/').then((r) => r.data),
-  create: (booking: BookingRequest) => API.post<TicketBooking>('/bookings/', booking).then((r) => r.data)
+  /** Free bookings come back confirmed; paid ones come back pending with their payment attempt */
+  create: (booking: BookingRequest) => API.post<BookingWithPayment>('/bookings/', booking).then((r) => r.data),
+  /** Polled by checkout until the booking is confirmed, failed or expired (works for guests) */
+  status: (bookingId: string) => API.get<BookingWithPayment>(`/bookings/${bookingId}/status/`).then((r) => r.data),
+  /** Retries payment, or switches method, for the same booking */
+  pay: (bookingId: string, request: PayRequest) =>
+    API.post<BookingWithPayment>(`/bookings/${bookingId}/pay/`, request).then((r) => r.data)
 };
 
 export interface PromoCheck {

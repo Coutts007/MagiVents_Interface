@@ -61,7 +61,8 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   // Computed statistics
   const stats = useMemo(() => {
     const totalEvents = events.length;
-    const activeAttendees = events.reduce((acc, curr) => acc + (curr.attendeeCount || 0), 0);
+    // Confirmed bookings only; tickets held by unpaid bookings are not attendees yet
+    const activeAttendees = events.reduce((acc, curr) => acc + (curr.organizerStats?.ticketsSold || 0), 0);
     // Sales come from the server, summed from the bookings actually made
     const grossRevenue = events.reduce((acc, curr) => acc + (curr.organizerStats?.revenue || 0), 0);
     const ticketsSold = events.reduce((acc, curr) => acc + (curr.organizerStats?.ticketsSold || 0), 0);
@@ -259,7 +260,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           <div className="divide-y divide-[#D8CDBC]">
             {filteredEvents.map((event) => {
               const fillPercentage = Math.round(
-                ((event.attendeeCount || 0) / event.capacity) * 100
+                ((event.organizerStats?.ticketsSold || 0) / event.capacity) * 100
               );
 
               return (
@@ -315,7 +316,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                     <div className="flex justify-between text-xs text-[#675A50]">
                       <span>Attendees</span>
                       <span className="font-medium text-[#1E1814] tabular-nums">
-                        {event.attendeeCount} / {event.capacity}
+                        {event.organizerStats?.ticketsSold ?? 0} / {event.capacity}
                       </span>
                     </div>
                     <div className="w-full bg-[#D8CDBC] h-2 rounded-full overflow-hidden">

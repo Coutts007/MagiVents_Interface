@@ -1,416 +1,193 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Smartphone,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  CreditCard,
-  ShieldCheck
-} from 'lucide-react';
+import React from 'react';
+import { AlertCircle, CreditCard, ShieldCheck, Smartphone } from 'lucide-react';
 import { formatKES } from '../../utils/format';
-import { PublicConfig, getPublicConfig } from '../../services/api';
+import { PublicConfig } from '../../services/api';
 
-export interface MpesaPaymentState {
+/** What the attendee chose; the payment itself happens on the server after the booking is submitted. */
+export interface PaymentChoice {
   method: 'mpesa' | 'card';
   mpesaMode: 'stk' | 'paybill';
   phoneNumber: string;
-  receiptNumber: string;
-  isVerified: boolean;
-  totalInKes: number;
 }
+
+export const INITIAL_PAYMENT_CHOICE: PaymentChoice = { method: 'mpesa', mpesaMode: 'stk', phoneNumber: '' };
 
 interface MpesaPaymentSectionProps {
   /** Amount due in Kenyan shillings */
   totalKes: number;
-  attendeeName: string;
-  onPaymentChange: (state: MpesaPaymentState) => void;
-  state: MpesaPaymentState;
+  value: PaymentChoice;
+  onChange: (value: PaymentChoice) => void;
+  /** Server configuration: which methods work, and whether payments are simulated */
+  config: PublicConfig | null;
+  /** Shown under the phone field */
+  phoneError?: string | null;
+  disabled?: boolean;
 }
 
+/** Choose M-Pesa (prompt on the phone, or Paybill) or card. Nothing is charged until the booking is submitted. */
 export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
   totalKes,
-  attendeeName,
-  onPaymentChange,
-  state
+  value,
+  onChange,
+  config,
+  phoneError,
+  disabled = false
 }) => {
-  const totalInKes = Math.round(totalKes);
-  const amountLabel = formatKES(totalInKes, null);
+  const amountLabel = formatKES(Math.round(totalKes), null);
+  const methods = config?.paymentMethods ?? { mpesaStk: true, mpesaPaybill: true, card: true };
+  const mpesaAvailable = methods.mpesaStk || methods.mpesaPaybill;
 
-  const [stkStatus, setStkStatus] = useState<'idle' | 'initiating' | 'waiting_pin' | 'verified' | 'error'>('idle');
-  const [phoneError, setPhoneError] = useState('');
-  const [paybillCodeInput, setPaybillCodeInput] = useState('');
-  const [paybillError, setPaybillError] = useState('');
+  const choose = (next: Partial<PaymentChoice>) => onChange({ ...value, ...next });
 
-  // The Paybill number comes from server configuration, never from the code
-  const [config, setConfig] = useState<PublicConfig | null>(null);
-  useEffect(() => {
-    getPublicConfig()
-      .then(setConfig)
-      .catch(() => setConfig(null));
-  }, []);
-  const paybill = config?.mpesaPaybill || '…';
-  const accountName = config?.mpesaAccountName || 'MagiVents';
-
-  // Normalize phone number to standard 2547XXXXXXXX or 07XXXXXXXX
-  const validatePhone = (phone: string) => {
-    const cleaned = phone.replace(/[\s-+]/g, '');
-    if (!cleaned) return 'M-Pesa phone number is required.';
-    if (cleaned.startsWith('254') && cleaned.length === 12) return '';
-    if (cleaned.startsWith('0') && cleaned.length === 10) return '';
-    if (cleaned.startsWith('7') && cleaned.length === 9) return '';
-    if (cleaned.startsWith('1') && cleaned.length === 9) return '';
-    return 'Enter a valid Safaricom number, e.g. 07XX XXX XXX or 2547XX XXX XXX.';
+  const methodCard = (
+    method: PaymentChoice['method'],
+    available: boolean,
+    icon: React.ReactNode,
+    title: string,
+    detail: string,
+    accent: string
+  ) => {
+    const selected = value.method === method;
+    return (
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        disabled={!available || disabled}
+        onClick={() =>
+          choose(
+            method === 'mpesa'
+              ? { method, mpesaMode: methods.mpesaStk ? value.mpesaMode : 'paybill' }
+              : { method }
+          )
+        }
+        className={`p-3.5 rounded-2xl border-2 transition-all text-left flex items-start gap-3 cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed ${
+          selected ? `${accent} shadow-sand-sm` : 'border-[#D8CDBC] bg-ivory hover:border-[#675A50]'
+        }`}
+      >
+        {icon}
+        <div className="min-w-0 flex-1">
+          <span className="text-xs font-bold text-[#1E1814] block">{title}</span>
+          <span className="text-[11px] text-[#675A50] block mt-0.5">{available ? detail : 'Not available right now'}</span>
+        </div>
+      </button>
+    );
   };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setPhoneError('');
-    onPaymentChange({
-      ...state,
-      phoneNumber: val,
-      isVerified: false
-    });
-    if (stkStatus !== 'idle') {
-      setStkStatus('idle');
-    }
-  };
-
-  const handleInitiateStk = () => {
-    const err = validatePhone(state.phoneNumber);
-    if (err) {
-      setPhoneError(err);
-      return;
-    }
-
-    setStkStatus('initiating');
-
-    // STK Push is simulated until the backend Daraja integration is in place
-    setTimeout(() => {
-      setStkStatus('waiting_pin');
-
-      // Simulate attendee entering PIN on phone
-      setTimeout(() => {
-        // Simulated M-Pesa receipt number for the demo STK flow
-        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-        const randomReceipt =
-          'SF' +
-          alphabet[Math.floor(Math.random() * alphabet.length)] +
-          Math.floor(1000 + Math.random() * 9000) +
-          alphabet[Math.floor(Math.random() * alphabet.length)] +
-          alphabet[Math.floor(Math.random() * alphabet.length)];
-
-        setStkStatus('verified');
-        onPaymentChange({
-          ...state,
-          receiptNumber: randomReceipt,
-          isVerified: true,
-          totalInKes
-        });
-      }, 3600);
-    }, 1500);
-  };
-
-  const handleVerifyPaybill = () => {
-    const trimmed = paybillCodeInput.trim().toUpperCase();
-    if (!/^[A-Z0-9]{10}$/.test(trimmed)) {
-      setPaybillError('Enter the 10-character confirmation code from your M-Pesa SMS (letters and numbers).');
-      return;
-    }
-
-    setPaybillError('');
-    onPaymentChange({
-      ...state,
-      receiptNumber: trimmed,
-      isVerified: true,
-      totalInKes
-    });
-  };
-
-  // Stable for the lifetime of the form so the account number doesn't change on every render
-  const accountRef = useMemo(
-    () => `MAGI-${attendeeName.split(' ')[0]?.toUpperCase() || 'TICKET'}-${Math.floor(100 + Math.random() * 900)}`,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
 
   return (
-    <div className="space-y-4 pt-2">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block">
-          Choose Payment Method *
-        </label>
-        <span className="text-[11px] text-[#675A50] font-mono">
-          Amount due: {amountLabel}
+        <span className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block" id="payment-method-label">
+          Payment method *
         </span>
+        <span className="text-[11px] text-[#675A50] font-mono">Amount due: {amountLabel}</span>
       </div>
 
-      {/* Payment Method Switcher (M-Pesa vs Card) */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* M-Pesa Option */}
-        <button
-          type="button"
-          onClick={() => {
-            onPaymentChange({
-              ...state,
-              method: 'mpesa',
-              totalInKes
-            });
-          }}
-          className={`p-3.5 rounded-2xl border-2 transition-all text-left flex items-start gap-3 cursor-pointer select-none relative ${
-            state.method === 'mpesa'
-              ? 'border-[#00A34D] bg-[#00A34D]/5 shadow-sand-sm'
-              : 'border-[#D8CDBC] bg-ivory hover:border-[#675A50]'
-          }`}
-        >
-          <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs ${
-              state.method === 'mpesa'
-                ? 'bg-[#00A34D] text-white shadow-xs'
-                : 'bg-[#E9E2D6] text-[#1E1814]'
-            }`}
-          >
+      {config?.paymentsMode === 'simulated' && (
+        <p className="text-[11px] p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800">
+          Demo mode: payments are simulated and no money is taken. Numbers ending in 1032 simulate a cancelled
+          M-Pesa request.
+        </p>
+      )}
+
+      <div role="radiogroup" aria-labelledby="payment-method-label" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {methodCard(
+          'mpesa',
+          mpesaAvailable,
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${value.method === 'mpesa' ? 'bg-[#00A34D] text-white' : 'bg-[#E9E2D6] text-[#1E1814]'}`}>
             <Smartphone className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#1E1814] flex items-center gap-1.5">
-                M-Pesa
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#00A34D] text-white">
-                Recommended
-              </span>
-            </div>
-            <span className="text-[11px] text-[#675A50] block mt-0.5">
-              {amountLabel} · STK Push / Paybill
-            </span>
-          </div>
-        </button>
-
-        {/* Card Option */}
-        <button
-          type="button"
-          onClick={() => {
-            onPaymentChange({
-              ...state,
-              method: 'card',
-              isVerified: true
-            });
-          }}
-          className={`p-3.5 rounded-2xl border-2 transition-all text-left flex items-start gap-3 cursor-pointer select-none ${
-            state.method === 'card'
-              ? 'border-[#8A4F33] bg-[#8A4F33]/5 shadow-sand-sm'
-              : 'border-[#D8CDBC] bg-ivory hover:border-[#675A50]'
-          }`}
-        >
-          <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs ${
-              state.method === 'card'
-                ? 'bg-[#8A4F33] text-white shadow-xs'
-                : 'bg-[#E9E2D6] text-[#1E1814]'
-            }`}
-          >
+          </div>,
+          'M-Pesa',
+          `${amountLabel} · prompt on your phone or Paybill`,
+          'border-[#00A34D] bg-[#00A34D]/5'
+        )}
+        {methodCard(
+          'card',
+          methods.card,
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${value.method === 'card' ? 'bg-[#8A4F33] text-white' : 'bg-[#E9E2D6] text-[#1E1814]'}`}>
             <CreditCard className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-xs font-bold text-[#1E1814] block">
-              Card (Visa / Mastercard)
-            </span>
-            <span className="text-[11px] text-[#675A50] block mt-0.5">
-              {amountLabel}
-            </span>
-          </div>
-        </button>
+          </div>,
+          'Card (Visa / Mastercard)',
+          `${amountLabel} · secure Paystack checkout`,
+          'border-[#8A4F33] bg-[#8A4F33]/5'
+        )}
       </div>
 
-      {/* M-Pesa Interactive Flow */}
-      {state.method === 'mpesa' && (
+      {value.method === 'mpesa' && mpesaAvailable && (
         <div className="p-4 bg-[#EFE8DD] border border-[#00A34D]/30 rounded-2xl space-y-4 animate-in fade-in duration-200">
-          {/* M-Pesa Header & Mode Selector */}
-          <div className="flex items-center justify-between border-b border-[#D8CDBC] pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#00A34D] animate-pulse" />
-              <span className="text-xs font-bold text-[#1E1814]">
-                Lipa na M-Pesa
-              </span>
-            </div>
-
-            {/* Mode switch: STK Push vs Paybill Manual */}
-            <div className="flex items-center gap-1 bg-[#DFD6C8] p-0.5 rounded-xl text-[11px]">
-              <button
-                type="button"
-                onClick={() =>
-                  onPaymentChange({ ...state, mpesaMode: 'stk', isVerified: stkStatus === 'verified' })
-                }
-                className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                  state.mpesaMode === 'stk'
-                    ? 'bg-ivory text-[#1E1814] font-semibold shadow-xs'
-                    : 'text-[#675A50] hover:text-[#1E1814]'
-                }`}
-              >
-                STK Push
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  onPaymentChange({ ...state, mpesaMode: 'paybill' })
-                }
-                className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                  state.mpesaMode === 'paybill'
-                    ? 'bg-ivory text-[#1E1814] font-semibold shadow-xs'
-                    : 'text-[#675A50] hover:text-[#1E1814]'
-                }`}
-              >
-                Paybill / Till
-              </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D8CDBC] pb-3">
+            <span className="text-xs font-bold text-[#1E1814]">Lipa na M-Pesa</span>
+            <div role="radiogroup" aria-label="M-Pesa option" className="flex items-center gap-1 bg-[#DFD6C8] p-0.5 rounded-xl text-[11px]">
+              {([
+                ['stk', 'Prompt on my phone', methods.mpesaStk],
+                ['paybill', 'Paybill', methods.mpesaPaybill]
+              ] as const).map(([mode, label, available]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={value.mpesaMode === mode}
+                  disabled={!available || disabled}
+                  onClick={() => choose({ mpesaMode: mode })}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    value.mpesaMode === mode
+                      ? 'bg-ivory text-[#1E1814] font-semibold shadow-xs'
+                      : 'text-[#675A50] hover:text-[#1E1814]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Mode 1: Instant STK Push */}
-          {state.mpesaMode === 'stk' ? (
-            <div className="space-y-3">
-              <div>
-                <label className="text-[11px] font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
-                  Safaricom M-Pesa Number *
-                </label>
-                <input
-                  type="tel"
-                  value={state.phoneNumber}
-                  onChange={handlePhoneChange}
-                  placeholder="Safaricom number, e.g. 07XX XXX XXX"
-                  disabled={stkStatus === 'initiating' || stkStatus === 'waiting_pin'}
-                  className="w-full px-3.5 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm font-mono text-[#1E1814] focus:outline-none focus:border-[#00A34D]"
-                />
-                <p className="text-[11px] text-[#675A50] mt-1">
-                  We will send a payment request to this number. Approve it with your M-Pesa PIN.
+          {value.mpesaMode === 'stk' ? (
+            <div>
+              <label htmlFor="mpesa-phone" className="text-[11px] font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
+                M-Pesa phone number *
+              </label>
+              <input
+                id="mpesa-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={value.phoneNumber}
+                onChange={(e) => choose({ phoneNumber: e.target.value })}
+                placeholder="e.g. 0712 345 678"
+                disabled={disabled}
+                aria-invalid={Boolean(phoneError)}
+                className="w-full px-3.5 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm font-mono text-[#1E1814] focus:outline-none focus:border-[#00A34D]"
+              />
+              <p className="text-[11px] text-[#675A50] mt-1">
+                After you confirm, a payment request for {amountLabel} pops up on this phone. Enter your M-Pesa PIN to pay.
+              </p>
+              {phoneError && (
+                <p role="alert" className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  {phoneError}
                 </p>
-                {phoneError && (
-                  <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3 shrink-0" />
-                    {phoneError}
-                  </p>
-                )}
-              </div>
-
-              {/* Status Simulation Container */}
-              {stkStatus === 'idle' && (
-                <button
-                  type="button"
-                  onClick={handleInitiateStk}
-                  className="w-full py-2.5 px-4 bg-[#00A34D] hover:bg-[#00873D] text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-98"
-                >
-                  <Smartphone className="w-4 h-4" />
-                  Send Payment Request ({amountLabel})
-                </button>
-              )}
-
-              {stkStatus === 'initiating' && (
-                <div className="p-3 bg-ivory rounded-xl border border-[#D8CDBC] flex items-center gap-3 animate-in fade-in">
-                  <Loader2 className="w-5 h-5 text-[#00A34D] animate-spin shrink-0" />
-                  <div className="text-xs text-[#1E1814]">
-                    <span className="font-semibold block">Sending payment request…</span>
-                    <span className="text-[#675A50] text-[11px]">This takes a few seconds</span>
-                  </div>
-                </div>
-              )}
-
-              {stkStatus === 'waiting_pin' && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl space-y-2 animate-in fade-in">
-                  <div className="flex items-center gap-2 text-amber-800 text-xs font-semibold">
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                    <span>Payment request sent. Check your phone.</span>
-                  </div>
-                  <p className="text-[11px] text-amber-700 leading-relaxed">
-                    A request for <strong>{amountLabel}</strong> has been sent to{' '}
-                    <strong>{state.phoneNumber}</strong>. Enter your M-Pesa PIN on your phone to approve it.
-                  </p>
-                  <div className="flex items-center justify-between text-[10px] text-amber-600 font-mono pt-1">
-                    <span>Paybill: {paybill}</span>
-                    <span>Account: {accountName}</span>
-                  </div>
-                </div>
-              )}
-
-              {stkStatus === 'verified' && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3 animate-in fade-in">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <div>
-                      <span className="text-xs font-bold text-emerald-900 block">
-                        M-Pesa payment received
-                      </span>
-                      <span className="text-[11px] text-emerald-700 font-mono">
-                        Receipt: {state.receiptNumber} · {amountLabel}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setStkStatus('idle')}
-                    className="text-[11px] text-[#675A50] hover:text-[#1E1814] underline cursor-pointer"
-                  >
-                    Reset
-                  </button>
-                </div>
               )}
             </div>
           ) : (
-            /* Mode 2: Manual Paybill / Buy Goods */
-            <div className="space-y-3">
-              <div className="p-3 bg-ivory rounded-xl border border-[#D8CDBC] text-xs space-y-2">
-                <span className="font-semibold text-[#1E1814] block">
-                  Pay with Paybill:
-                </span>
-                <ol className="list-decimal list-inside text-[11px] text-[#675A50] space-y-1">
-                  <li>Go to M-Pesa menu &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Paybill</strong></li>
-                  <li>Enter Business No: <strong className="text-[#1E1814] font-mono">{paybill}</strong></li>
-                  <li>Enter Account No: <strong className="text-[#1E1814] font-mono">{accountRef}</strong></li>
-                  <li>Enter Amount: <strong className="text-[#1E1814] font-mono">{amountLabel}</strong></li>
-                  <li>Enter your M-Pesa PIN and confirm payment</li>
-                </ol>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-[#1E1814] uppercase tracking-wider block mb-1">
-                  M-Pesa Confirmation Code *
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={paybillCodeInput}
-                    onChange={(e) => {
-                      setPaybillCodeInput(e.target.value);
-                      setPaybillError('');
-                    }}
-                    placeholder="10-character code from the M-Pesa SMS"
-                    className="flex-1 px-3.5 py-2 bg-ivory border border-[#D8CDBC] rounded-xl text-xs font-mono uppercase text-[#1E1814] focus:outline-none focus:border-[#00A34D]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleVerifyPaybill}
-                    className="px-4 py-2 bg-[#00A34D] hover:bg-[#00873D] text-white rounded-xl text-xs font-semibold cursor-pointer"
-                  >
-                    Confirm Code
-                  </button>
-                </div>
-                {paybillError && (
-                  <p className="text-[11px] text-red-600 mt-1">{paybillError}</p>
-                )}
-                {state.isVerified && state.receiptNumber && (
-                  <p className="text-[11px] text-emerald-700 font-medium mt-1.5 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    Code {state.receiptNumber} recorded for {amountLabel}.
-                  </p>
-                )}
-              </div>
-            </div>
+            <p className="text-[11px] text-[#675A50] leading-relaxed">
+              After you confirm, we show the Paybill number and your own account number. Pay exactly {amountLabel} from
+              the M-Pesa menu and your ticket is issued as soon as M-Pesa tells us.
+            </p>
           )}
-
-          <div className="flex items-center gap-1.5 text-[11px] text-[#675A50] pt-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#00A34D] shrink-0" />
-            <span>Keep your M-Pesa confirmation SMS until after the event.</span>
-          </div>
         </div>
       )}
+
+      {value.method === 'card' && methods.card && (
+        <p className="text-[11px] text-[#675A50] p-3 rounded-xl bg-[#EFE8DD] border border-[#D8CDBC]">
+          After you confirm, you pay on Paystack's secure page and come straight back here. MagiVents never sees your
+          card details.
+        </p>
+      )}
+
+      <div className="flex items-center gap-1.5 text-[11px] text-[#675A50]">
+        <ShieldCheck className="w-3.5 h-3.5 text-[#00A34D]" />
+        <span>Your tickets are held for {config?.paymentHoldMinutes ?? 10} minutes while you pay.</span>
+      </div>
     </div>
   );
 };

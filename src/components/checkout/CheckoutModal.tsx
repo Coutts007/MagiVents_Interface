@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Calendar,
   MapPin,
@@ -12,13 +12,22 @@ import {
   Mail,
   Ticket
 } from 'lucide-react';
-import { EventItem, TicketTier, TicketBooking } from '../../types';
+import { BookingWithPayment, EventItem, TicketTier } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { BookingRequest, getApiErrorMessage, promoApi } from '../../services/api';
+import {
+  BookingRequest,
+  PublicConfig,
+  bookingsApi,
+  getApiErrorMessage,
+  getPublicConfig,
+  promoApi
+} from '../../services/api';
+import { checkoutStage, normalizeKenyanPhone, phoneError as getPhoneError, pollDelay } from '../../utils/checkout';
 import { formatKES } from '../../utils/format';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { MpesaPaymentSection, MpesaPaymentState } from './MpesaPaymentSection';
+import { INITIAL_PAYMENT_CHOICE, MpesaPaymentSection, PaymentChoice } from './MpesaPaymentSection';
+import { PaymentStatusPanel } from './PaymentStatusPanel';
 import { PrintableTicketModal } from '../ticket/PrintableTicketModal';
 import { TicketQRCode } from '../ui/TicketQRCode';
 import { EmailConfirmationModal } from '../ticket/EmailConfirmationModal';
@@ -29,19 +38,16 @@ export interface CheckoutModalProps {
   event: EventItem | null;
   tier: TicketTier | null;
   quantity: number;
-  /** Creates the booking on the server and resolves with the confirmed pass */
-  onCompleteBooking: (request: BookingRequest) => Promise<TicketBooking>;
+  /** Creates the booking on the server: free ones come back confirmed, paid ones pending */
+  onCompleteBooking: (request: BookingRequest) => Promise<BookingWithPayment>;
+  /** Called once a booking is confirmed (straight away, or after its payment) */
+  onBookingConfirmed: (booking: BookingWithPayment) => void;
   onShareEvent?: (event: EventItem) => void;
+  /** Reopens checkout for an existing booking, e.g. after returning from the card payment page */
+  resumeBookingId?: string | null;
+  /** Looks up the booked event when checkout was reopened from a booking */
+  findEvent?: (eventId: string) => EventItem | undefined;
 }
-
-const INITIAL_PAYMENT: MpesaPaymentState = {
-  method: 'mpesa',
-  mpesaMode: 'stk',
-  phoneNumber: '',
-  receiptNumber: '',
-  isVerified: false,
-  totalInKes: 0
-};
 
 /** Builds an .ics calendar file for the event (all-day when the time can't be parsed). */
 function buildCalendarFile(event: EventItem): string {
@@ -77,10 +83,13 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   tier,
   quantity,
   onCompleteBooking,
-  onShareEvent
+  onBookingConfirmed,
+  onShareEvent,
+  resumeBookingId = null,
+  findEvent
 }) => {
   const { user } = useAuth();
-  const [step, setStep] = useState<'form' | 'success'>('form');
+  const [step, setStep] = useState<'form' | 'payment' | 'success'>('form');
   const [fullName, setFullName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [notes, setNotes] = useState('');
@@ -89,7 +98,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number } | null>(null);
   const [isCheckingPromo, setIsCheckingPromo] = useState(false);
   const [promoError, setPromoError] = useState('');
-  const [confirmedBooking, setConfirmedBooking] = useState<TicketBooking | null>(null);
   const [calendarAdded, setCalendarAdded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -98,7 +106,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
-  const [paymentState, setPaymentState] = useState<MpesaPaymentState>(INITIAL_PAYMENT);
+  // Payment: what the attendee chose, and the booking as the server last reported it
+  const [config, setConfig] = useState<PublicConfig | null>(null);
+  const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>(INITIAL_PAYMENT_CHOICE);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [booking, setBooking] = useState<BookingWithPayment | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+  const reportedConfirmedRef = useRef<string | null>(null);
+  const confirmedBooking = booking?.status === 'confirmed' ? booking : null;
 
   useEffect(() => {
     if (user && isOpen) {
@@ -107,16 +123,123 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }, [user, isOpen]);
 
-  if (!event || !tier) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    getPublicConfig()
+      .then((cfg) => {
+        setConfig(cfg);
+        // Start on a method the server can actually take
+        setPaymentChoice((current) => {
+          const methods = cfg.paymentMethods;
+          if (current.method === 'mpesa' && !methods.mpesaStk && !methods.mpesaPaybill && methods.card) {
+            return { ...current, method: 'card' };
+          }
+          if (current.method === 'mpesa' && current.mpesaMode === 'stk' && !methods.mpesaStk && methods.mpesaPaybill) {
+            return { ...current, mpesaMode: 'paybill' };
+          }
+          return current;
+        });
+      })
+      .catch(() => setConfig(null));
+  }, [isOpen]);
+
+  /** Moves to the right step for what the server says about the booking. */
+  const showBooking = (next: BookingWithPayment) => {
+    setBooking(next);
+    if (checkoutStage(next) === 'confirmed') {
+      setStep('success');
+      if (reportedConfirmedRef.current !== next.id) {
+        reportedConfirmedRef.current = next.id;
+        onBookingConfirmed(next);
+      }
+    } else {
+      setStep('payment');
+    }
+  };
+
+  // Reopened after the card payment page, or from a booking link
+  useEffect(() => {
+    if (!isOpen || !resumeBookingId) return;
+    bookingsApi
+      .status(resumeBookingId)
+      .then(showBooking)
+      .catch((err) => {
+        setStep('payment');
+        setRetryError(getApiErrorMessage(err, 'This booking could not be found.'));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, resumeBookingId]);
+
+  // Poll the server while the payment is pending; the browser never decides a payment succeeded
+  const pendingId = booking && checkoutStage(booking) === 'awaiting-payment' ? booking.id : null;
+  const paymentId = booking?.payment?.id;
+  useEffect(() => {
+    if (!isOpen || !pendingId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let attempt = 0;
+    const poll = () => {
+      timer = setTimeout(async () => {
+        try {
+          const next = await bookingsApi.status(pendingId);
+          if (cancelled) return;
+          showBooking(next);
+          if (checkoutStage(next) !== 'awaiting-payment') return;
+        } catch {
+          // A dropped connection is retried on the next tick
+        }
+        attempt += 1;
+        if (!cancelled) poll();
+      }, pollDelay(attempt));
+    };
+    poll();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, pendingId, paymentId]);
+
+  const handleRetry = async (choice: PaymentChoice) => {
+    if (!booking) return;
+    const problem = choice.method === 'mpesa' && choice.mpesaMode === 'stk' ? getPhoneError(choice.phoneNumber) : null;
+    setPhoneError(problem);
+    if (problem) return;
+    setPaymentChoice(choice);
+    setIsRetrying(true);
+    setRetryError(null);
+    try {
+      showBooking(
+        await bookingsApi.pay(booking.id, {
+          paymentMethod: choice.method,
+          mpesaMode: choice.mpesaMode,
+          mpesaPhoneNumber:
+            choice.method === 'mpesa' && choice.mpesaMode === 'stk'
+              ? normalizeKenyanPhone(choice.phoneNumber) || undefined
+              : undefined
+        })
+      );
+    } catch (err) {
+      setRetryError(getApiErrorMessage(err, 'The payment could not be started.'));
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  if (!isOpen) return null;
+  if (!booking && (!event || !tier)) return null;
 
   // All amounts are Kenyan shillings; the server recomputes them when booking
-  const baseTotal = tier.price * quantity;
+  const baseTotal = tier ? tier.price * quantity : 0;
   const finalTotal = Math.max(0, baseTotal - discount);
-  const isFree = event.isFree || baseTotal === 0;
+  const isFree = Boolean(event?.isFree) || baseTotal === 0;
+  // The event behind the ticket, also when checkout was reopened from a booking link
+  const ticketEvent = event ?? (booking ? findEvent?.(booking.eventId) ?? null : null);
 
   // The server checks the code and works out the discount; the booking re-checks it
   const applyPromo = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!event || !tier) return;
     const code = promoCode.trim().toUpperCase();
     if (!code) {
       setPromoError('Enter a promo code first.');
@@ -139,19 +262,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleConfirmOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName.trim() || !email.trim() || isSubmitting) return;
+    if (!event || !tier || !fullName.trim() || !email.trim() || isSubmitting) return;
 
-    const payingWithMpesa = !isFree && paymentState.method === 'mpesa';
-    if (payingWithMpesa && !(paymentState.isVerified && paymentState.receiptNumber)) {
-      setSubmitError(
-        paymentState.mpesaMode === 'stk'
-          ? 'Complete the M-Pesa payment first: send the payment request and approve it on your phone.'
-          : 'Complete the M-Pesa payment first: pay via Paybill and enter the confirmation code from the SMS.'
-      );
+    const paying = !isFree && finalTotal > 0;
+    const usesPhone = paying && paymentChoice.method === 'mpesa' && paymentChoice.mpesaMode === 'stk';
+    const problem = usesPhone ? getPhoneError(paymentChoice.phoneNumber) : null;
+    setPhoneError(problem);
+    if (problem) {
+      setSubmitError(problem);
       return;
     }
 
-    // Pricing, ticket code and availability are decided by the server
+    // Pricing, availability, ticket code and payment state are all decided by the server
     const request: BookingRequest = {
       eventId: event.id,
       tierId: tier.id,
@@ -159,11 +281,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       quantity,
       attendeeName: fullName.trim(),
       attendeeEmail: email.trim(),
-      paymentMethod: isFree ? 'free' : paymentState.method,
-      mpesaPhoneNumber: payingWithMpesa ? paymentState.phoneNumber.trim() || undefined : undefined,
-      mpesaReceiptNumber: payingWithMpesa ? paymentState.receiptNumber : undefined,
-      mpesaMode: payingWithMpesa ? paymentState.mpesaMode : undefined,
-      totalInKes: payingWithMpesa ? finalTotal : undefined,
+      paymentMethod: paying ? paymentChoice.method : 'free',
+      mpesaMode: paying && paymentChoice.method === 'mpesa' ? paymentChoice.mpesaMode : undefined,
+      mpesaPhoneNumber: usesPhone ? normalizeKenyanPhone(paymentChoice.phoneNumber) || undefined : undefined,
       notes: notes.trim() || undefined,
       promoCode: !isFree && appliedPromo ? appliedPromo.code : undefined
     };
@@ -171,9 +291,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const booking = await onCompleteBooking(request);
-      setConfirmedBooking(booking);
-      setStep('success');
+      const created = await onCompleteBooking(request);
+      showBooking(created);
+      // Card payments continue on Paystack's page, which sends the attendee back here
+      if (created.status === 'pending' && created.payment?.authorizationUrl) {
+        window.location.assign(created.payment.authorizationUrl);
+      }
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Your booking could not be completed.');
     } finally {
@@ -182,11 +305,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   const handleAddToCalendar = () => {
-    const blob = new Blob([buildCalendarFile(event)], { type: 'text/calendar;charset=utf-8' });
+    if (!ticketEvent) return;
+    const blob = new Blob([buildCalendarFile(ticketEvent)], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${event.id}.ics`;
+    link.download = `${ticketEvent.id}.ics`;
     link.click();
     URL.revokeObjectURL(url);
     setCalendarAdded(true);
@@ -203,8 +327,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setAppliedPromo(null);
     setPromoError('');
     setSubmitError(null);
-    setConfirmedBooking(null);
-    setPaymentState(INITIAL_PAYMENT);
+    setBooking(null);
+    setRetryError(null);
+    setPhoneError(null);
+    setPaymentChoice(INITIAL_PAYMENT_CHOICE);
     onClose();
   };
 
@@ -215,17 +341,35 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       <Modal
         isOpen={isOpen}
         onClose={handleClose}
-        title={step === 'form' ? (isFree ? 'Register for this event' : 'Get your tickets') : 'Your ticket'}
+        title={
+          step === 'form' ? (isFree ? 'Register for this event' : 'Get your tickets') : step === 'payment' ? 'Complete your payment' : 'Your ticket'
+        }
         subtitle={
           step === 'form'
             ? isFree
               ? 'This event is free. Confirm your details to get your ticket.'
               : 'Pay with M-Pesa or card to get your ticket.'
+            : step === 'payment'
+            ? booking?.eventTitle
             : 'Your booking is confirmed.'
         }
-        maxWidth={step === 'form' ? 'lg' : 'xl'}
+        maxWidth={step === 'success' ? 'xl' : 'lg'}
       >
-        {step === 'form' ? (
+        {step === 'payment' && booking ? (
+          <PaymentStatusPanel
+            booking={booking}
+            config={config}
+            onRetry={handleRetry}
+            isRetrying={isRetrying}
+            retryError={retryError}
+            lastChoice={paymentChoice}
+            phoneError={phoneError}
+          />
+        ) : step === 'payment' ? (
+          <div role="alert" className="p-4 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-800">
+            {retryError || 'Loading your booking…'}
+          </div>
+        ) : step === 'form' && event && tier ? (
           <form onSubmit={handleConfirmOrder} className="space-y-6">
             {/* Summary Box */}
             <div className="bg-[#E9E2D6] rounded-2xl p-5 border border-[#D8CDBC] space-y-3">
@@ -362,12 +506,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {!isFree && (
               <MpesaPaymentSection
                 totalKes={finalTotal}
-                attendeeName={fullName}
-                onPaymentChange={(next) => {
-                  setPaymentState(next);
+                value={paymentChoice}
+                onChange={(next) => {
+                  setPaymentChoice(next);
+                  setPhoneError(null);
                   setSubmitError(null);
                 }}
-                state={paymentState}
+                config={config}
+                phoneError={phoneError}
+                disabled={isSubmitting}
               />
             )}
 
@@ -377,12 +524,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               )}
               <Button variant="primary" fullWidth size="lg" type="submit" disabled={isSubmitting}>
                 {isSubmitting
-                  ? 'Confirming your booking…'
-                  : isFree
+                  ? isFree
+                    ? 'Registering…'
+                    : 'Starting payment…'
+                  : isFree || finalTotal === 0
                   ? 'Register for free'
-                  : paymentState.method === 'mpesa'
-                  ? `Confirm booking · ${formatKES(finalTotal)} via M-Pesa`
-                  : `Confirm booking · ${formatKES(finalTotal)} by card`}
+                  : paymentChoice.method === 'mpesa'
+                  ? `Pay ${formatKES(finalTotal, null)} with M-Pesa`
+                  : `Pay ${formatKES(finalTotal, null)} by card`}
               </Button>
               <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-[#675A50]">
                 <Info className="w-4 h-4 text-[#8A4F33]" />
@@ -408,8 +557,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   </>
                 ) : (
                   <>
-                    Keep your ticket code <strong className="text-[#1E1814] font-mono">{confirmedBooking?.ticketCode}</strong>.
-                    You booked as a guest, so save or print this ticket now: it will not appear in a profile.
+                    We emailed your ticket to <strong className="text-[#1E1814]">{confirmedBooking?.attendeeEmail}</strong>.
+                    Keep the code <strong className="text-[#1E1814] font-mono">{confirmedBooking?.ticketCode}</strong>: with it
+                    and your email you can open the ticket again under <strong className="text-[#1E1814]">Find my ticket</strong>.
                   </>
                 )}
               </p>
@@ -533,20 +683,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             {/* Secondary Actions */}
             <div className="flex flex-col sm:flex-row gap-3 pt-1">
-              <Button
-                variant="secondary"
-                fullWidth
-                icon={calendarAdded ? <Check className="w-4 h-4 text-emerald-600" /> : <CalendarPlus className="w-4 h-4" />}
-                onClick={handleAddToCalendar}
-              >
-                {calendarAdded ? 'Calendar file downloaded' : 'Add to Calendar'}
-              </Button>
-              {event && onShareEvent && (
+              {ticketEvent && (
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  icon={calendarAdded ? <Check className="w-4 h-4 text-emerald-600" /> : <CalendarPlus className="w-4 h-4" />}
+                  onClick={handleAddToCalendar}
+                >
+                  {calendarAdded ? 'Calendar file downloaded' : 'Add to Calendar'}
+                </Button>
+              )}
+              {ticketEvent && onShareEvent && (
                 <Button
                   variant="outline"
                   fullWidth
                   icon={<Share2 className="w-4 h-4 text-[#8A4F33]" />}
-                  onClick={() => onShareEvent(event)}
+                  onClick={() => onShareEvent(ticketEvent)}
                 >
                   Invite Friends
                 </Button>

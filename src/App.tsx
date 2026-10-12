@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppView, EventItem, TicketTier, TicketBooking } from './types';
+import { AppView, BookingWithPayment, EventItem, TicketTier, TicketBooking } from './types';
 import { AuthModalMode } from './types/auth';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
@@ -85,6 +85,8 @@ function MainLayout() {
   const [eventToEdit, setEventToEdit] = useState<EventItem | null>(null);
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  // Set when checkout reopens an existing booking (the card payment page sends people back with ?booking=<id>)
+  const [resumeBookingId, setResumeBookingId] = useState<string | null>(null);
   const [checkoutTarget, setCheckoutTarget] = useState<{
     event: EventItem | null;
     tier: TicketTier | null;
@@ -165,6 +167,19 @@ function MainLayout() {
     window.addEventListener('popstate', handleUrlChange);
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, [events]);
+
+  // Back from the card payment page: ?booking=<id> reopens checkout on that booking's payment status
+  useEffect(() => {
+    const bookingId = new URLSearchParams(window.location.search).get('booking');
+    if (!bookingId) return;
+    setResumeBookingId(bookingId);
+    setIsCheckoutOpen(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('booking');
+    url.searchParams.delete('reference');
+    url.searchParams.delete('trxref');
+    window.history.replaceState({}, '', url.toString());
+  }, []);
 
   // Ticket links: ?ticket=<booking uuid> opens that ticket
   useEffect(() => {
@@ -283,6 +298,7 @@ function MainLayout() {
 
   // Booking is open to guests: no account is needed to register or buy tickets
   const openCheckout = (event: EventItem, tier: TicketTier, quantity: number) => {
+    setResumeBookingId(null);
     setCheckoutTarget({ event, tier, quantity });
     setIsCheckoutOpen(true);
   };
@@ -303,20 +319,31 @@ function MainLayout() {
     openCheckout(event, tier, quantity);
   };
 
-  const handleCompleteBooking = async (request: BookingRequest): Promise<TicketBooking> => {
-    let booking: TicketBooking;
+  const refreshEvents = () => {
+    // Attendee counts and tier availability change with every booking and hold
+    gatheringsApi
+      .list()
+      .then(setEvents)
+      .catch(() => undefined);
+  };
+
+  const handleCompleteBooking = async (request: BookingRequest): Promise<BookingWithPayment> => {
+    let booking: BookingWithPayment;
     try {
       booking = await bookingsApi.create(request);
     } catch (err) {
       throw new Error(getApiErrorMessage(err, 'Your reservation could not be completed.'));
     }
-    setBookings((prev) => [booking, ...prev]);
-    // Refresh attendee counts and tier availability
-    gatheringsApi
-      .list()
-      .then(setEvents)
-      .catch(() => undefined);
+    refreshEvents();
     return booking;
+  };
+
+  // Free bookings confirm at once; paid ones when the payment provider reports success
+  const handleBookingConfirmed = (booking: TicketBooking) => {
+    if (user) {
+      setBookings((prev) => [booking, ...prev.filter((b) => b.id !== booking.id)]);
+    }
+    refreshEvents();
   };
 
   // Organizer Actions
@@ -543,11 +570,18 @@ function MainLayout() {
       {/* Ticket Checkout & Pass Modal */}
       <CheckoutModal
         isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        event={checkoutTarget.event}
+        onClose={() => {
+          setIsCheckoutOpen(false);
+          setResumeBookingId(null);
+          refreshEvents();
+        }}
+        event={resumeBookingId ? null : checkoutTarget.event}
+        findEvent={(eventId) => events.find((e) => e.id === eventId)}
         tier={checkoutTarget.tier}
         quantity={checkoutTarget.quantity}
         onCompleteBooking={handleCompleteBooking}
+        onBookingConfirmed={handleBookingConfirmed}
+        resumeBookingId={resumeBookingId}
         onShareEvent={handleOpenShare}
       />
 

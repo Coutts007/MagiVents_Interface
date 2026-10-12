@@ -127,6 +127,39 @@ export interface TicketBooking {
   ticketUrl?: string;
   /** Set when the ticket was scanned at the door */
   checkedInAt?: string | null;
+  /** Paid bookings are pending until the payment provider confirms them */
+  status?: BookingStatus;
+  /** When a pending booking's ticket hold runs out */
+  expiresAt?: string | null;
+}
+
+export type BookingStatus = 'pending' | 'confirmed' | 'failed' | 'expired';
+
+/** The latest payment attempt for a booking, as reported by the server */
+export interface PaymentAttempt {
+  id: string;
+  provider: 'simulated' | 'mpesa_stk' | 'mpesa_paybill' | 'paystack';
+  method: 'mpesa' | 'card';
+  status: 'pending' | 'succeeded' | 'failed';
+  reference: string;
+  amount: number;
+  failureReason: string | null;
+  authorizationUrl: string | null;
+  receiptNumber: string | null;
+  instructions: {
+    simulated?: boolean;
+    paybill?: string;
+    accountNumber?: string;
+    phoneNumber?: string;
+    authorizationUrl?: string;
+  };
+}
+
+/** A booking with its payment state: what checkout polls until the booking is settled */
+export interface BookingWithPayment extends TicketBooking {
+  status: BookingStatus;
+  payment: PaymentAttempt | null;
+  holdSecondsLeft: number | null;
 }
 
 export interface OrganizerStats {
