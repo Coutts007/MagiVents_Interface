@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { EventItem, TicketTier, TicketBooking } from '../../types';
 import { useAuth } from '../../context/AuthContext';
-import { BookingRequest } from '../../services/api';
+import { BookingRequest, getApiErrorMessage, promoApi } from '../../services/api';
 import { formatKES } from '../../utils/format';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -86,6 +86,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [notes, setNotes] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; percentOff: number } | null>(null);
+  const [isCheckingPromo, setIsCheckingPromo] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [confirmedBooking, setConfirmedBooking] = useState<TicketBooking | null>(null);
   const [calendarAdded, setCalendarAdded] = useState(false);
@@ -112,19 +114,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const finalTotal = Math.max(0, baseTotal - discount);
   const isFree = event.isFree || baseTotal === 0;
 
-  const applyPromo = (e: React.FormEvent) => {
+  // The server checks the code and works out the discount; the booking re-checks it
+  const applyPromo = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = promoCode.trim().toUpperCase();
     if (!code) {
       setPromoError('Enter a promo code first.');
       return;
     }
-    if (code === 'KARIBU15') {
-      setDiscount(Math.round(baseTotal * 0.15));
+    setIsCheckingPromo(true);
+    try {
+      const result = await promoApi.validate(code, event.id, tier.id, quantity);
+      setDiscount(result.discount ?? 0);
+      setAppliedPromo({ code: result.code, percentOff: result.percentOff });
       setPromoError('');
-    } else {
+    } catch (err) {
       setDiscount(0);
-      setPromoError('This promo code is not valid.');
+      setAppliedPromo(null);
+      setPromoError(getApiErrorMessage(err, 'This promo code is not valid.'));
+    } finally {
+      setIsCheckingPromo(false);
     }
   };
 
@@ -156,7 +165,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       mpesaMode: payingWithMpesa ? paymentState.mpesaMode : undefined,
       totalInKes: payingWithMpesa ? finalTotal : undefined,
       notes: notes.trim() || undefined,
-      promoCode: !isFree && discount > 0 ? promoCode.trim().toUpperCase() : undefined
+      promoCode: !isFree && appliedPromo ? appliedPromo.code : undefined
     };
 
     setIsSubmitting(true);
@@ -191,6 +200,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setNotes('');
     setPromoCode('');
     setDiscount(0);
+    setAppliedPromo(null);
     setPromoError('');
     setSubmitError(null);
     setConfirmedBooking(null);
@@ -252,7 +262,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
               {!isFree && discount > 0 && (
                 <div className="flex justify-between items-center text-xs text-emerald-700 font-medium">
-                  <span>Promo discount (15%)</span>
+                  <span>Promo discount ({appliedPromo?.percentOff}%)</span>
                   <span>−{formatKES(discount, null)}</span>
                 </div>
               )}
@@ -322,20 +332,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <input
                       type="text"
                       value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
+                      onChange={(e) => {
+                        setPromoCode(e.target.value);
+                        // A changed code has to be applied again
+                        setAppliedPromo(null);
+                        setDiscount(0);
+                      }}
+                      aria-label="Promo code"
                       placeholder="Promo code (optional)"
                       className="flex-1 px-4 py-2 bg-ivory border border-[#D8CDBC] rounded-xl text-xs text-[#1E1814] uppercase placeholder:normal-case focus:outline-none focus:border-[#8A4F33]"
                     />
-                    <Button variant="secondary" size="sm" type="button" onClick={applyPromo}>
-                      Apply
+                    <Button variant="secondary" size="sm" type="button" onClick={applyPromo} disabled={isCheckingPromo}>
+                      {isCheckingPromo ? 'Checking…' : 'Apply'}
                     </Button>
                   </div>
                   {promoError && (
                     <span className="text-[11px] text-red-600 mt-1 block">{promoError}</span>
                   )}
-                  {discount > 0 && (
+                  {appliedPromo && (
                     <span className="text-[11px] text-emerald-700 mt-1 block font-medium">
-                      ✓ Promo code applied: 15% off.
+                      ✓ Promo code {appliedPromo.code} applied: {appliedPromo.percentOff}% off.
                     </span>
                   )}
                 </div>

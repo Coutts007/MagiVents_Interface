@@ -11,13 +11,16 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
-  Layers
+  Layers,
+  BadgePercent,
+  CalendarDays
 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
 import { EventArtwork } from '../ui/EventArtwork';
 import { formatKES } from '../../utils/format';
 import { Button } from '../ui/Button';
+import { PromoCodesPanel } from './PromoCodesPanel';
 
 export interface OrganizerDashboardProps {
   events: EventItem[];
@@ -26,7 +29,17 @@ export interface OrganizerDashboardProps {
   onDeleteEvent: (eventId: string) => void;
   onViewEvent: (event: EventItem) => void;
   onToggleStatus: (eventId: string) => void;
+  /** False for attendees, who must become organizers before managing events */
+  isOrganizer: boolean;
+  onBecomeOrganizer: () => void;
 }
+
+type DashboardSection = 'events' | 'promos';
+
+const SECTIONS: { id: DashboardSection; label: string; icon: React.ElementType }[] = [
+  { id: 'events', label: 'Events', icon: CalendarDays },
+  { id: 'promos', label: 'Promo codes', icon: BadgePercent }
+];
 
 export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   events,
@@ -34,8 +47,11 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   onEditEvent,
   onDeleteEvent,
   onViewEvent,
-  onToggleStatus
+  onToggleStatus,
+  isOrganizer,
+  onBecomeOrganizer
 }) => {
+  const [section, setSection] = useState<DashboardSection>('events');
   const [activeTab, setActiveTab] = useState<'all' | 'published' | 'draft'>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -78,16 +94,62 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          size="md"
-          icon={<PlusCircle className="w-4 h-4" />}
-          onClick={onCreateEvent}
-        >
-          Create Event
-        </Button>
+        {isOrganizer && (
+          <Button
+            variant="primary"
+            size="md"
+            icon={<PlusCircle className="w-4 h-4" />}
+            onClick={onCreateEvent}
+          >
+            Create Event
+          </Button>
+        )}
       </div>
 
+      {!isOrganizer ? (
+        /* Attendees upgrade before they can manage events */
+        <div className="my-10 bg-ivory rounded-3xl border border-[#D8CDBC] shadow-sand-sm p-8 sm:p-12 text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-[#E9E2D6] flex items-center justify-center text-[#8A4F33] mb-4">
+            <Sparkles className="w-8 h-8" />
+          </div>
+          <h2 className="font-serif text-2xl font-medium text-[#1E1814] mb-2">Host your own events</h2>
+          <p className="text-sm text-[#675A50] max-w-md mx-auto mb-6">
+            Your account is an attendee account. Become an organizer to publish events, sell tickets and check
+            attendees in.
+          </p>
+          <Button variant="primary" onClick={onBecomeOrganizer}>
+            Become an organizer
+          </Button>
+        </div>
+      ) : (
+      <>
+      {/* Section switcher */}
+      <div role="tablist" aria-label="Dashboard sections" className="mt-8 bg-[#EFE8DD] p-1 rounded-2xl border border-[#D8CDBC] inline-flex items-center gap-1 shadow-xs overflow-x-auto max-w-full">
+        {SECTIONS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={section === id}
+            onClick={() => setSection(id)}
+            className={`px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer select-none whitespace-nowrap ${
+              section === id ? 'bg-ivory text-[#1E1814] shadow-sand-sm font-semibold' : 'text-[#675A50] hover:text-[#1E1814]'
+            }`}
+          >
+            <Icon className="w-3.5 h-3.5 text-[#8A4F33]" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {section === 'promos' && (
+        <div className="my-8">
+          <PromoCodesPanel events={events} />
+        </div>
+      )}
+
+      {section === 'events' && (
+      <>
       {/* Stats Overview Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 my-8">
         <div className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm">
@@ -346,6 +408,10 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           </div>
         )}
       </div>
+      </>
+      )}
+      </>
+      )}
     </div>
   );
 };

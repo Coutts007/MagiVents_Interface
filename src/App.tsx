@@ -16,6 +16,7 @@ import { EventDetailsView } from './components/event-details/EventDetailsView';
 import { OrganizerDashboard } from './components/organizer/OrganizerDashboard';
 import { ProfileView } from './components/profile/ProfileView';
 import { EventEditorModal } from './components/organizer/EventEditorModal';
+import { BecomeOrganizerModal } from './components/organizer/BecomeOrganizerModal';
 import { CheckoutModal } from './components/checkout/CheckoutModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { BookmarksDrawer } from './components/bookmarks/BookmarksDrawer';
@@ -84,6 +85,13 @@ function MainLayout() {
   }>({ event: null, tier: null, quantity: 1 });
 
   const [isSavedDrawerOpen, setIsSavedDrawerOpen] = useState(false);
+
+  // Upgrade to organizer; `then` says whether to open the event editor afterwards
+  const [becomeOrganizer, setBecomeOrganizer] = useState<{ open: boolean; thenCreate: boolean }>({
+    open: false,
+    thenCreate: false
+  });
+  const isOrganizer = user?.role === 'curator';
 
   // Social Sharing Modal State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -284,6 +292,10 @@ function MainLayout() {
   // Organizer Actions
   const handleOpenCreateEvent = () => {
     if (!requireAuth()) return;
+    if (!isOrganizer) {
+      setBecomeOrganizer({ open: true, thenCreate: true });
+      return;
+    }
     setEventToEdit(null);
     setIsEditorOpen(true);
   };
@@ -423,6 +435,10 @@ function MainLayout() {
             onDeleteEvent={handleDeleteEvent}
             onViewEvent={handleSelectEvent}
             onToggleStatus={handleToggleStatus}
+            isOrganizer={isOrganizer}
+            onBecomeOrganizer={() => {
+              if (requireAuth()) setBecomeOrganizer({ open: true, thenCreate: false });
+            }}
           />
         )}
 
@@ -459,6 +475,20 @@ function MainLayout() {
         onClose={() => setIsEditorOpen(false)}
         onSave={handleSaveEvent}
         eventToEdit={eventToEdit}
+      />
+
+      {/* Attendee -> organizer upgrade */}
+      <BecomeOrganizerModal
+        isOpen={becomeOrganizer.open}
+        onClose={() => setBecomeOrganizer({ open: false, thenCreate: false })}
+        onBecameOrganizer={() => {
+          const { thenCreate } = becomeOrganizer;
+          setBecomeOrganizer({ open: false, thenCreate: false });
+          if (thenCreate) {
+            setEventToEdit(null);
+            setIsEditorOpen(true);
+          }
+        }}
       />
 
       {/* Ticket Checkout & Pass Modal */}

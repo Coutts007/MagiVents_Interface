@@ -19,6 +19,20 @@ interface AgendaRow extends AgendaItem {
   key: string;
 }
 
+/** A ticket type being edited; numbers stay strings until the form is saved */
+interface TierRow {
+  key: string;
+  /** Server id of an existing tier, empty for a new one */
+  id: string;
+  name: string;
+  price: string;
+  quantity: string;
+  description: string;
+  perks: string;
+  /** Tickets already sold, so the quantity cannot go below this */
+  sold: number;
+}
+
 const inputClass =
   'w-full px-4 py-2.5 bg-ivory border border-[#D8CDBC] rounded-xl text-sm text-[#1E1814] placeholder-[#675A50]/60 focus:outline-none focus:border-[#8A4F33] focus:ring-1 focus:ring-[#8A4F33] disabled:bg-[#E9E2D6] disabled:text-[#675A50]';
 const labelClass = 'text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-1';
@@ -30,6 +44,18 @@ const newRow = (item: Partial<AgendaItem> = {}): AgendaRow => ({
   time: item.time || '',
   title: item.title || '',
   detail: item.detail || ''
+});
+
+let tierCounter = 0;
+const newTierRow = (tier: Partial<TicketTier> = {}, isFree = false): TierRow => ({
+  key: `tier-${++tierCounter}`,
+  id: tier.id || '',
+  name: tier.name ?? (isFree ? 'Free Entry' : 'General Admission'),
+  price: tier.price ? String(tier.price) : '',
+  quantity: tier.quantity !== undefined ? String(tier.quantity) : tier.available !== undefined ? String(tier.available + (tier.sold || 0)) : '',
+  description: tier.description || '',
+  perks: (tier.perks || []).join(', '),
+  sold: tier.sold || 0
 });
 
 /** "2026-11-28" -> "Saturday, 28 Nov 2026" */
@@ -172,8 +198,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [venueAddress, setVenueAddress] = useState('');
   const [venueCity, setVenueCity] = useState('');
   const [isFree, setIsFree] = useState(false);
-  const [price, setPrice] = useState('');
-  const [capacity, setCapacity] = useState('');
+  const [tiers, setTiers] = useState<TierRow[]>([]);
   const [imageUrl, setImageUrl] = useState('');
   const [description, setDescription] = useState('');
   const [hostName, setHostName] = useState('');
@@ -198,8 +223,11 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       setVenueAddress(eventToEdit.venue.address);
       setVenueCity(eventToEdit.venue.city);
       setIsFree(Boolean(eventToEdit.isFree));
-      setPrice(eventToEdit.isFree ? '' : String(eventToEdit.pricing.startingPrice));
-      setCapacity(String(eventToEdit.capacity));
+      setTiers(
+        eventToEdit.pricing.tiers.length
+          ? eventToEdit.pricing.tiers.map((tier) => newTierRow(tier))
+          : [newTierRow({ price: eventToEdit.pricing.startingPrice, quantity: eventToEdit.capacity }, eventToEdit.isFree)]
+      );
       setImageUrl(eventToEdit.imageUrl);
       setDescription(eventToEdit.description);
       setHostName(eventToEdit.host.name);
@@ -219,8 +247,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       setVenueAddress('');
       setVenueCity('');
       setIsFree(false);
-      setPrice('');
-      setCapacity('');
+      setTiers([newTierRow()]);
       setImageUrl('');
       setDescription('');
       setHostName('');
@@ -251,6 +278,29 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     setAgenda((rows) => rows.filter((row) => row.key !== key));
   };
 
+  // --- Ticket types ---------------------------------------------------------
+
+  const updateTier = (key: string, field: keyof TierRow, value: string) => {
+    setTiers((rows) => rows.map((row) => (row.key === key ? { ...row, [field]: value } : row)));
+  };
+
+  const moveTier = (index: number, direction: -1 | 1) => {
+    setTiers((rows) => {
+      const target = index + direction;
+      if (target < 0 || target >= rows.length) return rows;
+      const next = [...rows];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const removeTier = (key: string) => {
+    setTiers((rows) => rows.filter((row) => row.key !== key));
+  };
+
+  // Capacity is always the total of the ticket types
+  const capacity = tiers.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
+
   // --- Saving ---------------------------------------------------------------
 
   /** Returns the problems with the form, or an empty list when it can be saved. */
@@ -262,10 +312,17 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     if (!startTime) missing.push('start time');
     if (!venueName.trim()) missing.push('venue name');
     if (!venueCity.trim()) missing.push('town or city');
-    if (!capacity || Number(capacity) < 1) missing.push('capacity (at least 1)');
-    if (!isFree && (!price || Number(price) <= 0)) missing.push('ticket price (or mark the event as free)');
+    if (tiers.length === 0) missing.push('at least one ticket type');
 
     const problems = missing.length ? [`Please fill in: ${missing.join(', ')}.`] : [];
+    tiers.forEach((row, index) => {
+      const label = row.name.trim() || `Ticket type ${index + 1}`;
+      if (!row.name.trim()) problems.push(`Ticket type ${index + 1} needs a name.`);
+      if (!isFree && !(Number(row.price) > 0)) problems.push(`${label} needs a price above KSh 0 (or mark the event as free).`);
+      const quantity = Number(row.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1) problems.push(`${label} needs a quantity of at least 1.`);
+      else if (quantity < row.sold) problems.push(`${label} already has ${row.sold} sold, so its quantity cannot be lower.`);
+    });
     if (endTime && startTime && endTime <= startTime) {
       problems.push('The end time must be after the start time.');
     }
@@ -275,35 +332,24 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     return problems;
   };
 
-  const buildTiers = (startingPrice: number, seats: number): TicketTier[] => {
-    if (!eventToEdit || eventToEdit.pricing.tiers.length === 0) {
-      return [
-        {
-          id: `tier-new-${Date.now()}`,
-          name: isFree ? 'Free Entry' : 'General Admission',
-          price: startingPrice,
-          description: '',
-          available: seats,
-          perks: []
-        }
-      ];
-    }
-
-    const tiers = eventToEdit.pricing.tiers;
-    if (isFree) {
-      return tiers.map((tier) => ({
-        ...tier,
-        price: 0,
-        name: tiers.length === 1 && tier.name === 'General Admission' ? 'Free Entry' : tier.name
-      }));
-    }
-    if (tiers.length === 1) {
-      // A single tier follows the event's ticket price
-      const [tier] = tiers;
-      return [{ ...tier, price: startingPrice, name: tier.name === 'Free Entry' ? 'General Admission' : tier.name }];
-    }
-    return tiers;
-  };
+  const buildTiers = (): TicketTier[] =>
+    tiers.map((row) => {
+      const quantity = Number(row.quantity);
+      return {
+        // New tiers get a placeholder id; the server creates them and assigns a real one
+        id: row.id || `tier-new-${row.key}`,
+        name: row.name.trim(),
+        // Free events cost nothing at every ticket type
+        price: isFree ? 0 : Number(row.price),
+        description: row.description.trim(),
+        quantity,
+        available: quantity - row.sold,
+        perks: row.perks
+          .split(',')
+          .map((perk) => perk.trim())
+          .filter(Boolean)
+      };
+    });
 
   /** The status the primary button saves with: new and draft events are published, others keep theirs */
   const primaryStatus: EventItem['status'] =
@@ -323,8 +369,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       return;
     }
 
-    const startingPrice = isFree ? 0 : Number(price);
-    const seats = Number(capacity);
+    const builtTiers = buildTiers();
+    // The cheapest ticket is the price shown on the event
+    const startingPrice = isFree ? 0 : Math.min(...builtTiers.map((tier) => tier.price));
     const parsedTags = tags
       .split(',')
       .map((t) => t.trim())
@@ -359,9 +406,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       pricing: {
         currency: 'KES',
         startingPrice,
-        tiers: buildTiers(startingPrice, seats)
+        tiers: builtTiers
       },
-      capacity: seats,
+      capacity,
       attendeeCount: eventToEdit ? eventToEdit.attendeeCount : 0,
       imageUrl,
       host: {
@@ -492,8 +539,28 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           </div>
         </div>
 
-        {/* Pricing & Capacity */}
+        {/* Ticket types & capacity */}
         <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <span className={labelClass}>Ticket types *</span>
+              <p className="text-[11px] text-[#675A50]">
+                Capacity is the total of all ticket types:{' '}
+                <strong className="text-[#1E1814] tabular-nums">{capacity}</strong>{' '}
+                {capacity === 1 ? 'place' : 'places'}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              icon={<Plus className="w-3.5 h-3.5" />}
+              onClick={() => setTiers((rows) => [...rows, newTierRow({ name: '' }, isFree)])}
+            >
+              Add ticket type
+            </Button>
+          </div>
+
           <label className="flex items-center gap-2.5 cursor-pointer select-none w-fit">
             <input
               type="checkbox"
@@ -502,42 +569,118 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
               className="w-4 h-4 accent-[#8A4F33] cursor-pointer"
             />
             <span className="text-sm font-medium text-[#1E1814]">This is a free event</span>
+            {isFree && <span className="text-[11px] text-[#675A50]">Every ticket type is free</span>}
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {!isFree && (
-              <div>
-                <label className={labelClass}>Ticket price (KSh) *</label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  inputMode="numeric"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="e.g. 1500"
-                  className={inputClass}
-                />
-                {eventToEdit && eventToEdit.pricing.tiers.length > 1 && (
-                  <p className={hintClass}>This event has several ticket types; their prices are not changed here.</p>
-                )}
-              </div>
-            )}
-
-            <div>
-              <label className={labelClass}>Capacity (attendees) *</label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                inputMode="numeric"
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                placeholder="Maximum number of attendees"
-                className={inputClass}
-              />
+          {tiers.length === 0 ? (
+            <div className="p-4 rounded-xl border border-dashed border-[#D8CDBC] bg-[#EFE8DD] text-xs text-[#675A50] text-center">
+              Add at least one ticket type, such as <strong>General Admission</strong> or <strong>VIP</strong>.
             </div>
-          </div>
+          ) : (
+            <ol className="space-y-3">
+              {tiers.map((row, index) => {
+                const n = index + 1;
+                return (
+                  <li key={row.key} className="p-3 rounded-xl border border-[#D8CDBC] bg-[#EFE8DD] space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="mt-2.5 w-5 text-xs font-semibold text-[#675A50] shrink-0">{n}.</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-[1fr_120px_110px] gap-2 flex-1">
+                        <input
+                          type="text"
+                          aria-label={`Ticket type ${n} name`}
+                          value={row.name}
+                          onChange={(e) => updateTier(row.key, 'name', e.target.value)}
+                          placeholder="Name, e.g. VIP"
+                          className={`${inputClass} col-span-2 sm:col-span-1`}
+                        />
+                        {isFree ? (
+                          <div className={`${inputClass} text-[#675A50] bg-[#E9E2D6]`} aria-label={`Ticket type ${n} price`}>
+                            Free
+                          </div>
+                        ) : (
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            inputMode="numeric"
+                            aria-label={`Ticket type ${n} price in KSh`}
+                            value={row.price}
+                            onChange={(e) => updateTier(row.key, 'price', e.target.value)}
+                            placeholder="KSh price"
+                            className={inputClass}
+                          />
+                        )}
+                        <input
+                          type="number"
+                          min={Math.max(1, row.sold)}
+                          step="1"
+                          inputMode="numeric"
+                          aria-label={`Ticket type ${n} quantity`}
+                          value={row.quantity}
+                          onChange={(e) => updateTier(row.key, 'quantity', e.target.value)}
+                          placeholder="Quantity"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => moveTier(index, -1)}
+                          disabled={index === 0}
+                          aria-label={`Move ticket type ${n} up`}
+                          className="p-2 rounded-lg text-[#675A50] hover:text-[#1E1814] hover:bg-ivory disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveTier(index, 1)}
+                          disabled={index === tiers.length - 1}
+                          aria-label={`Move ticket type ${n} down`}
+                          className="p-2 rounded-lg text-[#675A50] hover:text-[#1E1814] hover:bg-ivory disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeTier(row.key)}
+                          disabled={row.sold > 0}
+                          aria-label={`Remove ticket type ${n}`}
+                          title={row.sold > 0 ? 'Tickets of this type are already sold, so it cannot be removed' : undefined}
+                          className="p-2 rounded-lg text-[#675A50] hover:text-red-700 hover:bg-ivory disabled:opacity-30 cursor-pointer disabled:cursor-default"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="pl-7 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        aria-label={`Ticket type ${n} description`}
+                        value={row.description}
+                        onChange={(e) => updateTier(row.key, 'description', e.target.value)}
+                        placeholder="Description (optional)"
+                        className={inputClass}
+                      />
+                      <input
+                        type="text"
+                        aria-label={`Ticket type ${n} perks`}
+                        value={row.perks}
+                        onChange={(e) => updateTier(row.key, 'perks', e.target.value)}
+                        placeholder="Perks, comma separated (optional)"
+                        className={inputClass}
+                      />
+                    </div>
+                    {row.sold > 0 && (
+                      <p className="pl-7 text-[11px] text-[#675A50]">
+                        {row.sold} sold · {Math.max(0, (Number(row.quantity) || 0) - row.sold)} left
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
         </div>
 
         {/* Image */}

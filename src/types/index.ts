@@ -33,7 +33,12 @@ export interface TicketTier {
   name: string;
   price: number;
   description: string;
+  /** Total tickets of this type (set by the organizer) */
+  quantity?: number;
+  /** Tickets still available */
   available: number;
+  /** Tickets already sold or held, set by the server */
+  sold?: number;
   perks: string[];
 }
 

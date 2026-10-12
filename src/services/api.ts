@@ -146,7 +146,8 @@ export const authApi = {
     API.patch<UserProfile>('/auth/profile/', updates).then((r) => r.data),
   changePassword: (currentPassword: string, newPassword: string) =>
     API.post('/auth/password/change/', { currentPassword, newPassword }).then((r) => r.data),
-  resetPassword: (email: string) => API.post('/auth/password/reset/', { email }).then((r) => r.data)
+  resetPassword: (email: string) => API.post('/auth/password/reset/', { email }).then((r) => r.data),
+  becomeOrganizer: () => API.post<UserProfile>('/auth/become-organizer/').then((r) => r.data)
 };
 
 export async function uploadAvatarFile(file: File): Promise<string> {
@@ -219,6 +220,42 @@ export interface BookingRequest {
 export const bookingsApi = {
   list: () => API.get<TicketBooking[]>('/bookings/').then((r) => r.data),
   create: (booking: BookingRequest) => API.post<TicketBooking>('/bookings/', booking).then((r) => r.data)
+};
+
+export interface PromoCheck {
+  code: string;
+  percentOff: number;
+  subtotal?: number;
+  discount?: number;
+  total?: number;
+}
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  percentOff: number;
+  eventId: string | null;
+  eventTitle?: string;
+  validFrom: string | null;
+  validUntil: string | null;
+  maxUses: number | null;
+  useCount: number;
+  isActive: boolean;
+}
+
+export type PromoCodeInput = Pick<PromoCode, 'code' | 'percentOff' | 'validFrom' | 'validUntil' | 'maxUses' | 'isActive'> & {
+  eventId: string;
+};
+
+export const promoApi = {
+  /** Checks a code for an event and returns the server-computed discount; nothing is used up */
+  validate: (code: string, eventId: string, tierId: string, quantity: number) =>
+    API.post<PromoCheck>('/promo-codes/validate/', { code, eventId, tierId, quantity }).then((r) => r.data),
+  list: () => API.get<PromoCode[]>('/promo-codes/').then((r) => r.data),
+  create: (input: PromoCodeInput) => API.post<PromoCode>('/promo-codes/', input).then((r) => r.data),
+  update: (id: string, input: Partial<PromoCodeInput>) =>
+    API.patch<PromoCode>(`/promo-codes/${id}/`, input).then((r) => r.data),
+  remove: (id: string) => API.delete(`/promo-codes/${id}/`)
 };
 
 export const bookmarksApi = {

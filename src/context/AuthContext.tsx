@@ -15,6 +15,8 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Upgrades the signed-in attendee to an organizer, who can create events */
+  becomeOrganizer: () => Promise<void>;
   logout: () => void;
 }
 
@@ -100,6 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await run(() => authApi.changePassword(currentPassword, newPassword), 'Failed to update password.');
   };
 
+  const becomeOrganizer = async (): Promise<void> => {
+    const updated = await run(() => authApi.becomeOrganizer(), 'Could not upgrade your account.');
+    setUser(updated);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -113,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         resetPassword,
         updateProfile,
         changePassword,
+        becomeOrganizer,
         logout
       }}
     >
