@@ -43,12 +43,9 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   const stats = useMemo(() => {
     const totalEvents = events.length;
     const activeAttendees = events.reduce((acc, curr) => acc + (curr.attendeeCount || 0), 0);
-    const grossRevenue = events.reduce((acc, curr) => {
-      // Estimate: free events earn nothing; paid ones use their starting price
-      const price = curr.isFree ? 0 : curr.pricing.startingPrice || 0;
-      return acc + (curr.attendeeCount || 0) * price;
-    }, 0);
-    const ticketsSold = activeAttendees;
+    // Sales come from the server, summed from the bookings actually made
+    const grossRevenue = events.reduce((acc, curr) => acc + (curr.organizerStats?.revenue || 0), 0);
+    const ticketsSold = events.reduce((acc, curr) => acc + (curr.organizerStats?.ticketsSold || 0), 0);
 
     return {
       totalEvents,
@@ -123,7 +120,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
 
         <div className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm">
           <div className="flex items-center justify-between text-[#675A50] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Estimated Revenue</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Revenue</span>
             <div className="p-2 rounded-xl bg-[#E9E2D6] text-[#8A4F33]">
               <Wallet className="w-4 h-4" />
             </div>
@@ -131,7 +128,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           <div className="font-serif text-3xl font-medium text-[#1E1814] tabular-nums">
             {formatKES(stats.grossRevenue, null)}
           </div>
-          <span className="text-xs text-[#675A50] mt-1 block">Bookings × ticket price</span>
+          <span className="text-xs text-[#675A50] mt-1 block">Paid by attendees, after discounts</span>
         </div>
 
         <div className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm">

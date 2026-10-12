@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, X, SlidersHorizontal, Sparkles, RefreshCw, LayoutGrid, CalendarDays } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Sparkles, RefreshCw, LayoutGrid, CalendarDays, Hash } from 'lucide-react';
 import { EventItem } from '../../types';
 import { HeroBanner } from './HeroBanner';
 import { EventCard } from './EventCard';
@@ -50,6 +50,9 @@ export interface DiscoverViewProps {
   /** Search text shared with the site-wide search panel; local state is used when omitted */
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
+  /** Tag filter, shared with the event page's tag links; local state is used when omitted */
+  selectedTag?: string | null;
+  onTagChange?: (tag: string | null) => void;
 }
 
 export const DiscoverView: React.FC<DiscoverViewProps> = ({
@@ -65,7 +68,9 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   isLoading = false,
   onRefresh,
   searchQuery: controlledQuery,
-  onSearchChange
+  onSearchChange,
+  selectedTag: controlledTag,
+  onTagChange
 }) => {
   const [internalTab, setInternalTab] = useState<'grid' | 'calendar'>('grid');
   const activeTab = currentTab || internalTab;
@@ -84,7 +89,16 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
     onSearchChange?.(query);
   };
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [localTag, setLocalTag] = useState<string | null>(null);
+  const selectedTag = controlledTag !== undefined ? controlledTag : localTag;
+  const setSelectedTag = (tag: string | null) => {
+    setLocalTag(tag);
+    onTagChange?.(tag);
+  };
+  const handleTagClick = (tag: string) => {
+    setSelectedTag(tag);
+    document.getElementById('event-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilter>('all');
   const [freeOnly, setFreeOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'date' | 'price-asc' | 'price-desc'>('date');
@@ -266,9 +280,24 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               setSelectedTag(null);
             }}
             categoryCounts={categoryCounts}
-            activeTag={selectedTag || undefined}
-            onClearTag={() => setSelectedTag(null)}
           />
+
+          {selectedTag && (
+            <div className="flex items-center gap-2 text-xs text-[#675A50]">
+              <span>Showing events tagged</span>
+              <button
+                type="button"
+                onClick={() => setSelectedTag(null)}
+                aria-label={`Remove tag filter #${selectedTag}`}
+                title="Remove tag filter"
+                className="inline-flex items-center gap-1 text-[#8A4F33] bg-[#8A4F33]/10 px-3 py-1.5 rounded-full border border-[#8A4F33]/20 hover:bg-[#8A4F33]/20 transition-colors cursor-pointer font-medium"
+              >
+                <Hash className="w-3 h-3" />
+                <span>{selectedTag}</span>
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
 
           {/* Search & Sort Toolbar */}
           <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between pt-2">
@@ -360,6 +389,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                   isBookmarked={bookmarkedIds.includes(event.id)}
                   onToggleBookmark={onToggleBookmark}
                   onShare={onShareEvent}
+                  onTagClick={handleTagClick}
                   onCategoryClick={(cat) => {
                     setSelectedCategory(cat);
                     window.scrollTo({ top: 400, behavior: 'smooth' });
@@ -378,7 +408,7 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
               No events match your search
             </h3>
             <p className="text-sm text-[#675A50] max-w-md mx-auto mb-6">
-              We couldn't find any events {selectedCategory !== 'all' ? `in "${selectedCategory}" ` : ''}matching your filters. Try different words or reset the filters.
+              We couldn't find any events {selectedCategory !== 'all' ? `in "${selectedCategory}" ` : ''}{selectedTag ? `tagged #${selectedTag} ` : ''}matching your filters. Try different words or reset the filters.
             </p>
             <Button variant="primary" onClick={resetFilters}>
               Reset all filters

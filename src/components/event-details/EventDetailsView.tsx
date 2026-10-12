@@ -27,6 +27,8 @@ export interface EventDetailsViewProps {
   onToggleBookmark: (event: EventItem) => void;
   onSelectCategory?: (category: any) => void;
   onShare?: (event: EventItem) => void;
+  /** Shows every event with this tag on Discover */
+  onSelectTag?: (tag: string) => void;
 }
 
 export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
@@ -36,7 +38,8 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
   isBookmarked,
   onToggleBookmark,
   onSelectCategory,
-  onShare
+  onShare,
+  onSelectTag
 }) => {
   // Events without tiers are booked as one general admission at the starting price
   const defaultTier = (): TicketTier =>
@@ -253,14 +256,26 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
               {/* Tags */}
               {event.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 pt-2">
-                {event.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-xs text-[#675A50] bg-[#E9E2D6] px-3 py-1 rounded-full border border-[#D8CDBC]"
-                  >
-                    #{tag}
-                  </span>
-                ))}
+                {event.tags.map((tag) =>
+                  onSelectTag ? (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => onSelectTag(tag)}
+                      title={`Show events tagged #${tag}`}
+                      className="text-xs text-[#675A50] bg-[#E9E2D6] px-3 py-1 rounded-full border border-[#D8CDBC] hover:border-[#8A4F33] hover:text-[#8A4F33] transition-colors cursor-pointer"
+                    >
+                      #{tag}
+                    </button>
+                  ) : (
+                    <span
+                      key={tag}
+                      className="text-xs text-[#675A50] bg-[#E9E2D6] px-3 py-1 rounded-full border border-[#D8CDBC]"
+                    >
+                      #{tag}
+                    </span>
+                  )
+                )}
               </div>
               )}
             </section>

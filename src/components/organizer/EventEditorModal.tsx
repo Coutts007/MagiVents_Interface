@@ -305,9 +305,16 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     return tiers;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /** The status the primary button saves with: new and draft events are published, others keep theirs */
+  const primaryStatus: EventItem['status'] =
+    !eventToEdit || eventToEdit.status === 'draft' ? 'published' : eventToEdit.status;
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    save(primaryStatus);
+  };
+
+  const save = async (status: EventItem['status']) => {
     // Rows with nothing typed in them are dropped
     const filledAgenda = agenda.filter((row) => row.time || row.title.trim() || row.detail.trim());
     const problems = validate(filledAgenda);
@@ -370,7 +377,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         title: itemTitle.trim(),
         detail: detail.trim()
       })),
-      status: eventToEdit ? eventToEdit.status : 'published',
+      status,
       isFeatured: eventToEdit ? eventToEdit.isFeatured : false,
       tags: parsedTags,
       curatorNote: attendeeNote.trim()
@@ -393,7 +400,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={eventToEdit ? 'Edit event' : 'Create an event'}
-      subtitle="Fields marked * are required. Your event is published on MagiVents when you save."
+      subtitle="Fields marked * are required. Publish to list the event on MagiVents, or save it as a draft that only you can see."
       maxWidth="2xl"
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -708,12 +715,15 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         )}
 
         {/* Actions */}
-        <div className="pt-4 border-t border-[#D8CDBC] flex items-center justify-end gap-3">
+        <div className="pt-4 border-t border-[#D8CDBC] flex flex-wrap items-center justify-end gap-3">
           <Button variant="ghost" onClick={onClose} type="button">
             Cancel
           </Button>
+          <Button variant="secondary" type="button" disabled={isSaving} onClick={() => save('draft')}>
+            {eventToEdit && eventToEdit.status !== 'draft' ? 'Unpublish as draft' : 'Save as draft'}
+          </Button>
           <Button variant="primary" type="submit" disabled={isSaving}>
-            {isSaving ? 'Saving…' : eventToEdit ? 'Save changes' : 'Publish event'}
+            {isSaving ? 'Saving…' : primaryStatus === eventToEdit?.status ? 'Save changes' : 'Publish event'}
           </Button>
         </div>
       </form>

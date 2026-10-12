@@ -24,7 +24,7 @@ import { Footer } from './components/common/Footer';
 import { SearchDialog } from './components/search/SearchDialog';
 
 function toEventInput(event: EventItem): EventInput {
-  const { id, attendeeCount, organizerId, ...input } = event;
+  const { id, attendeeCount, organizerId, organizerStats, ...input } = event;
   return input;
 }
 
@@ -50,6 +50,7 @@ function MainLayout() {
   const [discoverTab, setDiscoverTab] = useState<'grid' | 'calendar'>('grid');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   // Site-wide search: the panel and the Discover search box share one query
   const [searchQuery, setSearchQuery] = useState('');
@@ -385,6 +386,8 @@ function MainLayout() {
             onRefresh={loadEvents}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            selectedTag={activeTag}
+            onTagChange={setActiveTag}
           />
         )}
 
@@ -400,6 +403,14 @@ function MainLayout() {
               setActiveCategory(cat);
               setCurrentView('discover');
               window.scrollTo({ top: 400, behavior: 'smooth' });
+            }}
+            onSelectTag={(tag) => {
+              setActiveTag(tag);
+              setDiscoverTab('grid');
+              handleBackToDiscover();
+              setTimeout(() => {
+                document.getElementById('event-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 50);
             }}
           />
         )}

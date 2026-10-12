@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Smartphone,
   CheckCircle2,
@@ -8,6 +8,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { formatKES } from '../../utils/format';
+import { PublicConfig, getPublicConfig } from '../../services/api';
 
 export interface MpesaPaymentState {
   method: 'mpesa' | 'card';
@@ -39,6 +40,16 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
   const [phoneError, setPhoneError] = useState('');
   const [paybillCodeInput, setPaybillCodeInput] = useState('');
   const [paybillError, setPaybillError] = useState('');
+
+  // The Paybill number comes from server configuration, never from the code
+  const [config, setConfig] = useState<PublicConfig | null>(null);
+  useEffect(() => {
+    getPublicConfig()
+      .then(setConfig)
+      .catch(() => setConfig(null));
+  }, []);
+  const paybill = config?.mpesaPaybill || '…';
+  const accountName = config?.mpesaAccountName || 'MagiVents';
 
   // Normalize phone number to standard 2547XXXXXXXX or 07XXXXXXXX
   const validatePhone = (phone: string) => {
@@ -313,8 +324,8 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
                     <strong>{state.phoneNumber}</strong>. Enter your M-Pesa PIN on your phone to approve it.
                   </p>
                   <div className="flex items-center justify-between text-[10px] text-amber-600 font-mono pt-1">
-                    <span>Paybill: 522522</span>
-                    <span>Account: MagiVents</span>
+                    <span>Paybill: {paybill}</span>
+                    <span>Account: {accountName}</span>
                   </div>
                 </div>
               )}
@@ -351,7 +362,7 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
                 </span>
                 <ol className="list-decimal list-inside text-[11px] text-[#675A50] space-y-1">
                   <li>Go to M-Pesa menu &gt; <strong>Lipa na M-Pesa</strong> &gt; <strong>Paybill</strong></li>
-                  <li>Enter Business No: <strong className="text-[#1E1814] font-mono">522522</strong></li>
+                  <li>Enter Business No: <strong className="text-[#1E1814] font-mono">{paybill}</strong></li>
                   <li>Enter Account No: <strong className="text-[#1E1814] font-mono">{accountRef}</strong></li>
                   <li>Enter Amount: <strong className="text-[#1E1814] font-mono">{amountLabel}</strong></li>
                   <li>Enter your M-Pesa PIN and confirm payment</li>

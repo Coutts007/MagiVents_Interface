@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, Calendar, MapPin, Trash2, ArrowRight, Bookmark, Share2 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { formatKES } from '../../utils/format';
@@ -22,10 +22,24 @@ export const BookmarksDrawer: React.FC<BookmarksDrawerProps> = ({
   onSelectEvent,
   onShareEvent
 }) => {
+  // Esc closes the drawer, and the page behind it does not scroll while it is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div role="dialog" aria-modal="true" aria-label="Saved events" className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
       <div
         onClick={onClose}

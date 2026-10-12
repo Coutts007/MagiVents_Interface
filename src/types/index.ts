@@ -89,6 +89,8 @@ export interface EventItem {
   curatorNote?: string;
   /** ISO timestamp, set by the server */
   createdAt?: string;
+  /** Sales from real bookings; only sent to the event's organizer, null for everyone else */
+  organizerStats?: { revenue: number; ticketsSold: number } | null;
 }
 
 export interface TicketBooking {

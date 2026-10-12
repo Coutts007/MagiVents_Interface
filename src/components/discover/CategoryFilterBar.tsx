@@ -7,18 +7,12 @@ export interface CategoryFilterBarProps {
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
   categoryCounts: Record<string, number>;
-  onTagClick?: (tag: string) => void;
-  activeTag?: string;
-  onClearTag?: () => void;
 }
 
 export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
   selectedCategory,
   onSelectCategory,
-  categoryCounts,
-  onTagClick,
-  activeTag,
-  onClearTag
+  categoryCounts
 }) => {
   const activeDef = CATEGORY_DEFINITIONS.find((c) => c.id === selectedCategory);
   const [categoryQuery, setCategoryQuery] = useState('');
@@ -118,16 +112,6 @@ export const CategoryFilterBar: React.FC<CategoryFilterBarProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {activeTag && onClearTag && (
-              <button
-                onClick={onClearTag}
-                className="inline-flex items-center gap-1 text-xs text-[#8A4F33] bg-[#8A4F33]/10 px-3 py-1.5 rounded-full border border-[#8A4F33]/20 hover:bg-[#8A4F33]/20 transition-colors"
-              >
-                <span>Tag: #{activeTag}</span>
-                <X className="w-3 h-3" />
-              </button>
-            )}
-
             <button
               onClick={() => onSelectCategory('all')}
               className="text-xs text-[#675A50] hover:text-[#1E1814] px-3 py-1.5 rounded-full border border-[#D8CDBC] hover:bg-ivory bg-ivory/60 transition-colors cursor-pointer"

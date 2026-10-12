@@ -24,6 +24,8 @@ export interface EventCardProps {
   onToggleBookmark: (event: EventItem) => void;
   onCategoryClick?: (category: any) => void;
   onShare?: (event: EventItem) => void;
+  /** Filters the event list by a tag; tags are shown on the card when set */
+  onTagClick?: (tag: string) => void;
 }
 
 export const EventCard: React.FC<EventCardProps> = ({
@@ -32,8 +34,11 @@ export const EventCard: React.FC<EventCardProps> = ({
   isBookmarked,
   onToggleBookmark,
   onCategoryClick,
-  onShare
+  onShare,
+  onTagClick
 }) => {
+  const placesLeft = Math.max(0, event.capacity - event.attendeeCount);
+
   return (
     <article
       onClick={() => onSelect(event)}
@@ -143,15 +148,34 @@ export const EventCard: React.FC<EventCardProps> = ({
           <p className="text-sm text-[#675A50] font-normal leading-relaxed line-clamp-2 mb-4">
             {event.description}
           </p>
+
+          {onTagClick && event.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {event.tags.slice(0, 3).map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTagClick(tag);
+                  }}
+                  title={`Show events tagged #${tag}`}
+                  className="text-[11px] text-[#675A50] bg-[#E9E2D6] px-2.5 py-1 rounded-full border border-[#D8CDBC] hover:border-[#8A4F33] hover:text-[#8A4F33] transition-colors cursor-pointer"
+                >
+                  #{tag}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Card Footer: Capacity & Detail Affordance */}
         <div className="pt-4 border-t border-[#D8CDBC]/80 flex items-center justify-between">
           <div className="text-xs text-[#675A50]">
             <span className="font-medium text-[#1E1814] tabular-nums">
-              {event.capacity - event.attendeeCount}
+              {placesLeft}
             </span>{' '}
-            {event.capacity - event.attendeeCount === 1 ? 'place' : 'places'} left
+            {placesLeft === 1 ? 'place' : 'places'} left
           </div>
 
           <div className="inline-flex items-center gap-1 text-xs font-medium text-[#8A4F33] group-hover:translate-x-0.5 transition-transform duration-200">

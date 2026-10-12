@@ -161,10 +161,32 @@ export async function uploadAvatarFile(file: File): Promise<string> {
   return response.data.avatarUrl;
 }
 
+// --- Public configuration -----------------------------------------------------
+
+export interface PublicConfig {
+  mpesaPaybill: string;
+  mpesaAccountName: string;
+}
+
+let configPromise: Promise<PublicConfig> | null = null;
+
+/** Non-secret settings from the server, fetched once per page load. */
+export function getPublicConfig(): Promise<PublicConfig> {
+  configPromise =
+    configPromise ||
+    API.get<PublicConfig>('/config/')
+      .then((r) => r.data)
+      .catch((err) => {
+        configPromise = null;
+        throw err;
+      });
+  return configPromise;
+}
+
 // --- Gatherings ---------------------------------------------------------------
 
 /** Event payload sent to the backend; server-managed fields are omitted. */
-export type EventInput = Omit<EventItem, 'id' | 'attendeeCount' | 'organizerId'>;
+export type EventInput = Omit<EventItem, 'id' | 'attendeeCount' | 'organizerId' | 'organizerStats'>;
 
 export const gatheringsApi = {
   list: () => API.get<EventItem[]>('/gatherings/').then((r) => r.data),
