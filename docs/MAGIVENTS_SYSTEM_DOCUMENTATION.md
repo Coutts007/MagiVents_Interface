@@ -140,6 +140,7 @@ magivents_hybrid/
 │   ├── gatherings/        Gathering, TicketTier, AgendaItem; event API, check-in, attendees; seed command
 │   ├── tickets/           Booking, Bookmark, PromoCode; booking API, ticket PDF (documents.py), emails.py,
 │   │                      templates/tickets/emails/ (HTML + text confirmation)
+│   ├── console/           staff console API (secret path + staff), ConsoleAction audit log
 │   ├── payments/          Payment model, services.py (lifecycle), providers/ (simulated, daraja, paystack),
 │   │                      hooks.py (callbacks), commands release_expired_holds and register_c2b_urls
 │   ├── Dockerfile, docker-compose.yml, docker-compose.prod.yml, requirements.txt, .env.example
@@ -152,6 +153,7 @@ magivents_hybrid/
         └── components/
             ├── checkout/           CheckoutModal, MpesaPaymentSection (method picker), PaymentStatusPanel
             ├── ticket/             TicketView (Find my ticket), PrintableTicketModal, EmailConfirmationModal
+            ├── console/            AdminConsole (staff console: overview, organizers, payments, bookings, activity)
             ├── organizer/          OrganizerDashboard, EventEditorModal, PromoCodesPanel, CheckInPanel,
             │                       CoordinatePicker, BecomeOrganizerModal
             ├── map/VenueMap.tsx    Leaflet wrapper
@@ -196,7 +198,7 @@ The development Docker stack (PostgreSQL and Redis, with demo data and `runserve
 
 | Command | Purpose |
 |---|---|
-| `manage.py test` | Backend tests (74) |
+| `manage.py test` | Backend tests (87) |
 | `manage.py seed_gatherings [--reset]` | Load or reload the demo events |
 | `manage.py release_expired_holds` | Expire unpaid bookings whose hold ran out; production runs it every minute |
 | `manage.py register_c2b_urls` | Register the Paybill validation and confirmation URLs with Daraja (once per environment) |
@@ -244,6 +246,8 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | `REDIS_URL` | unset | Use Redis for the cache |
 | `LOG_LEVEL` | `INFO` | Logs go to stdout |
 | `GOOGLE_OAUTH_CLIENT_ID` | empty | Google sign-in (503 when empty) |
+| `ADMIN_CONSOLE_PATH` | empty (console off) | Secret path of the staff console; at least 16 random characters |
+| `ADMIN_CONSOLE_MAX_FAILURES` | `10` | Wrong console paths allowed per account or IP before a one-hour lockout |
 
 ### Payments
 
@@ -292,7 +296,7 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | **Attendee** (role `patron`, the default for new accounts) | Everything a guest can, plus: save events, see confirmed tickets under **My tickets**, edit their profile, change their password. They can upgrade themselves with **Become an organizer**. |
 | **Organizer** (role `curator`) | Create events. Manage their own events, promo codes and check-in. |
 | **Event owner** | Only the organizer who created an event can edit, publish, unpublish or delete it, see its attendees and sales, and check its tickets in. Drafts are visible only to their owner. |
-| **Admin** (Django staff) | Everything, through `/admin/`, including payments that need a refund (filter `needs_refund`) and site-wide promo codes. |
+| **Staff** (`is_staff`) | The in-app **staff console** at the secret path `/<ADMIN_CONSOLE_PATH>` (section 8.7): platform sales, organizers (revoke or restore the role, unpublish events), payments and the refund queue, bookings, and an activity log. Also the Django admin at `/admin/` (raw records, site-wide promo codes). |
 
 A data migration gave the organizer role to every user who already owned an event.
 
@@ -406,6 +410,39 @@ A data migration gave the organizer role to every user who already owned an even
 - Each scan reports **Checked in**, **Already checked in (at time)**, **Wrong event**, **Not paid** or **Not found**.
 - The attendee list shows checked-in counts and a progress bar, has search, and lets staff check people in manually.
 
+### 8.7 Staff console (platform admin)
+
+An admin section inside the app for people who run MagiVents.
+
+**Access needs two things at once:**
+1. The **secret path**, `https://<site>/<ADMIN_CONSOLE_PATH>`. The value is set only in the backend's environment; it never appears in the frontend code, so it cannot be found by reading the JavaScript.
+2. A signed-in **staff** account: `createsuperuser`, or "Staff status" ticked in `/admin/`.
+
+**Everyone else sees the normal site.** That includes signed-out visitors, attendees, organizers, and staff on a wrong path. The API answers them with the same plain 404 as a page that doesn't exist, so the console cannot be discovered.
+
+**Protections:**
+- Wrong paths are counted per account (or per IP when signed out). After `ADMIN_CONSOLE_MAX_FAILURES` attempts (default 10), even the right path answers 404 for an hour.
+- An unset or short (< 16 characters) `ADMIN_CONSOLE_PATH` switches the console off.
+- The console is left out of the public API docs and marked `noindex`.
+- Leaving it removes the path from the address bar.
+
+**Sections:**
+
+| Section | What it shows and does |
+|---|---|
+| **Overview** | Confirmed revenue (all time, last 30 days, today); tickets held by unpaid bookings; failed payments this week; users and organizers; a 30-day revenue chart (hover for each day, or switch to a table); bookings by status; revenue by payment method; top organizers; a banner when payments need a refund |
+| **Organizers** | Search and sort by revenue, events or newest. Each organizer has a page with sales, open refunds and every event (sold, held, revenue). Actions: **revoke or restore the organizer role**, **unpublish or republish an event**. Each action asks for a reason. |
+| **Payments** | Every payment attempt, filterable by refund state, status and provider, and searchable by reference, M-Pesa receipt, ticket code or email. The detail view shows the raw provider messages. **Needs refund** payments are settled outside MagiVents (M-Pesa reversal, Paystack dashboard), then recorded here with a note. |
+| **Bookings** | All bookings (guests marked), filterable by status and event, searchable by ticket code, name, email or event. Shows check-in state. |
+| **Activity** | Audit log of every console change: who, what, when and why |
+
+**Opening it:**
+1. Set `ADMIN_CONSOLE_PATH` on the server (e.g. `python -c "import secrets; print(secrets.token_urlsafe(24))"`) and restart the API.
+2. Create a staff account with `manage.py createsuperuser`.
+3. Sign in on the site with that account and visit `https://<site>/<that value>`.
+
+The path is a second secret, not a replacement for the staff account. Keep it out of chats and git, and change it if it leaks.
+
 ---
 
 ## 9. Backend reference
@@ -419,6 +456,7 @@ A data migration gave the organizer role to every user who already owned an even
 | `tickets` | Bookings, bookmarks, promo codes; ticket PDF and confirmation email |
 | `payments` | Payment records, the paid booking lifecycle, providers and their callbacks |
 | `core` | Image decoding, geocoding proxy, health check, public configuration |
+| `console` | Staff console API under `/api/console/<secret>/` (`access.py` holds the two-lock check) and the `ConsoleAction` audit log |
 
 ### 9.2 Data model
 
@@ -499,6 +537,8 @@ Codes are unique per event, and site-wide codes are unique among themselves. `KA
 
 **`tickets.Bookmark`**: `user`, `gathering`, unique together.
 
+**`console.ConsoleAction`**: `staff`, `action`, `target_type`, `target_id`, `target_label`, `note`, `created_at`. One row per staff change.
+
 **`payments.Payment`.** One payment attempt.
 
 | Field | Meaning |
@@ -513,6 +553,7 @@ Codes are unique per event, and site-wide codes are unique among themselves. `KA
 | `phone_number`, `receipt_number`, `authorization_url`, `failure_reason` | |
 | `needs_refund` | Money arrived that must go back: duplicate, late, or wrong amount |
 | `raw_payloads` | The last 20 callbacks and queries |
+| `refund_resolved_at`, `refund_resolved_by`, `refund_note` | Set in the staff console when a flagged refund is settled |
 | `created_at`, `updated_at`, `completed_at`, `last_queried_at` | |
 
 ### 9.3 Business rules
@@ -711,6 +752,7 @@ The client fields `mpesaReceiptNumber` and `totalInKes` are still accepted, for 
 | GET | `/geocode/?q=` | user, throttled | `{results: [{name, lat, lng}]}` from Nominatim, cached; 503 when unavailable |
 | GET | `/health/` | public | `{status, database, cache}`, 200 or 503 |
 | GET | `/schema/`, `/docs/` | public | OpenAPI and Swagger UI |
+| GET / POST | `/console/<ADMIN_CONSOLE_PATH>/…` | staff on the secret path; 404 for everyone else | `session/`, `overview/`, `organizers/`, `organizers/<id>/`, `organizers/<id>/role/`, `events/<id>/status/`, `payments/`, `payments/<uuid>/`, `payments/<uuid>/resolve-refund/`, `bookings/`, `actions/`. Deliberately left out of `/api/schema/`. |
 
 Errors: DRF validation format or `{"error": "..."}`.
 
@@ -790,7 +832,7 @@ The same palette is used for the PDF ticket, the email, the map pin and the QR c
 
 ## 14. Testing
 
-### Backend: 74 tests (`manage.py test`), all passing
+### Backend: 87 tests (`manage.py test`), all passing
 
 All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite runs offline.
 
@@ -801,6 +843,7 @@ All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite
 | `tickets` | 20 | Server-side pricing, promo codes (seeded `KARIBU15`, per-event, limits, expiry, scope, validate endpoint, management), sold out, privacy, bookmarks, free and guest bookings, confirmation email (HTML + text + PDF), failing email, QR URL, PDF, resend, lookup and its throttle, check-in |
 | `payments` | 24 | Phone normalisation; simulated lifecycle (pending → confirmed, failure + retry on the same booking, expiry and sold-out reopening, the command, confirmed-only counts, promo use returned); idempotency (repeated success and failure, amount mismatch, late success with and without availability); Daraja STK (request fields, callback, wrong secret, IP allowlist, cancel, query fallback, refusal, invalid phone); C2B (validation codes, confirmation, repeat, second payment, underpayment); Paystack (initialize, bad signature, verify-before-trust, status poll); live mode without credentials |
 | `core` | 11 | Public config, API schema and docs, geocoding (auth, cache, upstream failure), health (ok, database down, cache down), production settings (refuses the dev key, HTTPS protections) |
+| `console` | 13 | Access (only staff on the secret path; 404 for signed-out, attendees, organizers, wrong path and inactive staff; off when unset or short; lockout after repeated guesses; hidden from the schema); overview counts confirmed sales only; organizer list and detail; payment and booking search and filters; refund resolution (note required, once only, logged); role revoke and restore; unpublish and republish (full events return as sold out) |
 
 Some test fixtures were changed where the work changed behaviour on purpose (the assertions were not):
 
@@ -957,3 +1000,5 @@ Then:
    - Production compose with nginx.
    - Vitest.
 7. **This documentation.**
+
+**Afterwards:** the in-app **staff console** on a secret path for staff accounts, covering platform sales, organizer oversight, the payment refund queue, bookings and an audit log. Promo codes and a proper bookings list were also registered in the Django admin.

@@ -344,3 +344,150 @@ export const bookmarksApi = {
 };
 
 export default API;
+
+// --- Staff console (secret path + staff account; see backend console/access.py) ---------------
+
+export interface Page<T> {
+  count: number;
+  page: number;
+  pageSize: number;
+  results: T[];
+}
+
+export interface ConsoleSales {
+  revenue: number;
+  tickets: number;
+  bookings: number;
+}
+
+export interface ConsoleOverview {
+  sales: { allTime: ConsoleSales; last30Days: ConsoleSales; today: ConsoleSales };
+  byMethod: { method: string; revenue: number; bookings: number }[];
+  daily: { date: string; revenue: number; tickets: number }[];
+  bookingsByStatus: Partial<Record<'pending' | 'confirmed' | 'failed' | 'expired', number>>;
+  pendingHolds: { bookings: number; tickets: number };
+  refundsOpen: { count: number; amount: number };
+  paymentsFailedLast7Days: number;
+  users: { total: number; organizers: number; newLast30Days: number };
+  events: Partial<Record<'published' | 'draft' | 'sold_out', number>>;
+  topOrganizers: { id: string; name: string; revenue: number }[];
+  paymentsMode: 'simulated' | 'live';
+}
+
+export interface ConsoleOrganizer {
+  id: string;
+  name: string;
+  email: string;
+  role: 'patron' | 'curator';
+  isActive: boolean;
+  isStaff: boolean;
+  joinedDate: string;
+  lastLogin: string | null;
+  eventsCount: number;
+  publishedCount: number;
+  ticketsSold: number;
+  revenue: number;
+}
+
+export interface ConsoleEventRow {
+  id: string;
+  title: string;
+  date: string;
+  isoDate: string;
+  city: string;
+  status: 'published' | 'draft' | 'sold_out';
+  isFree: boolean;
+  capacity: number;
+  ticketsSold: number;
+  held: number;
+  revenue: number;
+}
+
+export interface ConsoleOrganizerDetail extends ConsoleOrganizer {
+  city: string;
+  openRefunds: number;
+  events: ConsoleEventRow[];
+}
+
+export interface ConsolePayment {
+  id: string;
+  reference: string;
+  provider: 'simulated' | 'mpesa_stk' | 'mpesa_paybill' | 'paystack';
+  method: 'mpesa' | 'card';
+  status: 'pending' | 'succeeded' | 'failed';
+  amount: number;
+  receiptNumber: string | null;
+  providerReference: string | null;
+  phoneNumber: string | null;
+  failureReason: string | null;
+  needsRefund: boolean;
+  refundResolvedAt: string | null;
+  refundResolvedBy: string | null;
+  refundNote: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  booking: {
+    id: string;
+    status: string;
+    ticketCode: string | null;
+    attendeeName: string;
+    attendeeEmail: string;
+    quantity: number;
+    totalPrice: number;
+  };
+  event: { id: string; title: string; organizerEmail: string };
+  rawPayloads?: { source: string; payload: unknown }[];
+}
+
+export interface ConsoleBooking {
+  id: string;
+  ticketCode: string | null;
+  status: 'pending' | 'confirmed' | 'failed' | 'expired';
+  attendeeName: string;
+  attendeeEmail: string;
+  isGuest: boolean;
+  tierName: string;
+  quantity: number;
+  totalPrice: number;
+  paymentMethod: string;
+  bookingDate: string;
+  checkedInAt: string | null;
+  event: { id: string; title: string };
+}
+
+export interface ConsoleActionRow {
+  id: number;
+  action: string;
+  targetType: string;
+  targetId: string;
+  targetLabel: string;
+  note: string;
+  staff: string | null;
+  createdAt: string;
+}
+
+type Params = Record<string, string | number | undefined>;
+
+/** Every call is scoped to the secret path; the server answers 404 to anyone who is not staff. */
+export function consoleApi(secret: string) {
+  const base = `/console/${encodeURIComponent(secret)}`;
+  const get = <T,>(path: string, params?: Params) => API.get<T>(`${base}${path}`, { params }).then((r) => r.data);
+  const post = <T,>(path: string, body: unknown) => API.post<T>(`${base}${path}`, body).then((r) => r.data);
+  return {
+    session: () => get<{ staff: { name: string; email: string } }>('/session/'),
+    overview: () => get<ConsoleOverview>('/overview/'),
+    organizers: (params: Params) => get<Page<ConsoleOrganizer>>('/organizers/', params),
+    organizer: (id: string) => get<ConsoleOrganizerDetail>(`/organizers/${id}/`),
+    setRole: (id: string, role: 'patron' | 'curator', note: string) =>
+      post<ConsoleOrganizer>(`/organizers/${id}/role/`, { role, note }),
+    setEventStatus: (id: string, status: 'draft' | 'published', note: string) =>
+      post<ConsoleEventRow>(`/events/${encodeURIComponent(id)}/status/`, { status, note }),
+    payments: (params: Params) => get<Page<ConsolePayment>>('/payments/', params),
+    payment: (id: string) => get<ConsolePayment>(`/payments/${id}/`),
+    resolveRefund: (id: string, note: string) => post<ConsolePayment>(`/payments/${id}/resolve-refund/`, { note }),
+    bookings: (params: Params) => get<Page<ConsoleBooking>>('/bookings/', params),
+    actions: (params: Params) => get<Page<ConsoleActionRow>>('/actions/', params)
+  };
+}
+
+export type ConsoleApi = ReturnType<typeof consoleApi>;

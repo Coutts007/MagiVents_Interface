@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { AppView, BookingWithPayment, EventItem, TicketTier, TicketBooking } from './types';
 import { AuthModalMode } from './types/auth';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -7,6 +7,7 @@ import {
   EventInput,
   bookingsApi,
   bookmarksApi,
+  consoleApi,
   gatheringsApi,
   getApiErrorMessage,
   ticketsApi
@@ -25,6 +26,15 @@ import { ShareModal } from './components/share/ShareModal';
 import { Footer } from './components/common/Footer';
 import { SearchDialog } from './components/search/SearchDialog';
 import { TicketView } from './components/ticket/TicketView';
+
+// Staff console code is only downloaded once the server has confirmed a staff member on the secret path
+const AdminConsole = lazy(() => import('./components/console/AdminConsole').then((m) => ({ default: m.AdminConsole })));
+
+/** The single path segment the page was opened at, e.g. "/abc/" -> "abc" ("" on the home page) */
+function pathSegment(): string {
+  const segment = window.location.pathname.replace(/^\/+|\/+$/g, '');
+  return segment.includes('/') ? '' : segment;
+}
 
 function toEventInput(event: EventItem): EventInput {
   const { id, attendeeCount, organizerId, organizerStats, ...input } = event;
@@ -50,6 +60,41 @@ function MainLayout() {
 
   // Navigation State
   const [currentView, setCurrentView] = useState<AppView>('discover');
+
+  // Staff console: the secret path lives only on the server. Any other path, or a non-staff account,
+  // gets a 404 from the server and the normal site is shown.
+  const [consoleSession, setConsoleSession] = useState<{ secret: string; staffName: string } | null>(null);
+  useEffect(() => {
+    const segment = pathSegment();
+    if (!segment || !user) {
+      setConsoleSession(null);
+      setCurrentView((view) => (view === 'console' ? 'discover' : view));
+      return;
+    }
+    let cancelled = false;
+    consoleApi(segment)
+      .session()
+      .then(({ staff }) => {
+        if (cancelled) return;
+        setConsoleSession({ secret: segment, staffName: staff.name });
+        setCurrentView('console');
+      })
+      .catch(() => {
+        if (!cancelled) setConsoleSession(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  /** Leaving the console takes the secret out of the address bar */
+  const leaveConsolePath = () => {
+    if (pathSegment()) {
+      const url = new URL(window.location.href);
+      url.pathname = '/';
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
 
   // "Find my ticket" page: a ticket opened from its QR/email link (?ticket=<uuid>) or found by code + email
   const [ticketViewBooking, setTicketViewBooking] = useState<TicketBooking | null>(null);
@@ -413,6 +458,7 @@ function MainLayout() {
         currentView={currentView}
         discoverTab={discoverTab}
         onNavigate={(view, tab) => {
+          if (currentView === 'console') leaveConsolePath();
           setCurrentView(view);
           if (tab) {
             setDiscoverTab(tab);
@@ -499,6 +545,12 @@ function MainLayout() {
           />
         )}
 
+        {currentView === 'console' && consoleSession && (
+          <Suspense fallback={<div className="max-w-7xl mx-auto px-4 py-16 text-sm text-[#675A50]">Loading…</div>}>
+            <AdminConsole secret={consoleSession.secret} staffName={consoleSession.staffName} />
+          </Suspense>
+        )}
+
         {currentView === 'ticket' && (
           <TicketView
             booking={ticketViewBooking}
@@ -537,6 +589,7 @@ function MainLayout() {
       {/* Footer */}
       <Footer
         onNavigate={(view, tab) => {
+          if (currentView === 'console') leaveConsolePath();
           setCurrentView(view);
           if (tab) {
             setDiscoverTab(tab);

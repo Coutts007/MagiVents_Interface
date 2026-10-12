@@ -1,5 +1,5 @@
 /** The pages App.tsx switches between */
-export type AppView = 'discover' | 'details' | 'organizer' | 'profile' | 'ticket';
+export type AppView = 'discover' | 'details' | 'organizer' | 'profile' | 'ticket' | 'console';
 
 export type EventCategory =
   | 'Sports & Outdoors'
