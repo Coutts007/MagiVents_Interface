@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -8,8 +9,13 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
+    },
+    test: {
+      // Unit tests for pure logic (utilities, checkout state); no browser needed
+      environment: 'node',
+      include: ['src/**/*.test.ts']
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
