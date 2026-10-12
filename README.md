@@ -38,17 +38,24 @@ npm run dev                     # http://localhost:3000
 
 ## Features
 
-- Discover events by category, search, date and price; a slideshow shows the 10 most recently created events.
-- Event pages with organizer-defined agenda, venue map and ticket tiers.
-- Free events: attendees register without payment and still receive a ticket.
-- Paid events: prices in KSh, paid with M-Pesa (STK Push or Paybill) or card.
-- Profile photos are optional; the user's initials are shown until a photo is uploaded.
-- Organizer dashboard to create, edit, publish, unpublish and delete events.
+- Discover events by category, tag, search, date and price; a slideshow shows the 10 newest events.
+- Event pages with agenda, ticket types and a real OpenStreetMap venue map.
+- Free events confirm at once; paid events hold tickets while the attendee pays with M-Pesa (prompt on the
+  phone, or Paybill) or by card on Paystack. Payment state always comes from the server.
+- Tickets with scannable QR codes, server-generated PDFs and confirmation emails; guests find their ticket
+  with its code and email.
+- Organizer dashboard: events with ticket-type editor and map pin, promo codes, sales from real bookings,
+  and QR check-in at the door.
+
+Full documentation: [`docs/MAGIVENTS_SYSTEM_DOCUMENTATION.md`](docs/MAGIVENTS_SYSTEM_DOCUMENTATION.md)
+(`docs/DJANGO_BACKEND_GUIDE.md` is an early guide and out of date).
 
 ## Notes
 
+- With an empty backend `.env`, payments run in simulated mode (no money moves) and emails print to the
+  backend console. See the documentation's "Going live checklist" for real M-Pesa, Paystack and email.
 - Google Sign-In needs `http://localhost:3000` listed under *Authorized JavaScript origins* for the OAuth client,
   and the same client ID in both `.env` files.
-- Password reset emails are printed to the backend console in development; the link opens Django's reset page.
-- M-Pesa STK push and the e-mail "dispatch" in the ticket modal are still simulated in the browser; the booking
-  itself (price, availability, ticket code) is created and validated by the backend.
+- `npm test` runs the Vitest unit tests; `npm run lint` type-checks.
+- Production: `Dockerfile` + `nginx.conf` build and serve the app; the backend's `docker-compose.prod.yml`
+  runs the whole stack.
