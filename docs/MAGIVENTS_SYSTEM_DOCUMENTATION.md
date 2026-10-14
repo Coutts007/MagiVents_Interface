@@ -1,6 +1,6 @@
 # MagiVents: System Documentation
 
-*Covers the frontend (`magivents_interface`) and the backend (`MagiVents_backend`) as of 14 October 2026, after the work that added the admin dashboard, the listing fee (pay to publish), ticket tier types and flash sales, and organizer payment details and payouts.*
+*Covers the frontend (`magivents_interface`) and the backend (`MagiVents_backend`) as of 14 October 2026, after the work that added the admin dashboard, the listing fee (pay to publish), ticket tier types and flash sales, organizer payment details and payouts, and the AI event assistant.*
 
 ---
 
@@ -37,6 +37,7 @@ MagiVents is a Kenyan platform for discovering and booking events.
 
 **Organizers** (users with the organizer role)
 - Create events with their own ticket types (VVIP, VIP, Regular, Couple, Group, Early Bird or any name), flash sales and an agenda, and pin the venue on a real map.
+- Get help writing the event from the **AI assistant** in the event form: titles, a description, an agenda, tags, ticket types and more, applied to the form only when they click.
 - Pay a one-off **listing fee** (set by the admin per category) to publish an event.
 - Give the **payment details** the platform pays their ticket sales out to, and follow their earnings and payouts.
 - Create promo codes.
@@ -104,6 +105,7 @@ External services:
 | Auth | `djangorestframework-simplejwt`, `google-auth` (Google ID-token verification) |
 | API schema / docs | `drf-spectacular`: OpenAPI at `/api/schema/`, Swagger UI at `/api/docs/` |
 | Payments | `requests` against Safaricom Daraja and Paystack (no SDKs) |
+| AI assistant | `anthropic` (official Claude Python SDK); a built-in mock provider when no key is set |
 | Tickets | `reportlab` (PDF ticket with its built-in QR code widget) |
 | Email | Django email framework; console backend by default, SMTP by configuration |
 | Database | SQLite locally (`SQLITE_PATH` optional); PostgreSQL 15 when `POSTGRES_HOST` is set |
@@ -156,13 +158,16 @@ magivents_hybrid/
 │   ├── notifications/     Notification model, notify_admins (in app + email), /api/notifications/
 │   ├── payouts/           PayoutAccount (payment details), Payout; ledger.py (earnings), services.py
 │   │                      (record_payout), automated.py (where automated payouts would go)
+│   ├── assistant/         AI event assistant: prompts.py (system prompt), schema.py (output schema,
+│   │                      form sanitising, suggestion validation), services.py, streaming.py,
+│   │                      providers/ (base, claude, mock)
 │   ├── Dockerfile, docker-compose.yml, docker-compose.prod.yml, requirements.txt, .env.example
 └── magivents_interface/
     ├── Dockerfile, nginx.conf, vite.config.ts (also configures Vitest)
     └── src/
         ├── App.tsx                 view switching, global state, deep links (?event, ?ticket, ?booking)
         ├── services/api.ts         every API call
-        ├── utils/                  format, search, share, ticketPrinting, checkout, tiers, time, payoutDetails
+        ├── utils/                  format, search, share, ticketPrinting, checkout, tiers, time, payoutDetails, assistant
         │                           (+ *.test.ts), qrScanner, useNow
         └── components/
             ├── checkout/           CheckoutModal, MpesaPaymentSection (method picker), PaymentStatusPanel
@@ -172,7 +177,7 @@ magivents_hybrid/
             │                       payment), NotificationBell, ReasonDialog
             ├── organizer/          OrganizerDashboard, EventEditorModal, PromoCodesPanel, CheckInPanel,
             │                       CoordinatePicker, BecomeOrganizerModal, PayListingFeePanel, EarningsPanel,
-            │                       PayoutDetailsFields, PayoutDetailsCard
+            │                       PayoutDetailsFields, PayoutDetailsCard, AssistantPanel
             ├── map/VenueMap.tsx    Leaflet wrapper
             └── … discover, calendar, search, event-details, profile, auth, navigation, ui
 ```
@@ -225,12 +230,12 @@ The development Docker stack (PostgreSQL and Redis, with demo data and `runserve
 
 | Command | Purpose |
 |---|---|
-| `manage.py test` | Backend tests (155) |
+| `manage.py test` | Backend tests (176) |
 | `manage.py seed_gatherings [--reset]` | Load or reload the demo events |
 | `manage.py release_expired_holds` | Expire unpaid bookings whose hold ran out; production runs it every minute |
 | `manage.py register_c2b_urls` | Register the Paybill validation and confirmation URLs with Daraja (once per environment) |
 | `manage.py createsuperuser` | Admin account: the in-app admin dashboard and the Django admin at `/admin/` |
-| `npm run lint` / `npm run build` / `npm test` | Type-check / production build / frontend tests (34) |
+| `npm run lint` / `npm run build` / `npm test` | Type-check / production build / frontend tests (47) |
 
 ### Production
 
@@ -306,6 +311,16 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | `MEDIA_ROOT`, `STATIC_ROOT` | `media/`, `staticfiles/` | |
 | `GEOCODER_URL`, `GEOCODER_USER_AGENT` | public Nominatim, `MagiVents/1.0 (…)` | Address search for the map pin |
 | `GUEST_BOOKING_RATE`, `PROMO_VALIDATE_RATE`, `TICKET_LOOKUP_RATE`, `TICKET_RESEND_RATE`, `PAYMENT_ATTEMPT_RATE`, `GEOCODE_RATE` | 20/hour, 30/minute, 10/hour, 5/hour, 20/hour, 30/hour | Per-IP (or per-user) rate limits |
+
+### AI event assistant
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AI_PROVIDER` | `anthropic` | `anthropic` or `mock`. Any other value stops the server at start-up |
+| `AI_API_KEY` | empty | The Anthropic API key, on the server only (never sent to the browser). Empty = the mock provider answers with labelled sample suggestions |
+| `AI_MODEL` | `claude-opus-5-5` (when empty) | The Claude model id |
+| `AI_REQUESTS_PER_HOUR` | `60` | Assistant requests each organizer may make per hour |
+| `AI_TIMEOUT_SECONDS` | `30` | A provider call is abandoned with a clear error after this long |
 
 ### Frontend `.env`
 
@@ -516,6 +531,28 @@ A role-based view inside the app for admins, linked from the navbar (**Admin**) 
 
 Every dashboard change is written to the shared audit log (`console.ConsoleAction`) with who, what and why.
 
+### 8.9 AI event assistant
+
+An **Assistant** button at the top of the event form (create and edit) opens a panel: beside the form on wide screens, as a bottom sheet over it on phones (with a minimise button). The form stays visible and editable. Esc closes the assistant first, then the editor.
+
+- **Quick actions**: Suggest titles, Write description, Draft agenda, Suggest tagline, Suggest tags, Suggest ticket tiers, Write note to attendees. An action is disabled with a hint when the form lacks what it needs (e.g. Draft agenda needs a title or an idea; it says which hours it will fit). On a blank form, the first quick action asks the organizer to describe the idea in one line, then runs.
+- **Chat**: the organizer types freely ("A two-day fintech hackathon for university students in Nairobi…", "make the description more formal"). The reply streams in with a cursor.
+- **Suggestion cards** under each reply: **Use this** writes the value into the matching field (five title options show as a list, each with its own button); agenda and ticket types offer **Replace** and **Append** (Replace keeps ticket types that already have sales). Nothing is written to the form without a click, and fields can be edited by hand afterwards.
+- **Context**: every request carries the current form's content fields, so a title picked or a time set by hand is used by the next request. Payment details, images and ids are never sent.
+- **Lifetime**: the conversation lives in the editor session only (closing and reopening the panel keeps it; closing the editor or opening another event starts fresh). Nothing is stored.
+- **States**: streaming cursor, inline errors with **Retry**, and a **Sample suggestions** badge when the server has no AI key and the mock provider answered.
+- **Who**: organizers and admins who are not suspended (the same rule as creating events).
+
+**How it works.** The browser never talks to the AI provider: it posts to `POST /api/assistant/event/`, and the Django backend calls Claude with the official Python SDK, using the API key from `AI_API_KEY`. One call per turn, streamed:
+
+- **Structured output**: the request sets `output_config.format` to a JSON schema (`assistant/schema.py`), so the model's whole answer is `{reply, suggestions}` in a fixed shape. The server pulls the `reply` text out of the JSON as it streams and forwards it, then validates the suggestions and sends them at the end. An answer that cannot be parsed is retried once (within the time limit), then reported as a clean error.
+- **Model settings**: `claude-opus-5-5` by default, effort `low` (quick chat answers), up to 8,000 output tokens, the fixed system prompt marked for prompt caching, and Anthropic's server-side refusal fallback (`fallbacks: "default"`) on models that support it.
+- **Validation**: every suggestion is checked against the event form's rules before it reaches the browser: the category must be one of the nine; agenda times must be real `HH:MM` times within the event's start and end when both are set; ticket prices must be whole, non-negative KES (0 for every type of a free event, above 0 for a paid one), quantities and people per ticket in range; tags short and de-duplicated; texts within the fields' lengths. Anything invalid is dropped.
+- **System prompt** (`assistant/prompts.py`, one file): a Kenyan events copywriter in natural Kenyan English with KSh prices; five titles in distinct tones; two or three short description paragraphs with no invented speakers, sponsors, prizes or venue details (placeholders in square brackets instead, mentioned in the reply); agendas inside the event's hours; realistic Kenyan ticket prices marked as starting points; the form and messages are the organizer's content, never instructions; a brief refusal for discriminatory or payment-misleading content or anything other than event promotion.
+- **Limits and logging**: per-organizer throttle (`AI_REQUESTS_PER_HOUR`), the last 10 messages and capped form fields sent to the model, `AI_TIMEOUT_SECONDS` per call. Each call logs the user id, provider, model, action and token counts, never the content.
+- **Errors** (provider down, key invalid, provider rate limit, timeout, refusal, unreadable answer, throttled) come back as `{error, code, retryable}`, as JSON before the stream starts or as an `error` event during it. The form never breaks because the assistant failed.
+- **Providers** share a small interface (`assistant/providers/base.py`: stream JSON text that follows the schema). Claude is one implementation; the mock is the other; OpenAI or another provider would be a third class registered in `assistant/providers/__init__.py`.
+
 ---
 
 ## 9. Backend reference
@@ -534,6 +571,7 @@ Every dashboard change is written to the shared audit log (`console.ConsoleActio
 | `listings` | Category fees, the platform's payment details, each event's listing fee and the pay-to-publish lifecycle |
 | `notifications` | In-app notifications and admin emails |
 | `payouts` | Organizer payment details, payouts, the earnings ledger, and the placeholder for automated payouts |
+| `assistant` | The AI event assistant: `POST /api/assistant/event/`, the Claude and mock providers, prompt, schema and validation (no models) |
 
 ### 9.2 Data model
 
@@ -930,6 +968,40 @@ The client fields `mpesaReceiptNumber` and `totalInKes` are still accepted, for 
 | GET | `/schema/`, `/docs/` | public | OpenAPI and Swagger UI |
 | GET / POST | `/console/<ADMIN_CONSOLE_PATH>/…` | staff on the secret path; 404 for everyone else | `session/`, `overview/`, `organizers/`, `organizers/<id>/`, `organizers/<id>/role/`, `events/<id>/status/`, `payments/`, `payments/<uuid>/`, `payments/<uuid>/resolve-refund/`, `bookings/`, `actions/`. Deliberately left out of `/api/schema/`. |
 
+### AI event assistant
+
+`POST /api/assistant/event/`: organizers and admins who are not suspended (401 signed out, 403 otherwise); throttled per user (`AI_REQUESTS_PER_HOUR`, 429).
+
+Request:
+
+```json
+{
+  "messages": [{"role": "user", "content": "A charity 5K run at Karura Forest on a Saturday morning"}],
+  "formState": {"title": "", "tagline": "", "category": "", "date": "", "startTime": "07:00", "endTime": "11:00",
+                "venueName": "", "venueCity": "", "isFree": false, "description": "", "tags": "",
+                "attendeeNote": "", "agenda": [], "tiers": []},
+  "action": "titles"
+}
+```
+
+- `messages`: the conversation so far (`user` / `assistant` only; at most 8,000 characters each; the last 10 are sent to the model).
+- `formState`: the form's content fields. The server keeps only `title`, `tagline`, `category`, `date`, `startTime`, `endTime`, `venueName`, `venueAddress`, `venueCity`, `isFree`, `description`, `hostName`, `hostRole`, `tags`, `attendeeNote`, `agenda`, `tiers` (capped), and drops everything else.
+- `action`: `chat` (default; needs a user message), `titles`, `description`, `agenda`, `tagline`, `tags`, `tiers` or `attendeeNote`.
+
+Response: `text/event-stream`:
+
+| Event | Data |
+|---|---|
+| `meta` | `{provider: "anthropic" \| "mock", sample}` |
+| `delta` | `{text}`: the next piece of the reply |
+| `reset` | `{}`: discard the reply so far (a retry or a fallback model starts again) |
+| `done` | `{reply, suggestions, provider, sample}` |
+| `error` | `{error, code, retryable}` |
+
+Each suggestion is `{field, label?, value}`: `title`, `tagline`, `description`, `attendeeNote` and `category` have a string `value`; `tags` a list of strings; `agenda` a list of `{time, title, detail}`; `tiers` a list of `{name, price, quantity, admits, description, perks}`. Only suggestions that pass the event form's rules are returned (section 8.9).
+
+Errors before the stream starts are JSON with the same `{error, code, retryable}` and an HTTP status (400 bad request, 503 provider unavailable or misconfigured, 504 timeout). Codes: `empty_message`, `provider_auth`, `provider_rate_limited`, `provider_unavailable`, `provider_rejected`, `timeout`, `refused`, `bad_output`, `internal`.
+
 ### Admin dashboard (`/api/admin/`, role admin; 403 for every other signed-in user, 401 when signed out)
 
 | Method | Path | Notes |
@@ -970,6 +1042,7 @@ Errors: DRF validation format or `{"error": "..."}`; publishing rules add a `cod
   - `promoApi`, `ticketsApi` (`get`, `lookup`, `resend`, `pdfUrl`), `checkInApi`, `geocodeApi`
   - `listingFeeApi` (`get`, `pay`), `payoutsApi` (payment details, event overrides, `summary`), `adminApi`, `notificationsApi`
   - `publishBlockedReason` / `PublishBlocked` read the server's publish-rule refusals (`code`, `amountDue`, …)
+  - `assistantApi.ask` posts to the assistant with `fetch` (Axios cannot stream in the browser) and reads the server-sent events, refreshing the access token once on 401 like the Axios client does
   - `getPublicConfig` (cached)
 
 ### Checkout
@@ -999,9 +1072,12 @@ Errors: DRF validation format or `{"error": "..."}`; publishing rules add a `cod
 | `admin/AdminDashboard` | Overview, organizers, listing fees, category fees, platform payment (lazy loaded) |
 | `admin/NotificationBell` | Admin notifications with unread count; polls |
 | `admin/ReasonDialog` | Reason (and reference) for admin actions that change money or access |
+| `AssistantPanel` | The AI assistant beside the event form: quick actions, streamed chat, suggestion cards |
 | `map/VenueMap` | Leaflet map, lazy loaded |
 
 Large libraries load only when needed: Leaflet (about 150 kB), and the QR decoder (about 44 kB of JS plus a 1.1 MB WASM file). The admin dashboard (about 43 kB) loads only for admins.
+
+**Assistant helpers.** `utils/assistant.ts` holds the pure logic: `applySuggestion` (the patch one suggestion makes to the form, with Replace / Append for agenda and ticket types), quick-action availability and the blank-form check. The shared `Modal` takes an optional `aside` (beside the dialog on wide screens, a bottom sheet on phones) and an `onEscape` hook.
 
 **Tier and time helpers.** `utils/tiers.ts` mirrors the server's pricing rule so prices and countdowns change on time (`tierPriceAt`, `saleSecondsLeft`, `tierSalesState`, `admitsLabel`, the presets). `utils/time.ts` converts between Nairobi `datetime-local` values and UTC, and formats Nairobi times. `utils/useNow.ts` ticks only while a sale countdown is on screen.
 
@@ -1037,7 +1113,7 @@ The same palette is used for the PDF ticket, the email, the map pin and the QR c
 
 ## 14. Testing
 
-### Backend: 155 tests (`manage.py test`), all passing
+### Backend: 176 tests (`manage.py test`), all passing
 
 All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite runs offline.
 
@@ -1054,6 +1130,7 @@ All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite
 | `tickets` (new) | +13 | Capacity counts people; couple and group tickets (price, people, the last group ticket, the last place); flash-sale price at the start, before, and at the end; the sale limit and the last sale ticket (no mixed prices); a failed payment returns the sale ticket and places; promo on top of the sale price; tier sales window; the public tier payload; sale validation; free events clear sales; admits locked once sold |
 | `payouts` | 11 | Each payment-details format; attendees have none; paid events need details to publish (PATCH and PUT); default and event override; free events need none; only the owner reads or changes them; details never appear in any public event response; earnings from confirmed bookings after discounts; a payout never exceeds the balance (more than the balance, decimals, future dates, the exact balance, then nothing left); balances on the admin overview; only organizers see earnings |
 | `listings` | 25 | New events are drafts and admins are notified (in app and email) only when a fee is due; an unpaid event cannot be published by PATCH, PUT, `sold_out`, create, the staff console or `save()`; free events pay too; paying publishes and notifies once, repeated confirmations change nothing; charged once even after unpublishing and a fee change; category upgrade pays the difference first, cheaper is free; unpaid drafts change category freely; failure leaves a draft and notifies; nothing to pay and payment details checked before taking money; owner only; suspended cannot pay or publish; live mode is paid by hand; a paid fee's event cannot be deleted; pending then confirmed by polling; a late failure after success; a wrong amount never publishes; seeded and migrated events count as paid |
+| `assistant` | 21 | With the mock provider and a scripted provider (no network): signed-out, attendee and suspended callers refused, admins allowed; the per-user throttle; labelled sample titles that stream, every quick action, `AI_PROVIDER=mock`, chat needs a message, a browser asking for `text/event-stream`; invalid suggestions dropped (bad category, negative or fractional price, free tier in a paid event, bad or out-of-hours agenda times, long tags, empty titles) and free events' tiers; a malformed answer retried once then a clean error, and a retry that recovers; provider errors before the stream as JSON; Claude SDK errors mapped to clear codes (auth, rate limit, server, timeout, connection); the Claude request (structured output, refusal fallback, streaming, usage) and a refusal; the form reaching the prompt without payment details or images; history capped and fields trimmed; usage logged without content; instructions hidden in the form stay organizer content; no system-role messages, oversized input or unknown actions |
 | `adminpanel` | 13 | **Every admin endpoint returns 403** to attendees, organizers, a demoted former admin and an inactive admin (and 401 signed out), and changes nothing; admins and superusers get in; creating an organizer emails a working set-password link (followed through Django's pages to signing in); list search and filters; edit details, email clash, role and payment details; admins' roles are not editable here; suspend with and without taking events down, then reactivate; delete needs the typed email and no bookings; category fees (validation, exempting clears unpaid events); platform payment details; listing-fee list, filters and totals; waive and mark paid need a reason and record who, and mark paid publishes when asked and notifies the other admins |
 
 Some test fixtures were changed where the work changed behaviour on purpose (the assertions were not):
@@ -1065,7 +1142,7 @@ Some test fixtures were changed where the work changed behaviour on purpose (the
 - **Organizer role.** The original gatherings test owner is created with the organizer role, because creating events now requires it.
 - **Simulated delay.** The original paying test classes run the simulated gateway with no delay, because paid bookings are now confirmed by the payment provider rather than at creation.
 
-### Frontend: 34 tests (`npm test`, Vitest)
+### Frontend: 47 tests (`npm test`, Vitest)
 
 | File | Covers |
 |---|---|
@@ -1076,6 +1153,8 @@ Some test fixtures were changed where the work changed behaviour on purpose (the
 | `checkout.test.ts` | Stages, payment actions, failure messages, countdown, polling back-off, Kenyan phone normalisation and errors |
 | `tiers.test.ts` | Flash-sale price at the boundaries and when the allowance is used up, countdown, sales window, admits label, Nairobi time conversions, durations |
 | `payoutDetails.test.ts` | M-Pesa, Till, Paybill and bank formats |
+| `assistant.test.ts` | Applying a suggestion to the form: Replace and Append for agenda and ticket types (ticket types with sales kept), single fields, tags; quick-action availability; blank form and idea detection |
+| `assistantStream.test.ts` | The streaming client with a mocked `fetch`: reply pieces and reset, final suggestions, token and body, error events, throttling and errors before the stream, a stream cut short; the event parser |
 
 `npm run lint` (TypeScript) and `npm run build` also pass.
 
@@ -1088,6 +1167,8 @@ The flows were also exercised in a headless browser:
 - The real Leaflet map and the address search.
 
 The production Docker stack was built and checked end to end, including media, a paid booking and the PDF.
+
+The AI assistant was walked through in headless Chrome with no AI key (mock provider): on a blank form, Suggest titles asked for the idea in one line, then returned five labelled sample titles; one was applied with a click; start and end times set by hand were used by Draft agenda (Replace); ticket types were appended after the existing one; Esc closed only the assistant, reopening kept the conversation, and the event saved as a draft. The bottom sheet was checked at 390 px.
 
 The admin round was walked through end to end in headless Chrome against a fresh clone with no `.env` (simulated payments): the admin set a category fee and the platform details and created an organizer; the organizer set a password from the emailed link, added payment details, created an event with VVIP, VIP, Regular, Couple and Group tickets and a flash sale, was sent to Pay to publish, paid, and the event went live with the admin notified; a guest booked a Couple ticket (KSh 2,500, admits 2) and a flash-sale VIP ticket (KSh 3,500 instead of 5,000), taking the attendee count from 0 to 3; the organizer saw KSh 6,000 earned; the admin recorded a KSh 5,000 payout and both sides showed KSh 1,000 outstanding. Mobile layouts were checked at 390 px.
 
@@ -1110,6 +1191,9 @@ The admin round was walked through end to end in headless Chrome against a fresh
 | **Listing fees online in live mode** | Only the simulated gateway takes listing fees online. With `PAYMENTS_MODE=live`, organizers pay the platform Paybill or Till by hand (quoting their reference) and an admin records it | A provider in `listings.services.listing_fee_provider()` (Daraja STK Push into the platform shortcode, or a card gateway) |
 | **Payouts** | Made by hand outside MagiVents and recorded by an admin | Daraja B2C or card-gateway split payments, at `payouts/automated.py` |
 | **Platform commission** | None: organizers earn the full ticket totals after discounts | A commission rule in `payouts/ledger.py`, if the business wants one |
+| **AI assistant without a key** | With no `AI_API_KEY` (or `AI_PROVIDER=mock`) the mock provider answers: it fills canned templates from the form (titles built from the title or the first clause of the idea, a description with [placeholders], an agenda spread across the event's hours, fixed sample ticket prices, category tags). It understands no requests ("make it shorter" changes nothing), and every answer is labelled as a sample | Set `AI_API_KEY` |
+| **AI assistant with Claude** | Written against the current SDK (`anthropic` 1.14) and tested with the SDK mocked; **not yet run against the live API** (no key was available) | One real session with `AI_API_KEY` set: describe an idea, pick a title, apply a description and an agenda, save |
+| **AI assistant and server workers** | Each assistant answer keeps one Gunicorn worker busy while it streams (up to `AI_TIMEOUT_SECONDS`); the production setup runs 3 sync workers | Threaded or async workers (e.g. `--worker-class gthread --threads 4`) if many organizers use it at once |
 | **Admin role from the dashboard** | Admins are made in the Django admin (staff status) or with `createsuperuser`, not from the dashboard | None |
 
 ---
@@ -1237,3 +1321,9 @@ Then:
 6. **Earnings and payouts**: ledger, payouts capped at the balance, organizer earnings view.
 
 Then a fix for the admin navbar layout and the flash-sale label, and this documentation.
+
+**AI event assistant (14 October 2026)**, one commit per part in each repository:
+
+1. **Backend service**: the `assistant` app, Claude and mock providers, structured output, streaming, validation, limits.
+2. **Assistant panel** in the event form (and the event-stream renderer fix found in the browser walk-through).
+3. **Quality and safety** tests on both sides.
