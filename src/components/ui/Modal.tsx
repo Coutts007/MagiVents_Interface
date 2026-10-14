@@ -8,6 +8,15 @@ export interface ModalProps {
   subtitle?: string;
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
+  /**
+   * A panel shown beside the dialog on wide screens and as a bottom sheet over it on small ones
+   * (e.g. the event assistant). The dialog stays usable while it is open.
+   */
+  aside?: React.ReactNode;
+  /** Hides the aside without unmounting it (so its state survives); default true */
+  asideOpen?: boolean;
+  /** Called on Esc before the dialog closes; return true when it handled Esc (e.g. by closing the aside) */
+  onEscape?: () => boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -16,11 +25,15 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   subtitle,
   children,
-  maxWidth = 'xl'
+  maxWidth = 'xl',
+  aside,
+  asideOpen = true,
+  onEscape
 }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
+        if (onEscape?.()) return;
         onClose();
       }
     };
@@ -32,7 +45,7 @@ export const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, onEscape]);
 
   if (!isOpen) return null;
 
@@ -58,6 +71,7 @@ export const Modal: React.FC<ModalProps> = ({
         aria-hidden="true"
       />
 
+      <div className={`relative w-full flex items-start justify-center gap-4 ${aside && asideOpen ? 'lg:max-w-[calc(42rem+25rem)]' : ''}`}>
       {/* Dialog Window */}
       <div
         className={`relative w-full ${maxWidthStyles[maxWidth]} bg-ivory rounded-3xl border border-[#D8CDBC] shadow-sand-xl overflow-hidden z-10 transition-all duration-300 animate-in fade-in zoom-in-95 my-8`}
@@ -98,7 +112,14 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Content */}
-        <div className="p-6 sm:p-8 max-h-[80vh] overflow-y-auto">{children}</div>
+        <div className={`p-6 sm:p-8 max-h-[80vh] overflow-y-auto ${aside && asideOpen ? 'pb-[45vh] lg:pb-8' : ''}`}>{children}</div>
+      </div>
+
+      {aside && (
+        <div className={`${asideOpen ? 'flex' : 'hidden'} fixed inset-x-0 bottom-0 z-[60] max-h-[70vh] flex-col lg:relative lg:inset-auto lg:z-10 lg:w-96 lg:shrink-0 lg:my-8 lg:h-[calc(80vh+5.5rem)] lg:max-h-none`}>
+          {aside}
+        </div>
+      )}
       </div>
     </div>
   );

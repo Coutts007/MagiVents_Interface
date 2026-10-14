@@ -75,17 +75,7 @@ API.interceptors.response.use(
 
     original._retried = true;
     try {
-      refreshPromise =
-        refreshPromise ||
-        API.post('/auth/token/refresh/', { refresh: tokenStore.refresh })
-          .then((res) => {
-            tokenStore.set({ access: res.data.access, refresh: res.data.refresh || tokenStore.refresh! });
-            return res.data.access as string;
-          })
-          .finally(() => {
-            refreshPromise = null;
-          });
-      const access = await refreshPromise;
+      const access = await refreshAccessToken();
       original.headers.Authorization = `Bearer ${access}`;
       return API(original);
     } catch (refreshError) {
@@ -95,6 +85,21 @@ API.interceptors.response.use(
     }
   }
 );
+
+/** One shared refresh of the access token, also used by requests made with fetch (the assistant stream). */
+function refreshAccessToken(): Promise<string> {
+  refreshPromise =
+    refreshPromise ||
+    API.post('/auth/token/refresh/', { refresh: tokenStore.refresh })
+      .then((res) => {
+        tokenStore.set({ access: res.data.access, refresh: res.data.refresh || tokenStore.refresh! });
+        return res.data.access as string;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  return refreshPromise;
+}
 
 /** Turns a DRF error response into a single human-readable message. */
 export function getApiErrorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
@@ -792,3 +797,160 @@ export const notificationsApi = {
       (r) => r.data.unreadCount
     )
 };
+
+// --- AI event assistant (server-sent events over fetch; the browser never talks to the AI provider) -----------
+
+export type AssistantAction = 'chat' | 'titles' | 'description' | 'agenda' | 'tagline' | 'tags' | 'tiers' | 'attendeeNote';
+
+export interface AssistantTier {
+  name: string;
+  price: number;
+  quantity: number;
+  admits: number;
+  description: string;
+  perks: string[];
+}
+
+export type AssistantSuggestion =
+  | { field: 'title' | 'tagline' | 'description' | 'attendeeNote' | 'category'; label?: string; value: string }
+  | { field: 'tags'; label?: string; value: string[] }
+  | { field: 'agenda'; label?: string; value: { time: string; title: string; detail: string }[] }
+  | { field: 'tiers'; label?: string; value: AssistantTier[] };
+
+export interface AssistantResult {
+  reply: string;
+  suggestions: AssistantSuggestion[];
+  provider: string;
+  /** True when the server has no AI key and answered with sample suggestions */
+  sample: boolean;
+}
+
+export interface AssistantRequest {
+  messages: { role: 'user' | 'assistant'; content: string }[];
+  /** The event form's content fields; the server drops anything else */
+  formState: Record<string, unknown>;
+  action: AssistantAction;
+}
+
+export interface AssistantHandlers {
+  onMeta?: (meta: { provider: string; sample: boolean }) => void;
+  onDelta?: (text: string) => void;
+  /** Discard the reply so far: the assistant is starting its answer again */
+  onReset?: () => void;
+}
+
+export class AssistantRequestError extends Error {
+  code: string;
+  retryable: boolean;
+  constructor(message: string, code = 'error', retryable = true) {
+    super(message);
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
+
+async function assistantErrorFrom(response: Response): Promise<AssistantRequestError> {
+  let data: { error?: string; detail?: string; code?: string; retryable?: boolean } = {};
+  try {
+    data = await response.json();
+  } catch {
+    // Not JSON: fall through to a generic message
+  }
+  if (response.status === 429) {
+    return new AssistantRequestError(
+      'You have used the assistant a lot in the last hour. Please wait a little before asking again.',
+      'throttled',
+      false
+    );
+  }
+  if (response.status === 403) {
+    return new AssistantRequestError(data.detail || data.error || 'The assistant is not available for your account.', 'forbidden', false);
+  }
+  return new AssistantRequestError(
+    data.error || data.detail || 'The assistant is unavailable right now. Please try again.',
+    data.code || `http_${response.status}`,
+    data.retryable ?? response.status >= 500
+  );
+}
+
+export const assistantApi = {
+  /**
+   * Sends one turn and streams the answer: the reply arrives in pieces (onDelta), then the validated
+   * suggestions. Rejects with AssistantRequestError; nothing is ever applied to the form here.
+   */
+  async ask(request: AssistantRequest, handlers: AssistantHandlers = {}, signal?: AbortSignal): Promise<AssistantResult> {
+    const send = (token: string | null) =>
+      fetch(`${BASE_URL}/assistant/event/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(request),
+        signal
+      });
+
+    let response: Response;
+    try {
+      response = await send(tokenStore.access);
+      if (response.status === 401 && tokenStore.refresh) {
+        let access: string;
+        try {
+          access = await refreshAccessToken();
+        } catch {
+          tokenStore.clear();
+          onSessionExpired?.();
+          throw new AssistantRequestError('Your session has ended. Please sign in again.', 'unauthorized', false);
+        }
+        response = await send(access);
+      }
+    } catch (err) {
+      if (err instanceof AssistantRequestError || (err instanceof DOMException && err.name === 'AbortError')) throw err;
+      throw new AssistantRequestError('Cannot reach the MagiVents server. Check your connection and try again.', 'network');
+    }
+    if (!response.ok || !response.body) throw await assistantErrorFrom(response);
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+      let boundary = buffer.indexOf('\n\n');
+      while (boundary >= 0) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf('\n\n');
+        const event = parseServerSentEvent(block);
+        if (!event) continue;
+        if (event.name === 'meta') handlers.onMeta?.(event.data as { provider: string; sample: boolean });
+        else if (event.name === 'delta') handlers.onDelta?.((event.data as { text: string }).text);
+        else if (event.name === 'reset') handlers.onReset?.();
+        else if (event.name === 'done') return event.data as AssistantResult;
+        else if (event.name === 'error') {
+          const data = event.data as { error?: string; code?: string; retryable?: boolean };
+          throw new AssistantRequestError(data.error || 'The assistant could not answer.', data.code, data.retryable ?? true);
+        }
+      }
+      if (done) break;
+    }
+    throw new AssistantRequestError('The answer was cut off. Please try again.', 'incomplete');
+  }
+};
+
+/** "event: delta\ndata: {...}" -> {name, data}; null for anything else */
+export function parseServerSentEvent(block: string): { name: string; data: unknown } | null {
+  let name = 'message';
+  const data: string[] = [];
+  for (const line of block.split('\n')) {
+    if (line.startsWith('event:')) name = line.slice(6).trim();
+    else if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+  }
+  if (!data.length) return null;
+  try {
+    return { name, data: JSON.parse(data.join('\n')) };
+  } catch {
+    return null;
+  }
+}

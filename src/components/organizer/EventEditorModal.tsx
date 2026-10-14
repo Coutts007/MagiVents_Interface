@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useId, useMemo } from 'react';
-import { ArrowDown, ArrowUp, Check, ChevronDown, Plus, Trash2, Zap } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, Plus, Sparkles, Trash2, Zap } from 'lucide-react';
 import { AgendaItem, EventItem, EventCategory, TicketTier } from '../../types';
 import { EVENT_CATEGORIES } from '../../data/categories';
 import { useAuth } from '../../context/AuthContext';
@@ -12,6 +12,9 @@ import { isoToNairobiInput, nairobiInputToIso } from '../../utils/time';
 import { PayoutDetails, PayoutDetailsInput, payoutDetailsError, toPayoutInput } from '../../utils/payoutDetails';
 import { getApiErrorMessage, payoutsApi, PublishBlocked, PublishBlockedError } from '../../services/api';
 import { PayListingFeePanel } from './PayListingFeePanel';
+import { AssistantPanel } from './AssistantPanel';
+import { AssistantSuggestion } from '../../services/api';
+import { applySuggestion, ApplyMode, AssistantFormState } from '../../utils/assistant';
 import { PayoutDetailsFields } from './PayoutDetailsFields';
 
 export interface EventEditorModalProps {
@@ -239,6 +242,10 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [payoutMode, setPayoutMode] = useState<'default' | 'event'>('default');
   const [payoutForm, setPayoutForm] = useState<PayoutDetailsInput>(toPayoutInput(null));
   const [payoutErrorField, setPayoutErrorField] = useState<keyof PayoutDetailsInput | null>(null);
+  // The AI assistant beside the form; its conversation lasts for this editor session only
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  // Once opened, the panel stays mounted (hidden when closed) so the conversation survives until the editor closes
+  const [assistantStarted, setAssistantStarted] = useState(false);
   // Moving a paid event to a dearer category: pay the difference, then the save is tried again
   const [upgrade, setUpgrade] = useState<{ reason: PublishBlockedError; intent: 'publish' | 'draft' | 'keep' } | null>(null);
 
@@ -267,6 +274,8 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     setUpgrade(null);
+    setIsAssistantOpen(false);
+    setAssistantStarted(false);
     setSavedId(eventToEdit?.id ?? null);
     setPayoutMode('default');
     setHadOverride(false);
@@ -593,6 +602,72 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     }
   };
 
+  // --- AI assistant ---------------------------------------------------------
+
+  /** The form's content fields as they are right now (no payment details, images or ids) */
+  const assistantFormState = (): AssistantFormState => ({
+    title,
+    tagline: subtitle,
+    category,
+    date: isoDate,
+    startTime,
+    endTime,
+    venueName,
+    venueAddress,
+    venueCity,
+    isFree,
+    description,
+    hostName,
+    hostRole,
+    tags,
+    attendeeNote,
+    agenda: agenda.map(({ time, title: itemTitle, detail }) => ({ time, title: itemTitle, detail })),
+    tiers: tiers.map(({ name, price, quantity, admits, description: tierDescription, perks }) => ({
+      name,
+      price,
+      quantity,
+      admits,
+      description: tierDescription,
+      perks
+    }))
+  });
+
+  /** Writes a suggestion into the form's own state; only ever called from a click on a suggestion */
+  const applyAssistantSuggestion = (suggestion: AssistantSuggestion, mode: ApplyMode) => {
+    const patch = applySuggestion(
+      { title, subtitle, description, attendeeNote, category, tags, agenda, tiers },
+      suggestion,
+      mode,
+      {
+        agendaRow: (item) => newRow(item),
+        tierRow: (tier) =>
+          newTierRow(
+            {
+              name: tier.name,
+              price: tier.price,
+              quantity: tier.quantity,
+              admits: tier.admits,
+              description: tier.description,
+              perks: tier.perks
+            },
+            isFree
+          ),
+        // Ticket types with sales cannot be removed, so Replace keeps them
+        keepTier: (row) => row.sold > 0
+      }
+    );
+    if (patch.title !== undefined) setTitle(patch.title);
+    if (patch.subtitle !== undefined) setSubtitle(patch.subtitle);
+    if (patch.description !== undefined) setDescription(patch.description);
+    if (patch.attendeeNote !== undefined) setAttendeeNote(patch.attendeeNote);
+    if (patch.category !== undefined && EVENT_CATEGORIES.includes(patch.category as EventCategory)) {
+      setCategory(patch.category as EventCategory);
+    }
+    if (patch.tags !== undefined) setTags(patch.tags);
+    if (patch.agenda !== undefined) setAgenda(patch.agenda);
+    if (patch.tiers !== undefined) setTiers(patch.tiers);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -600,8 +675,45 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       title={eventToEdit ? 'Edit event' : 'Create an event'}
       subtitle="Fields marked * are required. Publish to list the event on MagiVents, or save it as a draft that only you can see."
       maxWidth="2xl"
+      aside={
+        assistantStarted ? (
+          <AssistantPanel
+            key={eventToEdit?.id ?? 'new'}
+            visible={isAssistantOpen}
+            getFormState={assistantFormState}
+            onApply={applyAssistantSuggestion}
+            onClose={() => setIsAssistantOpen(false)}
+          />
+        ) : undefined
+      }
+      asideOpen={isAssistantOpen}
+      onEscape={() => {
+        // Esc closes the assistant first, then the editor
+        if (!isAssistantOpen) return false;
+        setIsAssistantOpen(false);
+        return true;
+      }}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl border border-[#D8CDBC] bg-[#EFE8DD]">
+          <p className="text-xs text-[#675A50] flex-1 min-w-[12rem]">
+            Stuck for words? The assistant suggests titles, a description, an agenda, tags and ticket types from your idea.
+          </p>
+          <Button
+            type="button"
+            variant={isAssistantOpen ? 'secondary' : 'outline'}
+            size="sm"
+            icon={<Sparkles className="w-3.5 h-3.5" />}
+            aria-expanded={isAssistantOpen}
+            onClick={() => {
+              setAssistantStarted(true);
+              setIsAssistantOpen((open) => !open);
+            }}
+          >
+            {isAssistantOpen ? 'Hide assistant' : 'Assistant'}
+          </Button>
+        </div>
+
         {/* Title & Subtitle */}
         <div className="space-y-4">
           <div>
