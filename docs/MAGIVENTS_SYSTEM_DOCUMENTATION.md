@@ -230,12 +230,12 @@ The development Docker stack (PostgreSQL and Redis, with demo data and `runserve
 
 | Command | Purpose |
 |---|---|
-| `manage.py test` | Backend tests (176) |
+| `manage.py test` | Backend tests (181) |
 | `manage.py seed_gatherings [--reset]` | Load or reload the demo events |
 | `manage.py release_expired_holds` | Expire unpaid bookings whose hold ran out; production runs it every minute |
 | `manage.py register_c2b_urls` | Register the Paybill validation and confirmation URLs with Daraja (once per environment) |
 | `manage.py createsuperuser` | Admin account: the in-app admin dashboard and the Django admin at `/admin/` |
-| `npm run lint` / `npm run build` / `npm test` | Type-check / production build / frontend tests (47) |
+| `npm run lint` / `npm run build` / `npm test` | Type-check / production build / frontend tests (51) |
 
 ### Production
 
@@ -1023,6 +1023,8 @@ Admin dashboard endpoints are part of `/api/schema/`, unlike the hidden staff co
 
 Errors: DRF validation format or `{"error": "..."}`; publishing rules add a `code` (section 9.3).
 
+**What users see.** Messages about the user's own input (a bad phone number, a wrong password, a sold-out ticket type) are shown as written. Failures on the server's side are kept short: an unexpected exception in the API returns `{"error": "Server error."}` with HTTP 500 (the traceback goes to the log, `core/exceptions.py`); configuration problems (e.g. Google sign-in not set up) and every server-side assistant failure say only "Server error."; attendees see only payment-failure messages written for them (`payments.serializers.public_failure_reason`), while the provider's own text and internal notes stay in `failure_reason` and the raw payloads for staff and admins. In the browser, a 500, an HTML error page or a JavaScript error never shows its content: users see "Server error." (or the screen's own message), and an unreachable server shows "Network error. Check your connection and try again." 
+
 ---
 
 ## 12. Frontend reference
@@ -1114,7 +1116,7 @@ The same palette is used for the PDF ticket, the email, the map pin and the QR c
 
 ## 14. Testing
 
-### Backend: 176 tests (`manage.py test`), all passing
+### Backend: 181 tests (`manage.py test`), all passing
 
 All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite runs offline.
 
@@ -1143,7 +1145,7 @@ Some test fixtures were changed where the work changed behaviour on purpose (the
 - **Organizer role.** The original gatherings test owner is created with the organizer role, because creating events now requires it.
 - **Simulated delay.** The original paying test classes run the simulated gateway with no delay, because paid bookings are now confirmed by the payment provider rather than at creation.
 
-### Frontend: 47 tests (`npm test`, Vitest)
+### Frontend: 51 tests (`npm test`, Vitest)
 
 | File | Covers |
 |---|---|

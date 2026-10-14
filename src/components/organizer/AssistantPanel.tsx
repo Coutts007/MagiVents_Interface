@@ -4,7 +4,8 @@ import {
   AssistantAction,
   AssistantRequestError,
   AssistantSuggestion,
-  assistantApi
+  assistantApi,
+  SERVER_ERROR_MESSAGE
 } from '../../services/api';
 import {
   ACTION_LABELS,
@@ -131,7 +132,7 @@ export const AssistantPanel: React.FC<AssistantPanelProps> = ({ getFormState, on
       );
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      const error = err instanceof AssistantRequestError ? err : new AssistantRequestError('The assistant could not answer.');
+      const error = err instanceof AssistantRequestError ? err : new AssistantRequestError(SERVER_ERROR_MESSAGE);
       updateMessage(reply.id, (m) => ({ ...m, status: 'error', error: error.message, retryable: error.retryable }));
       setAnnouncement(`The assistant could not answer: ${error.message}`);
     } finally {

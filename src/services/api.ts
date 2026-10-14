@@ -101,16 +101,31 @@ function refreshAccessToken(): Promise<string> {
   return refreshPromise;
 }
 
-/** Turns a DRF error response into a single human-readable message. */
+/** Shown for any failure on the server's side; the details stay in the server log */
+export const SERVER_ERROR_MESSAGE = 'Server error.';
+/** Shown when the request never reached the server */
+export const NETWORK_ERROR_MESSAGE = 'Network error. Check your connection and try again.';
+
+/**
+ * Turns an error into a short message for users. Validation messages written by the server (what to fix in a
+ * form) are shown; crashes, HTML error pages and programming errors never are.
+ */
 export function getApiErrorMessage(error: unknown, fallback = 'Something went wrong. Please try again.'): string {
   if (!axios.isAxiosError(error)) {
-    return error instanceof Error ? error.message : fallback;
+    // A JavaScript runtime error (TypeError, ...) is a bug, not something to show; our own Errors carry user text
+    const isRuntimeError =
+      error instanceof TypeError || error instanceof ReferenceError || error instanceof SyntaxError || error instanceof RangeError;
+    return error instanceof Error && !isRuntimeError && error.message ? error.message : fallback;
   }
   if (!error.response) {
-    return 'Cannot reach the MagiVents server. Is the backend running?';
+    return NETWORK_ERROR_MESSAGE;
   }
 
   const data = error.response.data as unknown;
+  // A crash (500) or a non-JSON body (an HTML error page from the server or a proxy) shows nothing of its content
+  if (error.response.status === 500 || typeof data !== 'object' || data === null) {
+    return error.response.status >= 500 ? SERVER_ERROR_MESSAGE : fallback;
+  }
   const firstMessage = (value: unknown): string | null => {
     if (typeof value === 'string') return value;
     if (Array.isArray(value)) {
@@ -867,7 +882,7 @@ async function assistantErrorFrom(response: Response): Promise<AssistantRequestE
     return new AssistantRequestError(data.detail || data.error || 'The assistant is not available for your account.', 'forbidden', false);
   }
   return new AssistantRequestError(
-    data.error || data.detail || 'The assistant is unavailable right now. Please try again.',
+    response.status >= 500 ? SERVER_ERROR_MESSAGE : data.error || data.detail || SERVER_ERROR_MESSAGE,
     data.code || `http_${response.status}`,
     data.retryable ?? response.status >= 500
   );
@@ -907,7 +922,7 @@ export const assistantApi = {
       }
     } catch (err) {
       if (err instanceof AssistantRequestError || (err instanceof DOMException && err.name === 'AbortError')) throw err;
-      throw new AssistantRequestError('Cannot reach the MagiVents server. Check your connection and try again.', 'network');
+      throw new AssistantRequestError(NETWORK_ERROR_MESSAGE, 'network');
     }
     if (!response.ok || !response.body) throw await assistantErrorFrom(response);
 
@@ -930,12 +945,12 @@ export const assistantApi = {
         else if (event.name === 'done') return event.data as AssistantResult;
         else if (event.name === 'error') {
           const data = event.data as { error?: string; code?: string; retryable?: boolean };
-          throw new AssistantRequestError(data.error || 'The assistant could not answer.', data.code, data.retryable ?? true);
+          throw new AssistantRequestError(data.error || SERVER_ERROR_MESSAGE, data.code, data.retryable ?? true);
         }
       }
       if (done) break;
     }
-    throw new AssistantRequestError('The answer was cut off. Please try again.', 'incomplete');
+    throw new AssistantRequestError(SERVER_ERROR_MESSAGE, 'incomplete');
   }
 };
 
