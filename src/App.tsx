@@ -33,6 +33,8 @@ import { PayListingFeePanel } from './components/organizer/PayListingFeePanel';
 
 // Staff console code is only downloaded once the server has confirmed a staff member on the secret path
 const AdminConsole = lazy(() => import('./components/console/AdminConsole').then((m) => ({ default: m.AdminConsole })));
+// The admin dashboard is only downloaded by admins (the server refuses its API to everyone else)
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 
 /** The single path segment the page was opened at, e.g. "/abc/" -> "abc" ("" on the home page) */
 function pathSegment(): string {
@@ -154,6 +156,21 @@ function MainLayout() {
   });
   // Admins keep the organizer abilities
   const isOrganizer = user?.role === 'curator' || user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
+
+  // ?view=admin (the link in admin notification emails) opens the dashboard; it closes when not an admin
+  useEffect(() => {
+    if (isInitializing) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') === 'admin') {
+      if (isAdmin) setCurrentView('admin');
+      params.delete('view');
+      const url = new URL(window.location.href);
+      url.search = params.toString();
+      window.history.replaceState({}, '', url.toString());
+    }
+    if (!isAdmin) setCurrentView((view) => (view === 'admin' ? 'discover' : view));
+  }, [isAdmin, isInitializing]);
   const isSuspended = Boolean(user?.isSuspended);
 
   // Social Sharing Modal State
@@ -221,6 +238,17 @@ function MainLayout() {
     window.addEventListener('popstate', handleUrlChange);
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, [events]);
+
+  // Back from setting a password (organizer invitation or reset): ?signin=1 opens the sign-in form
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('signin') !== '1') return;
+    url.searchParams.delete('signin');
+    window.history.replaceState({}, '', url.toString());
+    setNotice('Your password is set. Sign in with your email and new password.');
+    setAuthModalMode('login');
+    setIsAuthModalOpen(true);
+  }, []);
 
   // Back from the card payment page: ?booking=<id> reopens checkout on that booking's payment status
   useEffect(() => {
@@ -586,6 +614,12 @@ function MainLayout() {
               if (requireAuth()) setBecomeOrganizer({ open: true, thenCreate: false });
             }}
           />
+        )}
+
+        {currentView === 'admin' && isAdmin && user && (
+          <Suspense fallback={<div className="max-w-7xl mx-auto px-4 py-16 text-sm text-[#675A50]">Loading…</div>}>
+            <AdminDashboard adminName={user.name || user.email} />
+          </Suspense>
         )}
 
         {currentView === 'console' && consoleSession && (

@@ -584,3 +584,194 @@ export function consoleApi(secret: string) {
 }
 
 export type ConsoleApi = ReturnType<typeof consoleApi>;
+
+// --- Admin dashboard (role-based: the server answers 403 to anyone who is not an admin) ---------------
+
+export interface AdminOverview {
+  organizers: number;
+  suspendedOrganizers: number;
+  eventsAwaitingPayment: number;
+  feesCollectedThisMonth: number;
+  feesCollectedAllTime: number;
+  balancesOutstanding: number;
+  unpaidFeesTotal: number;
+  monthStart: string;
+}
+
+export interface AdminOrganizer {
+  id: string;
+  name: string;
+  email: string;
+  city: string;
+  bio: string;
+  role: 'patron' | 'curator' | 'admin';
+  isSuspended: boolean;
+  suspendedAt: string | null;
+  suspensionReason: string;
+  isActive: boolean;
+  /** False until an invited organizer has set their password */
+  hasPassword: boolean;
+  joinedDate: string;
+  lastLogin: string | null;
+  eventsCount: number;
+  publishedCount: number;
+  bookingsCount: number;
+  listingFeesPaid: number;
+  ticketsSold: number;
+  ticketSales: number;
+  earnings: number;
+  payoutsTotal: number;
+  balance: number;
+  paymentDetails: PayoutDetails | null;
+}
+
+export interface AdminOrganizerEvent {
+  id: string;
+  title: string;
+  date: string;
+  category: string;
+  status: EventItem['status'];
+  ticketsSold: number;
+  revenue: number;
+  feeStatus: ListingFeeSummary['status'] | null;
+  feeDue: number;
+  /** Event-only payment details, when the organizer set some */
+  paymentDetails: PayoutDetails | null;
+}
+
+export interface EventEarnings {
+  eventId: string;
+  title: string;
+  date: string;
+  isoDate: string;
+  status: EventItem['status'];
+  ticketsSold: number;
+  people: number;
+  earnings: number;
+  discounts: number;
+}
+
+export interface PayoutRecord {
+  id: number;
+  amount: number;
+  reference: string;
+  paidOn: string;
+  note: string;
+  sentTo: string;
+  recordedBy: string | null;
+  createdAt: string;
+}
+
+export interface AdminOrganizerDetail extends AdminOrganizer {
+  events: AdminOrganizerEvent[];
+  eventEarnings: EventEarnings[];
+  payouts: PayoutRecord[];
+}
+
+export interface CategoryFeeRow {
+  category: string;
+  amount: number;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  eventsAwaitingPayment: number;
+}
+
+export interface PlatformPaymentSettings {
+  method: 'paybill' | 'till';
+  businessNumber: string;
+  accountNumber: string;
+  accountName: string;
+  instructions: string;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+}
+
+export interface AdminListingFee {
+  eventId: string;
+  eventTitle: string;
+  eventStatus: EventItem['status'];
+  category: string;
+  organizer: { id: string; name: string; email: string };
+  status: ListingFeeSummary['status'];
+  amountDue: number;
+  categoryFee: number;
+  amountPaid: number;
+  amountWaived: number;
+  reference: string;
+  paymentReference: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  grandfathered: boolean;
+  waivedBy: string | null;
+  waivedAt: string | null;
+  waiveReason: string | null;
+  markedPaidBy: string | null;
+  markedPaidAt: string | null;
+  markPaidReason: string | null;
+  latestPayment: { status: string; provider: string; amount: number; failureReason: string | null; createdAt: string } | null;
+}
+
+export interface AdminListingFeePage extends Page<AdminListingFee> {
+  totals: {
+    count: number;
+    byStatus: Partial<Record<ListingFeeSummary['status'], number>>;
+    amountPaid: number;
+    amountWaived: number;
+    amountUnpaid: number;
+  };
+}
+
+export interface NotificationItem {
+  id: number;
+  kind: 'listing_fee_due' | 'listing_fee_paid' | 'listing_fee_failed' | string;
+  title: string;
+  body: string;
+  eventId: string | null;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export const adminApi = {
+  overview: () => API.get<AdminOverview>('/admin/overview/').then((r) => r.data),
+  organizers: (params: Params) => API.get<Page<AdminOrganizer>>('/admin/organizers/', { params }).then((r) => r.data),
+  organizer: (id: string) => API.get<AdminOrganizerDetail>(`/admin/organizers/${id}/`).then((r) => r.data),
+  createOrganizer: (input: { name: string; email: string; city?: string; bio?: string }) =>
+    API.post<AdminOrganizer & { inviteSent: boolean }>('/admin/organizers/', input).then((r) => r.data),
+  updateOrganizer: (id: string, input: Partial<Pick<AdminOrganizer, 'name' | 'email' | 'city' | 'bio' | 'role'>>) =>
+    API.patch<AdminOrganizer>(`/admin/organizers/${id}/`, input).then((r) => r.data),
+  deleteOrganizer: (id: string, confirmEmail: string) =>
+    API.delete(`/admin/organizers/${id}/`, { data: { confirmEmail } }),
+  resendInvite: (id: string) =>
+    API.post<{ message: string }>(`/admin/organizers/${id}/resend-invite/`).then((r) => r.data.message),
+  savePaymentDetails: (id: string, details: PayoutDetailsInput) =>
+    API.put<{ details: PayoutDetails }>(`/admin/organizers/${id}/payment-details/`, details).then((r) => r.data.details),
+  removePaymentDetails: (id: string) => API.delete(`/admin/organizers/${id}/payment-details/`),
+  suspend: (id: string, reason: string, takeDownEvents: boolean) =>
+    API.post<AdminOrganizer & { eventsTakenDown: number }>(`/admin/organizers/${id}/suspend/`, { reason, takeDownEvents }).then(
+      (r) => r.data
+    ),
+  reactivate: (id: string) => API.post<AdminOrganizer>(`/admin/organizers/${id}/reactivate/`).then((r) => r.data),
+  categoryFees: () => API.get<{ fees: CategoryFeeRow[] }>('/admin/category-fees/').then((r) => r.data.fees),
+  saveCategoryFees: (fees: { category: string; amount: number }[]) =>
+    API.put<{ fees: CategoryFeeRow[] }>('/admin/category-fees/', { fees }).then((r) => r.data.fees),
+  platformPayment: () => API.get<PlatformPaymentSettings>('/admin/platform-payment/').then((r) => r.data),
+  savePlatformPayment: (input: PlatformPaymentSettings) =>
+    API.put<PlatformPaymentSettings>('/admin/platform-payment/', input).then((r) => r.data),
+  listingFees: (params: Params) =>
+    API.get<AdminListingFeePage>('/admin/listing-fees/', { params }).then((r) => r.data),
+  waiveFee: (eventId: string, reason: string) =>
+    API.post<AdminListingFee>(`/admin/listing-fees/${encodeURIComponent(eventId)}/waive/`, { reason }).then((r) => r.data),
+  markFeePaid: (eventId: string, reason: string, reference: string) =>
+    API.post<AdminListingFee>(`/admin/listing-fees/${encodeURIComponent(eventId)}/mark-paid/`, { reason, reference }).then(
+      (r) => r.data
+    )
+};
+
+export const notificationsApi = {
+  list: (limit = 20) =>
+    API.get<{ unreadCount: number; results: NotificationItem[] }>('/notifications/', { params: { limit } }).then((r) => r.data),
+  markRead: (ids: number[] | 'all') =>
+    API.post<{ unreadCount: number }>('/notifications/read/', ids === 'all' ? { all: true } : { ids }).then(
+      (r) => r.data.unreadCount
+    )
+};

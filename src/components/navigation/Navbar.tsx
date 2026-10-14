@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronDown,
   Search,
+  ShieldCheck,
   Ticket
 } from 'lucide-react';
 import { AppView } from '../../types';
@@ -18,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
 import { Avatar } from '../ui/Avatar';
 import { BrandLogo } from '../ui/BrandLogo';
+import { NotificationBell } from '../admin/NotificationBell';
 
 export interface NavbarProps {
   currentView: AppView;
@@ -66,7 +68,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       tab: 'grid' as const,
       icon: LayoutDashboard,
       active: currentView === 'organizer'
-    }
+    },
+    // Only admins see the link; the server refuses the dashboard's API to everyone else
+    ...(user?.role === 'admin'
+      ? [{ label: 'Admin', view: 'admin' as const, tab: 'grid' as const, icon: ShieldCheck, active: currentView === 'admin' }]
+      : [])
   ];
 
   return (
@@ -128,6 +134,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Search className="w-5 h-5" />
           </button>
+
+          {isAuthenticated && user?.role === 'admin' && <NotificationBell onOpenDashboard={() => onNavigate('admin')} />}
 
           {/* Bookmark Button */}
           <button
