@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   User,
   Mail,
@@ -42,7 +42,11 @@ export interface ProfileViewProps {
   onRemoveBookmark: (eventId: string) => void;
   onShareEvent?: (event: EventItem) => void;
   allEvents?: EventItem[];
+  /** The tab to show first, e.g. 'payouts' when coming from the organizer dashboard */
+  initialTab?: ProfileTab;
 }
+
+export type ProfileTab = 'passes' | 'saved' | 'security' | 'payouts';
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   onNavigate,
@@ -51,11 +55,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   purchasedBookings,
   onRemoveBookmark,
   onShareEvent,
-  allEvents = []
+  allEvents = [],
+  initialTab = 'passes'
 }) => {
   const { user, updateProfile, changePassword, logout, isLoading: authLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'passes' | 'saved' | 'security' | 'payouts'>('passes');
+  const [activeTab, setActiveTab] = useState<ProfileTab>(initialTab);
+  useEffect(() => setActiveTab(initialTab), [initialTab]);
 
   // Edit Profile Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

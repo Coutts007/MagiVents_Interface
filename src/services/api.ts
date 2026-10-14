@@ -295,12 +295,23 @@ export interface EventPayoutDetails {
   usesDefault: boolean;
 }
 
+export interface OrganizerEarnings {
+  earnings: number;
+  payoutsTotal: number;
+  balance: number;
+  events: EventEarnings[];
+  payouts: Omit<PayoutRecord, 'recordedBy' | 'createdAt'>[];
+  details: PayoutDetails | null;
+}
+
 export const payoutsApi = {
   /** The organizer's default details, or null */
   getDetails: () => API.get<{ details: PayoutDetails | null }>('/payouts/details/').then((r) => r.data.details),
   saveDetails: (details: PayoutDetailsInput) =>
     API.put<{ details: PayoutDetails }>('/payouts/details/', details).then((r) => r.data.details),
   removeDetails: () => API.delete('/payouts/details/'),
+  /** Earnings per event (confirmed bookings, after discounts), payouts received and the balance outstanding */
+  summary: () => API.get<OrganizerEarnings>('/payouts/summary/').then((r) => r.data),
   /** One event's details (override and the details that apply); owner only */
   getEventDetails: (eventId: string) =>
     API.get<EventPayoutDetails>(`/payouts/events/${encodeURIComponent(eventId)}/details/`).then((r) => r.data),
@@ -751,6 +762,12 @@ export const adminApi = {
       (r) => r.data
     ),
   reactivate: (id: string) => API.post<AdminOrganizer>(`/admin/organizers/${id}/reactivate/`).then((r) => r.data),
+  /** Records money already sent to the organizer; the server refuses more than the balance outstanding */
+  recordPayout: (id: string, input: { amount: number; reference: string; paidOn: string; note: string }) =>
+    API.post<{ payout: PayoutRecord; earnings: number; payoutsTotal: number; balance: number }>(
+      `/admin/organizers/${id}/payouts/`,
+      input
+    ).then((r) => r.data),
   categoryFees: () => API.get<{ fees: CategoryFeeRow[] }>('/admin/category-fees/').then((r) => r.data.fees),
   saveCategoryFees: (fees: { category: string; amount: number }[]) =>
     API.put<{ fees: CategoryFeeRow[] }>('/admin/category-fees/', { fees }).then((r) => r.data.fees),

@@ -24,6 +24,7 @@ import { formatKES } from '../../utils/format';
 import { Button } from '../ui/Button';
 import { PromoCodesPanel } from './PromoCodesPanel';
 import { CheckInPanel } from './CheckInPanel';
+import { EarningsPanel } from './EarningsPanel';
 
 export interface OrganizerDashboardProps {
   events: EventItem[];
@@ -34,6 +35,8 @@ export interface OrganizerDashboardProps {
   onToggleStatus: (eventId: string) => void;
   /** Opens the Pay to publish step for an event whose listing fee is due */
   onPayListingFee: (event: EventItem) => void;
+  /** Opens the profile's Payment details tab */
+  onOpenPaymentDetails: () => void;
   /** False for attendees, who must become organizers before managing events */
   isOrganizer: boolean;
   /** Set (possibly empty) when an admin has suspended this organizer; null otherwise */
@@ -41,10 +44,11 @@ export interface OrganizerDashboardProps {
   onBecomeOrganizer: () => void;
 }
 
-type DashboardSection = 'events' | 'promos' | 'checkin';
+type DashboardSection = 'events' | 'earnings' | 'promos' | 'checkin';
 
 const SECTIONS: { id: DashboardSection; label: string; icon: React.ElementType }[] = [
   { id: 'events', label: 'Events', icon: CalendarDays },
+  { id: 'earnings', label: 'Earnings & payouts', icon: Wallet },
   { id: 'promos', label: 'Promo codes', icon: BadgePercent },
   { id: 'checkin', label: 'Check-in', icon: ScanLine }
 ];
@@ -73,6 +77,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   onViewEvent,
   onToggleStatus,
   onPayListingFee,
+  onOpenPaymentDetails,
   isOrganizer,
   suspensionReason = null,
   onBecomeOrganizer
@@ -188,6 +193,8 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
 
       {section === 'checkin' && <CheckInPanel events={events} />}
 
+      {section === 'earnings' && <EarningsPanel onOpenPaymentDetails={onOpenPaymentDetails} />}
+
       {section === 'promos' && (
         <div className="my-8">
           <PromoCodesPanel events={events} />
@@ -228,7 +235,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
 
         <div className="bg-ivory rounded-3xl p-6 border border-[#D8CDBC] shadow-sand-sm">
           <div className="flex items-center justify-between text-[#675A50] mb-3">
-            <span className="text-xs font-semibold uppercase tracking-wider">Revenue</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Ticket sales</span>
             <div className="p-2 rounded-xl bg-[#E9E2D6] text-[#8A4F33]">
               <Wallet className="w-4 h-4" />
             </div>

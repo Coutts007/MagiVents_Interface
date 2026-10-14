@@ -18,7 +18,7 @@ import { Navbar } from './components/navigation/Navbar';
 import { DiscoverView } from './components/discover/DiscoverView';
 import { EventDetailsView } from './components/event-details/EventDetailsView';
 import { OrganizerDashboard } from './components/organizer/OrganizerDashboard';
-import { ProfileView } from './components/profile/ProfileView';
+import { ProfileTab, ProfileView } from './components/profile/ProfileView';
 import { EventEditorModal } from './components/organizer/EventEditorModal';
 import { BecomeOrganizerModal } from './components/organizer/BecomeOrganizerModal';
 import { CheckoutModal } from './components/checkout/CheckoutModal';
@@ -66,6 +66,7 @@ function MainLayout() {
 
   // Navigation State
   const [currentView, setCurrentView] = useState<AppView>('discover');
+  const [profileTab, setProfileTab] = useState<ProfileTab>('passes');
 
   // Staff console: the secret path lives only on the server. Any other path, or a non-staff account,
   // gets a 404 from the server and the normal site is shown.
@@ -526,6 +527,7 @@ function MainLayout() {
         discoverTab={discoverTab}
         onNavigate={(view, tab) => {
           if (currentView === 'console') leaveConsolePath();
+          if (view === 'profile') setProfileTab('passes');
           setCurrentView(view);
           if (tab) {
             setDiscoverTab(tab);
@@ -605,6 +607,11 @@ function MainLayout() {
             onDeleteEvent={handleDeleteEvent}
             onViewEvent={handleSelectEvent}
             onToggleStatus={handleToggleStatus}
+            onOpenPaymentDetails={() => {
+              setProfileTab('payouts');
+              setCurrentView('profile');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             onPayListingFee={(event) =>
               setPayFeeFor({ eventId: event.id, title: event.title, amountDue: event.listingFee?.amountDue })
             }
@@ -659,6 +666,7 @@ function MainLayout() {
             onRemoveBookmark={handleRemoveBookmark}
             onShareEvent={handleOpenShare}
             allEvents={events}
+            initialTab={profileTab}
           />
         )}
       </main>

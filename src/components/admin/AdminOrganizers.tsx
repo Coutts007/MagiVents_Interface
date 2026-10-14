@@ -327,6 +327,8 @@ const OrganizerDetail: React.FC<{ id: string; onBack: () => void }> = ({ id, onB
 
       <PaymentDetailsSection detail={detail} onSaved={(message) => run(async () => undefined, message)} />
 
+      <PayoutsSection detail={detail} onRecorded={(message) => run(async () => undefined, message)} />
+
       <section className={`${cardClass} overflow-hidden`} aria-labelledby="organizer-events">
         <h3 id="organizer-events" className="px-5 py-4 border-b border-[#D8CDBC] font-serif text-lg text-[#1E1814]">Events</h3>
         {detail.events.length === 0 ? (
@@ -460,6 +462,136 @@ const PaymentDetailsSection: React.FC<{ detail: AdminOrganizerDetail; onSaved: (
           <Button type="submit" variant="primary" disabled={isBusy}>{isBusy ? 'Saving…' : 'Save payment details'}</Button>
         </div>
       </form>
+    </section>
+  );
+};
+
+/** Earnings per event, payouts made and the balance outstanding, next to the payment details. */
+const PayoutsSection: React.FC<{ detail: AdminOrganizerDetail; onRecorded: (message: string) => void }> = ({ detail, onRecorded }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' });
+  const [form, setForm] = useState({ amount: '', reference: '', paidOn: today, note: '' });
+  const [error, setError] = useState<string | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
+
+  const open = () => {
+    setForm({ amount: String(Math.max(0, Math.floor(detail.balance))), reference: '', paidOn: today, note: '' });
+    setError(null);
+    setIsOpen(true);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = Number(form.amount);
+    if (!Number.isInteger(amount) || amount < 1) return setError('Enter a whole number of shillings above 0.');
+    if (amount > detail.balance) return setError(`A payout cannot be more than the balance outstanding (${formatKES(detail.balance, 'KSh 0')}).`);
+    if (!form.reference.trim()) return setError('Enter the transfer reference, e.g. the M-Pesa or bank transaction code.');
+    setIsBusy(true);
+    setError(null);
+    try {
+      await adminApi.recordPayout(detail.id, { ...form, amount });
+      setIsOpen(false);
+      onRecorded(`Payout of ${formatKES(amount)} recorded.`);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Could not record the payout.'));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }));
+
+  return (
+    <section className={`${cardClass} overflow-hidden`} aria-labelledby="organizer-payouts">
+      <div className="px-5 py-4 border-b border-[#D8CDBC] flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 id="organizer-payouts" className="font-serif text-lg text-[#1E1814]">Earnings and payouts</h3>
+          <p className="text-xs text-[#675A50] mt-0.5">
+            Earned {formatKES(detail.earnings, 'KSh 0')} · paid out {formatKES(detail.payoutsTotal, 'KSh 0')} ·{' '}
+            <strong className="text-[#1E1814]">balance {formatKES(detail.balance, 'KSh 0')}</strong>
+            {detail.paymentDetails ? ` · pay out to ${detail.paymentDetails.summary}` : ' · no payment details on file'}
+          </p>
+        </div>
+        <Button variant="primary" size="sm" disabled={detail.balance < 1} onClick={open}>Record payout</Button>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-[#D8CDBC]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <caption className="text-left px-5 pt-3 text-[11px] uppercase tracking-wider font-semibold text-[#675A50]">Earned per event</caption>
+            <tbody className="divide-y divide-[#D8CDBC]">
+              {detail.eventEarnings.length === 0 ? (
+                <tr><td className="px-5 py-4 text-xs text-[#675A50]">No events.</td></tr>
+              ) : (
+                detail.eventEarnings.map((e) => (
+                  <tr key={e.eventId}>
+                    <th scope="row" className="text-left font-normal px-5 py-2">
+                      {e.title}
+                      <span className="block text-[11px] text-[#675A50]">{e.ticketsSold} tickets · {e.people} people</span>
+                    </th>
+                    <td className="px-5 py-2 text-right tabular-nums">{formatKES(e.earnings, 'KSh 0')}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <p className="px-5 pt-3 text-[11px] uppercase tracking-wider font-semibold text-[#675A50]">Payouts made</p>
+          {detail.payouts.length === 0 ? (
+            <p className="px-5 py-4 text-xs text-[#675A50]">None yet.</p>
+          ) : (
+            <ul className="divide-y divide-[#D8CDBC]">
+              {detail.payouts.map((p) => (
+                <li key={p.id} className="px-5 py-2 text-sm">
+                  <span className="flex justify-between gap-3">
+                    <span className="tabular-nums font-medium">{formatKES(p.amount)}</span>
+                    <span className="text-xs text-[#675A50]">{p.paidOn} · <span className="font-mono">{p.reference}</span></span>
+                  </span>
+                  <span className="block text-[11px] text-[#675A50]">
+                    {[p.sentTo && `to ${p.sentTo}`, p.recordedBy && `recorded by ${p.recordedBy}`, p.note].filter(Boolean).join(' · ')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Record a payout"
+        subtitle={`Once you have sent the money to ${detail.name}.`} maxWidth="md">
+        <form onSubmit={submit} noValidate className="space-y-4">
+          <p className="text-xs text-[#675A50]">
+            Balance outstanding: <strong className="text-[#1E1814]">{formatKES(detail.balance, 'KSh 0')}</strong>
+            {detail.paymentDetails && <> · payment details: {detail.paymentDetails.summary}</>}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="block text-xs font-semibold text-[#1E1814] uppercase tracking-wider">
+              Amount (KSh)
+              <input type="number" min="1" max={Math.floor(detail.balance)} step="1" inputMode="numeric" value={form.amount}
+                onChange={set('amount')} className={`${fieldClass} mt-1`} />
+            </label>
+            <label className="block text-xs font-semibold text-[#1E1814] uppercase tracking-wider">
+              Date sent
+              <input type="date" max={today} value={form.paidOn} onChange={set('paidOn')} className={`${fieldClass} mt-1`} />
+            </label>
+          </div>
+          <label className="block text-xs font-semibold text-[#1E1814] uppercase tracking-wider">
+            Reference
+            <input value={form.reference} onChange={set('reference')} placeholder="e.g. the M-Pesa or bank transaction code"
+              className={`${fieldClass} mt-1`} />
+          </label>
+          <label className="block text-xs font-semibold text-[#1E1814] uppercase tracking-wider">
+            Note
+            <textarea rows={2} value={form.note} onChange={set('note')} className={`${fieldClass} mt-1`} />
+          </label>
+          {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+            <Button type="submit" variant="primary" disabled={isBusy}>{isBusy ? 'Saving…' : 'Record payout'}</Button>
+          </div>
+        </form>
+      </Modal>
     </section>
   );
 };
