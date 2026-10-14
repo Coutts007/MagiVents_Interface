@@ -1,6 +1,6 @@
 # MagiVents: System Documentation
 
-*Covers the frontend (`magivents_interface`) and the backend (`MagiVents_backend`) as of 12 October 2026, after the work that made payments, tickets, email, maps and deployment real.*
+*Covers the frontend (`magivents_interface`) and the backend (`MagiVents_backend`) as of 14 October 2026, after the work that added the admin dashboard, the listing fee (pay to publish), ticket tier types and flash sales, and organizer payment details and payouts.*
 
 ---
 
@@ -36,10 +36,15 @@ MagiVents is a Kenyan platform for discovering and booking events.
 - No account is needed to book. Guests get their ticket by email and can find it again with the ticket code and their email.
 
 **Organizers** (users with the organizer role)
-- Publish events with several ticket types and an agenda, and pin the venue on a real map.
+- Create events with their own ticket types (VVIP, VIP, Regular, Couple, Group, Early Bird or any name), flash sales and an agenda, and pin the venue on a real map.
+- Pay a one-off **listing fee** (set by the admin per category) to publish an event.
+- Give the **payment details** the platform pays their ticket sales out to, and follow their earnings and payouts.
 - Create promo codes.
 - See their real sales.
 - Check attendees in at the door by scanning QR codes.
+
+**Admins** (users with the admin role, the same as Django's staff status)
+- Run the **admin dashboard**: organizers, category listing fees, the platform's payment details, listing-fee payments, payouts and notifications.
 
 All prices are whole **Kenyan shillings (KES)**. The contact address used throughout is **magiventskenya@gmail.com**.
 
@@ -121,6 +126,8 @@ External services:
 | Tests | Vitest 5 |
 | Serving | nginx (`Dockerfile`, `nginx.conf`) |
 
+The admin round (admin dashboard, listing fees, tier types, payouts) added no dependencies to either repository.
+
 ---
 
 ## 4. Repository layout
@@ -141,21 +148,31 @@ magivents_hybrid/
 │   ├── tickets/           Booking, Bookmark, PromoCode; booking API, ticket PDF (documents.py), emails.py,
 │   │                      templates/tickets/emails/ (HTML + text confirmation)
 │   ├── console/           staff console API (secret path + staff), ConsoleAction audit log
-│   ├── payments/          Payment model, services.py (lifecycle), providers/ (simulated, daraja, paystack),
-│   │                      hooks.py (callbacks), commands release_expired_holds and register_c2b_urls
+│   ├── payments/          Payment model (booking or listing fee), services.py (lifecycle), providers/
+│   │                      (simulated, daraja, paystack), hooks.py (callbacks), commands release_expired_holds
+│   │                      and register_c2b_urls
+│   ├── adminpanel/        admin dashboard API (/api/admin/, role admin, 403 for others), organizer invite email
+│   ├── listings/          CategoryFee, PlatformPaymentAccount, ListingFee; services.py (pay to publish)
+│   ├── notifications/     Notification model, notify_admins (in app + email), /api/notifications/
+│   ├── payouts/           PayoutAccount (payment details), Payout; ledger.py (earnings), services.py
+│   │                      (record_payout), automated.py (where automated payouts would go)
 │   ├── Dockerfile, docker-compose.yml, docker-compose.prod.yml, requirements.txt, .env.example
 └── magivents_interface/
     ├── Dockerfile, nginx.conf, vite.config.ts (also configures Vitest)
     └── src/
         ├── App.tsx                 view switching, global state, deep links (?event, ?ticket, ?booking)
         ├── services/api.ts         every API call
-        ├── utils/                  format, search, share, ticketPrinting, checkout (+ *.test.ts), qrScanner
+        ├── utils/                  format, search, share, ticketPrinting, checkout, tiers, time, payoutDetails
+        │                           (+ *.test.ts), qrScanner, useNow
         └── components/
             ├── checkout/           CheckoutModal, MpesaPaymentSection (method picker), PaymentStatusPanel
             ├── ticket/             TicketView (Find my ticket), PrintableTicketModal, EmailConfirmationModal
             ├── console/            AdminConsole (staff console: overview, organizers, payments, bookings, activity)
+            ├── admin/              AdminDashboard (overview, organizers, listing fees, category fees, platform
+            │                       payment), NotificationBell, ReasonDialog
             ├── organizer/          OrganizerDashboard, EventEditorModal, PromoCodesPanel, CheckInPanel,
-            │                       CoordinatePicker, BecomeOrganizerModal
+            │                       CoordinatePicker, BecomeOrganizerModal, PayListingFeePanel, EarningsPanel,
+            │                       PayoutDetailsFields, PayoutDetailsCard
             ├── map/VenueMap.tsx    Leaflet wrapper
             └── … discover, calendar, search, event-details, profile, auth, navigation, ui
 ```
@@ -176,6 +193,7 @@ cd MagiVents_backend
 python3 -m venv venv && venv/bin/pip install -r requirements.txt
 venv/bin/python manage.py migrate
 venv/bin/python manage.py seed_gatherings        # 10 demo events, owned by curator@magivents.local
+venv/bin/python manage.py createsuperuser        # an admin: superusers (and staff) have the admin role
 venv/bin/python manage.py runserver              # http://localhost:8000  (API docs: /api/docs/)
 
 # Frontend
@@ -190,7 +208,16 @@ A paid booking then completes end to end:
 2. About 6 seconds later the fake gateway reports success.
 3. The ticket, QR code, PDF and email appear.
 
-To demo a failed M-Pesa payment, use a phone number ending in `1032`.
+To demo a failed M-Pesa payment, use a phone number ending in `1032`. The same applies to listing-fee payments.
+
+The full admin and organizer flow also works with an empty `.env` (it was run end to end in a browser):
+
+1. The admin signs in, opens **Admin** in the navbar, sets a category's listing fee and the platform payment details.
+2. The admin adds an organizer. The emailed link (printed in the server log) sets the password and returns to the app's sign-in.
+3. The organizer adds payment details in their profile and creates an event with VVIP, VIP, Regular, Couple and Group tickets and a flash sale. It is saved as a draft; the admin's bell shows "fee due".
+4. **Publish event** opens **Pay to publish**. After the simulated payment (about 6 seconds) the event is published and the admin is notified.
+5. A guest books a Couple ticket (one price, admits 2) and a VIP ticket at the flash-sale price.
+6. The organizer's **Earnings & payouts** shows the money; the admin records a payout and both balances update.
 
 The development Docker stack (PostgreSQL and Redis, with demo data and `runserver`) starts with `docker compose up --build`.
 
@@ -198,12 +225,12 @@ The development Docker stack (PostgreSQL and Redis, with demo data and `runserve
 
 | Command | Purpose |
 |---|---|
-| `manage.py test` | Backend tests (87) |
+| `manage.py test` | Backend tests (155) |
 | `manage.py seed_gatherings [--reset]` | Load or reload the demo events |
 | `manage.py release_expired_holds` | Expire unpaid bookings whose hold ran out; production runs it every minute |
 | `manage.py register_c2b_urls` | Register the Paybill validation and confirmation URLs with Daraja (once per environment) |
-| `manage.py createsuperuser` | Admin account for `/admin/` |
-| `npm run lint` / `npm run build` / `npm test` | Type-check / production build / frontend tests (23) |
+| `manage.py createsuperuser` | Admin account: the in-app admin dashboard and the Django admin at `/admin/` |
+| `npm run lint` / `npm run build` / `npm test` | Type-check / production build / frontend tests (34) |
 
 ### Production
 
@@ -253,7 +280,7 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PAYMENTS_MODE` | `simulated` | `simulated` or `live` |
+| `PAYMENTS_MODE` | `simulated` | `simulated` or `live`. Also decides listing fees: `simulated` takes them online with the fake gateway; `live` has no online listing-fee gateway yet, so organizers pay the platform Paybill or Till by hand and an admin records it |
 | `PAYMENT_HOLD_MINUTES` | `10` | How long a pending booking holds its tickets |
 | `PAYMENTS_SIMULATED_DELAY_SECONDS` | `6` | How long the fake gateway takes (0 = immediately) |
 | `PAYMENT_CALLBACK_SECRET` | empty | Unguessable path segment in Daraja callback URLs (required for Daraja) |
@@ -274,6 +301,7 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | `EMAIL_BACKEND` | console | `django.core.mail.backends.smtp.EmailBackend` for real email |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`, `EMAIL_TIMEOUT` | localhost, 587, –, –, True, 15 | SMTP |
 | `DEFAULT_FROM_EMAIL`, `MAGIVENTS_CONTACT_EMAIL` | MagiVents address | Sender and help address |
+| `ADMIN_NOTIFICATION_EMAILS` | `True` | Email admins as well as notifying them in the app (event with a listing fee due, fee paid, fee payment failed) |
 | `AWS_STORAGE_BUCKET_NAME` (+ `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_S3_ENDPOINT_URL`, `AWS_S3_REGION_NAME`, `AWS_S3_CUSTOM_DOMAIN`, `AWS_QUERYSTRING_AUTH`) | unset | S3-compatible media storage |
 | `MEDIA_ROOT`, `STATIC_ROOT` | `media/`, `staticfiles/` | |
 | `GEOCODER_URL`, `GEOCODER_USER_AGENT` | public Nominatim, `MagiVents/1.0 (…)` | Address search for the map pin |
@@ -285,6 +313,9 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 |---|---|---|
 | `VITE_API_BASE_URL` | `http://localhost:8000/api` | `/api` in the production image |
 | `VITE_GOOGLE_CLIENT_ID` | empty | Google sign-in button |
+| `VITE_NOTIFICATION_POLL_SECONDS` | `30` (minimum 10) | How often an admin's notification bell checks for new notifications |
+
+The platform's own payment details (the Paybill or Till organizers pay listing fees to) are display details edited in the admin dashboard. Payment-provider credentials stay in environment variables and are never stored in the database.
 
 ---
 
@@ -294,11 +325,15 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 |---|---|
 | **Guest** | Browse, search, share. Book and pay without an account (rate-limited). Open a ticket from its QR or email link, or with **Find my ticket** (code and email). |
 | **Attendee** (role `patron`, the default for new accounts) | Everything a guest can, plus: save events, see confirmed tickets under **My tickets**, edit their profile, change their password. They can upgrade themselves with **Become an organizer**. |
-| **Organizer** (role `curator`) | Create events. Manage their own events, promo codes and check-in. |
-| **Event owner** | Only the organizer who created an event can edit, publish, unpublish or delete it, see its attendees and sales, and check its tickets in. Drafts are visible only to their owner. |
-| **Staff** (`is_staff`) | The in-app **staff console** at the secret path `/<ADMIN_CONSOLE_PATH>` (section 8.7): platform sales, organizers (revoke or restore the role, unpublish events), payments and the refund queue, bookings, and an activity log. Also the Django admin at `/admin/` (raw records, site-wide promo codes). |
+| **Organizer** (role `curator`) | Create events (always saved as drafts). Pay listing fees, publish, manage their own events, promo codes, check-in, payment details, and see earnings and payouts. |
+| **Suspended organizer** (`is_suspended`) | Can sign in and see their events, sales, attendees and earnings, but cannot create events, publish or pay listing fees. Set by an admin. |
+| **Event owner** | Only the organizer who created an event can edit, publish, unpublish or delete it, see its attendees, sales, listing fee and event payment details, and check its tickets in. Drafts are visible only to their owner. |
+| **Admin** (role `admin`) | The in-app **admin dashboard** (section 8.8), linked from the navbar only for admins, with the notification bell. Admins keep every organizer ability. The role is kept in sync with Django's `is_staff`: superusers are always admins, ticking "Staff status" in the Django admin makes an admin, unticking it demotes (to organizer if they own events). Admins also have the Django admin at `/admin/` and the staff console. |
+| **Staff console** | The separate, hidden **staff console** at the secret path `/<ADMIN_CONSOLE_PATH>` (section 8.7) is unchanged and needs staff (= admin) on that path. |
 
-A data migration gave the organizer role to every user who already owned an event.
+**Access control is on the server.** Creating events needs the organizer (or admin) role and an unsuspended account. Every admin dashboard endpoint refuses anyone who is not an active admin with HTTP 403 (401 when signed out); tests prove it for every endpoint. Payment details are returned only to their organizer and to admins.
+
+Data migrations gave the organizer role to every user who already owned an event, and the admin role to every staff user and superuser.
 
 ---
 
@@ -307,7 +342,7 @@ A data migration gave the organizer role to every user who already owned an even
 ### 8.1 Browsing
 
 **Navigation**
-- A sticky navbar has Discover, Calendar, Organizer Dashboard, search, saved events, and the account menu or sign-in.
+- A sticky navbar has Discover, Calendar, Organizer Dashboard, search, saved events, and the account menu or sign-in. Admins also get **Admin** and the notification bell.
 - The mobile menu adds **Find my ticket**; the footer links to it too.
 - API errors appear as a dismissible banner.
 
@@ -338,7 +373,10 @@ A data migration gave the organizer role to every user who already owned an even
   - Full screen (Esc exits), zoom, copy coordinates, copy address, and **Directions** in Google Maps.
   - Arrival, Parking and Getting there tabs.
   - Events without coordinates show the address and a Directions link instead of a guessed pin.
-- **Booking card**: pick a ticket type (price, perks, tickets left) and a quantity, then go to checkout or register for free.
+- **Booking card**: pick a ticket type (a keyboard-accessible radio group showing price, perks and tickets left) and a quantity, then go to checkout or register for free.
+  - **Couple and group tickets** say how many people one ticket admits ("Admits 2 people · one ticket"). The quantity is capped by the places left divided by that number.
+  - **Flash sales** show the normal price struck through, the sale price, a live countdown to the end and how many are left at that price. When the sale ends or its allowance runs out, the normal price comes back without a reload; the server decides the price at the moment of booking either way.
+  - A tier outside its own **sales window** shows "On sale from …" or "Sales closed" and cannot be booked. Times are shown in Nairobi time.
 
 ### 8.3 Checkout and payment
 
@@ -368,7 +406,8 @@ A data migration gave the organizer role to every user who already owned an even
 
 ### 8.4 Tickets after booking
 
-- **My tickets** in the profile lists confirmed bookings, each with its QR code, print, email and view actions.
+- **My tickets** in the profile lists confirmed bookings, each with its QR code, print, email and view actions, and how many people it admits.
+- The confirmation screen, printable ticket, ticket page, PDF and email all say how many people the ticket admits (a Couple ticket: 2).
 - **Find my ticket** is for guests: enter the ticket code and the booking email. Both must match. The answer is the same whether the code or the email was wrong, and the page is rate-limited.
 - A ticket link (from the QR code or email) opens the ticket page with its QR code, PDF download, print and email.
 
@@ -378,28 +417,44 @@ A data migration gave the organizer role to every user who already owned an even
 - **Password reset** by email.
 - **Profile**: photo or initials, name, town and bio.
 - **Change password**: not shown for Google accounts.
-- **Become an organizer**: one confirmation screen, reached from the dashboard or from Create event.
+- **Become an organizer**: one confirmation screen, reached from the dashboard or from Create event. It never changes an admin's role.
+- **Payment details** (organizers): a profile tab for where the platform pays out their ticket sales. Choose an M-Pesa number, a Till number, a Paybill with account number, or a bank account (bank, account name, account number); each format is validated.
+- **Organizer invitation**: an organizer created by an admin gets an email with a link (Django's password-reset machinery) to set their password; afterwards the app opens its sign-in form (`?signin=1`).
 
 ### 8.6 Organizer tools
 
-**Dashboard sections: Events, Promo codes, Check-in.**
+**Dashboard sections: Events, Earnings & payouts, Promo codes, Check-in.**
 
 **Events**
-- Stats: total events, registered attendees, revenue and tickets issued. They are computed by the server from **confirmed bookings only**, so revenue is what attendees actually paid after discounts.
+- Stats: total events, registered attendees (people, so a couple ticket counts 2), ticket sales and tickets issued. They are computed by the server from **confirmed bookings only**, so sales are what attendees actually paid after discounts.
 - Tabs: All, Published, Drafts.
-- Per event: an attendance bar, plus view, publish/unpublish, edit and delete (with a confirmation step).
+- Per event: its **listing-fee status** (Fee unpaid · KSh X, Fee pending, Fee paid, Fee waived, No listing fee), an attendance bar, plus view, publish/unpublish, edit and delete (with a confirmation step). Unpaid drafts have **Pay to publish**.
+- A suspended organizer sees a notice and no Create button.
+
+**Pay to publish**
+- Publishing a draft whose listing fee is due opens **Pay KSh X to publish**: the fee, the platform's Paybill or Till, account number (the event's own reference unless the admin set a fixed one), account name, instructions, and an M-Pesa number field.
+- After **Pay**, the step shows "Check your phone" and polls the server; the browser never decides that the fee was paid. Once the server confirms, the event is published and the step says so. A failed payment can be retried.
+- In live mode, where listing fees cannot be paid online yet, the step shows the details and reference, and waits for an admin to record the payment.
+- Moving a paid event to a category with a higher fee shows the difference inside the event form; after paying it, the category changes and the rest of the edits are saved.
+
+**Earnings & payouts**
+- Earned (confirmed bookings, after discounts), paid out, and the balance outstanding; earnings per event (tickets, people, discounts) and the payouts received, with the details they were sent to.
+- The wording is that MagiVents collects ticket payments and pays out to the details provided; nothing says money goes directly to the organizer.
 
 **Event editor**
 - Title, tagline, category (searchable), date, start and end time.
 - Venue name, street, town.
 - **Map pin**: search the address (the search runs only when Search is pressed), choose a result, then drag the pin or click the map. The pin can also be placed by hand or removed.
 - **Ticket types**:
-  - Add, edit, reorder and remove (name, price, quantity, description, perks).
-  - Capacity is the sum of the quantities. The cheapest ticket becomes the event's "from" price.
-  - Free events make every ticket free.
-  - A ticket type with sales cannot be removed, or reduced below what is sold.
+  - Add, edit, reorder and remove (name, price, quantity, people per ticket, description, perks).
+  - **Quick add** presets: VVIP, VIP, Regular, Couple (admits 2), Group (admits 5 by default), Early Bird. They are starting points the organizer edits freely; any custom name is allowed.
+  - **Flash sale and sales dates** per ticket type: a sale price lower than the normal price, a start and an end (typed in Nairobi time, stored in UTC), an optional limit on tickets at that price; and an optional on sale from / on sale until window.
+  - Capacity is the sum of quantity × people per ticket. The cheapest ticket becomes the event's "from" price.
+  - Free events make every ticket free and have no sales.
+  - A ticket type with sales cannot be removed, reduced below what is sold, or change how many people it admits.
+- **Payment details**: use the organizer's default, or different details for this event only (paid events).
 - Image, description, agenda, host, tags and a note to attendees.
-- Buttons: **Save as draft** next to **Publish event** / **Save changes**.
+- Buttons: **Save as draft** next to **Publish event** / **Save changes**. New events are always saved as drafts first; **Publish event** then applies the payment details and publishes, opening Pay to publish when the listing fee is due.
 
 **Promo codes**
 - Create a code for one of your events with: percent off, optional maximum uses, and an optional valid-from and valid-until.
@@ -443,6 +498,24 @@ An admin section inside the app for people who run MagiVents.
 
 The path is a second secret, not a replacement for the staff account. Keep it out of chats and git, and change it if it leaks.
 
+The console was left as it was when the admin dashboard was added. Two compatibility changes: its payment lists, overview counts and refund queue cover ticket payments only (`Payment.booking_payments`), because listing-fee payments have no booking; and its republish action goes through the publish rules (an unpaid event cannot be republished there either). Its organizer list labels admins as "Revoked", because it only knows the organizer and attendee roles.
+
+### 8.8 Admin dashboard
+
+A role-based view inside the app for admins, linked from the navbar (**Admin**) only for them and opened by `?view=admin` (the link in admin emails). It is loaded on demand. The Django admin at `/admin/` is unchanged.
+
+| Section | What it shows and does |
+|---|---|
+| **Overview** | Organizers (and how many are suspended), events awaiting payment (and the fees due), listing fees collected this month (Nairobi time) and all time, organizer balances outstanding |
+| **Organizers** | Search, filter by status (active, suspended, invited) and role, sort. Each row: status, events, listing fees paid, ticket sales, balance, payment details. **Add organizer** (name, email, town, bio) sends the set-password email. The organizer page: edit name, email, town, bio and role (promote an attendee or demote an organizer; admins are managed in the Django admin), resend the invitation, edit payment details, **suspend** (reason required; optionally take their published events down to draft) and **reactivate**, **delete** (only when none of their events has a booking or a paid listing fee, confirmed by typing their email; otherwise suspension is offered). Events with their listing-fee status and event-only payment details. **Earnings and payouts** per event, payouts made, the balance, and **Record payout** (amount, reference, date, note; never more than the balance). |
+| **Listing fees** | Every event's fee: status (unpaid, pending, paid, waived, no fee), amount, reference, organizer and date; filters by status, category, date and search; totals paid, waived and still due. **Waive** and **Mark paid** need a reason (and a reference to mark paid), record who and when, and publish the event if the organizer had asked to. |
+| **Category fees** | The nine categories with their listing fee in KSh (0 = no fee) and how many events await payment in each. A change applies to events not yet listed; events already paid keep what they paid. |
+| **Platform payment** | Paybill or Till, number, account number (Paybill; empty means each event's reference), account name and instructions shown to organizers |
+
+**Notifications.** The bell in an admin's navbar shows the unread count and the latest notifications (Esc or a click outside closes it; mark one or all read). It polls every `VITE_NOTIFICATION_POLL_SECONDS`; there are no websockets. Admins are notified in the app and by email (Django's email framework, the console backend by default) when an organizer creates an event with a fee due, when a listing fee is paid, and when a listing-fee payment fails. A repeated payment confirmation never notifies twice.
+
+Every dashboard change is written to the shared audit log (`console.ConsoleAction`) with who, what and why.
+
 ---
 
 ## 9. Backend reference
@@ -457,6 +530,10 @@ The path is a second secret, not a replacement for the staff account. Keep it ou
 | `payments` | Payment records, the paid booking lifecycle, providers and their callbacks |
 | `core` | Image decoding, geocoding proxy, health check, public configuration |
 | `console` | Staff console API under `/api/console/<secret>/` (`access.py` holds the two-lock check) and the `ConsoleAction` audit log |
+| `adminpanel` | Admin dashboard API under `/api/admin/` (role admin; 403 for others) and the organizer invitation email |
+| `listings` | Category fees, the platform's payment details, each event's listing fee and the pay-to-publish lifecycle |
+| `notifications` | In-app notifications and admin emails |
+| `payouts` | Organizer payment details, payouts, the earnings ledger, and the placeholder for automated payouts |
 
 ### 9.2 Data model
 
@@ -464,18 +541,25 @@ The path is a second secret, not a replacement for the staff account. Keep it ou
 User 1─* Gathering 1─* TicketTier ─────────────┐
   │          │  1─* AgendaItem                 │
   │          │  1─* PromoCode (or site-wide)   │
+  │          │  1─1 ListingFee 1─* Payment (purpose listing_fee)
+  │          │  1─0..1 PayoutAccount (this event's payment details)
   │          1─* Booking *─0..1 User           │ (null for guests)
   │                 │  *─0..1 TicketTier ◀──────┘
   │                 │  *─0..1 PromoCode
-  │                 1─* Payment
+  │                 1─* Payment (purpose booking)
   1─* Bookmark *─1 Gathering
+  1─0..1 PayoutAccount (default payment details)
+  1─* Payout
+  1─* Notification
+CategoryFee (one per category)   PlatformPaymentAccount (one row)
 ```
 
 **`accounts.User`.** It extends `AbstractUser` and logs in by `email`.
 
 | Field | Notes |
 |---|---|
-| `role` | `patron` (Attendee) or `curator` (Organizer) |
+| `role` | `patron` (Attendee), `curator` (Organizer) or `admin`. `admin` ⇔ `is_staff`; superusers are admins. `save()` keeps the two in sync, whichever was changed |
+| `is_suspended`, `suspended_at`, `suspension_reason` | A suspended organizer cannot create, publish or pay listing fees |
 | `auth_provider` | `email` or `google` |
 | `google_id`, `avatar` / `avatar_url`, `bio`, `city`, `joined_date` | |
 
@@ -489,7 +573,7 @@ User 1─* Gathering 1─* TicketTier ─────────────┐
 | `is_free`, `starting_price`, `currency` (KES) | |
 | `capacity`, `attendee_count` | `attendee_count` includes tickets held by pending bookings |
 | `artwork_image` / `artwork_url`, `host_name`, `host_role`, `host_avatar_url`, `host_bio` | |
-| `status` | `published`, `draft` or `sold_out` |
+| `status` | `published`, `draft` or `sold_out`. New events are always drafts. `save()` refuses to make a draft public, or to move a paid event to a dearer category, unless the publish rules pass (section 9.3), whatever code path saves it |
 | `is_featured`, `tags`, `curator_note`, `created_at` | |
 
 **`gatherings.TicketTier`**
@@ -501,6 +585,12 @@ User 1─* Gathering 1─* TicketTier ─────────────┐
 | `sold` | Property: `quantity − available` |
 | `order` | Display position |
 | `name`, `price`, `description`, `perks` | |
+| `admits` | People one ticket admits: 1 by default, 2 for a couple, the group size for a group. One ticket uses that many places of capacity |
+| `sale_price`, `sale_starts_at`, `sale_ends_at`, `sale_quantity` | Flash sale: the price from the start (inclusive) to the end (exclusive), for at most `sale_quantity` tickets when set. Times in UTC |
+| `sale_sold` | Tickets held or sold at the sale price (given back when a pending booking fails or expires) |
+| `on_sale_from`, `on_sale_until` | The tier's own sales window, e.g. an Early Bird tier that closes by itself |
+
+`price_at(now)` returns the price in effect and whether it is the sale price; only the server uses it to charge.
 
 **`gatherings.AgendaItem`**: `time`, `title`, `detail`, `order`.
 
@@ -510,8 +600,10 @@ User 1─* Gathering 1─* TicketTier ─────────────┐
 |---|---|
 | `id` | UUID string |
 | `user` | Null for guests |
-| `gathering`, `tier`, `tier_name`, `quantity` | |
-| `unit_price`, `discount`, `total_price`, `currency`, `total_in_kes` | Computed by the server |
+| `gathering`, `tier`, `tier_name`, `quantity` | `quantity` is the number of tickets |
+| `admits_per_ticket` | Copied from the tier when booking; `people` = quantity × admits_per_ticket |
+| `unit_price`, `is_sale_price` | The unit price actually charged and whether it was the flash-sale price, kept even if the tier changes later |
+| `discount`, `total_price`, `currency`, `total_in_kes` | Computed by the server |
 | `promo_code` | The code used, if any |
 | `attendee_name`, `attendee_email`, `notes` | |
 | `status` | `pending`, `confirmed`, `failed` or `expired` |
@@ -539,12 +631,15 @@ Codes are unique per event, and site-wide codes are unique among themselves. `KA
 
 **`console.ConsoleAction`**: `staff`, `action`, `target_type`, `target_id`, `target_label`, `note`, `created_at`. One row per staff change.
 
-**`payments.Payment`.** One payment attempt.
+**`payments.Payment`.** One payment attempt, for a booking or for an event's listing fee.
 
 | Field | Meaning |
 |---|---|
+| `purpose` | `booking` or `listing_fee`; a database constraint requires exactly the matching link below |
 | `booking` | The booking being paid for |
-| `provider` | `simulated`, `mpesa_stk`, `mpesa_paybill` or `paystack` |
+| `listing_fee` | The listing fee being paid for (protected: a paid fee's event cannot be deleted) |
+| `target_category` | For a listing-fee payment that moves a paid event to a dearer category: that category |
+| `provider` | `simulated`, `mpesa_stk`, `mpesa_paybill`, `paystack`, or `manual` (recorded by an admin) |
 | `method` | `mpesa` or `card` |
 | `reference` | Ours: the Paystack reference, or the Paybill account number |
 | `provider_reference` | The provider's: STK CheckoutRequestID, C2B TransID, or Paystack transaction id |
@@ -556,19 +651,73 @@ Codes are unique per event, and site-wide codes are unique among themselves. `KA
 | `refund_resolved_at`, `refund_resolved_by`, `refund_note` | Set in the staff console when a flagged refund is settled |
 | `created_at`, `updated_at`, `completed_at`, `last_queried_at` | |
 
+`Payment.booking_payments` is a manager for ticket payments only (used by the staff console).
+
+**`listings.CategoryFee`**: `category` (unique, one of the nine), `amount` (whole KES, 0 = no fee), `updated_at`, `updated_by`. A category without a row has no fee.
+
+**`listings.PlatformPaymentAccount`**: one row (pk 1). `method` (`paybill` or `till`), `business_number`, `account_number` (Paybill; empty = each event's reference), `account_name`, `instructions`, `updated_at`, `updated_by`.
+
+**`listings.ListingFee`**: one per event.
+
+| Field | Meaning |
+|---|---|
+| `reference` | `LF` + 8 characters; also the Paybill account number for paying by hand |
+| `status` | `unpaid`, `pending`, `paid`, `waived` or `exempt` (no fee); kept current for filtering |
+| `cleared`, `cleared_category`, `cleared_amount` | The fee is settled for that category at that fee level (KES) |
+| `amount_paid`, `amount_waived`, `payment_reference`, `paid_at` | Money actually received, and the reference of the payment that cleared it |
+| `grandfathered` | Existed before listing fees (and the demo events): counts as paid |
+| `publish_requested` | The organizer asked to publish: the event goes live as soon as the fee is confirmed |
+| `waived_by`, `waived_at`, `waive_reason`, `marked_paid_by`, `marked_paid_at`, `mark_paid_reason` | Who settled it by hand, when and why |
+
+**`notifications.Notification`**: `recipient`, `kind` (`listing_fee_due`, `listing_fee_paid`, `listing_fee_failed`), `title`, `body`, `gathering`, `dedupe_key` (unique per recipient, so one event is never notified twice), `created_at`, `read_at`.
+
+**`payouts.PayoutAccount`**: where the platform pays out an organizer's ticket money. `organizer`; `gathering` (empty for the organizer's default, set for one event's override); `method` (`mpesa_phone`, `till`, `paybill`, `bank`) with `phone_number` (stored `2547…`), `till_number`, `paybill_number` + `paybill_account`, or `bank_name` + `bank_account_name` + `bank_account_number`; `updated_by`. One default per organizer.
+
+**`payouts.Payout`**: money the platform sent an organizer, recorded by an admin. `organizer` (protected), `amount`, `reference`, `paid_on`, `note`, `sent_to` (the payment details at the time), `recorded_by`, `created_at`.
+
 ### 9.3 Business rules
 
 **Events**
 - The API reads and writes the nested `EventItem` shape.
-- **Free events** force every price to 0. **Paid events** need every ticket type priced above 0, and the starting price becomes the cheapest tier.
+- **Free events** force every price to 0 and clear any sale. **Paid events** need every ticket type priced above 0, and the starting price becomes the cheapest tier.
 - **Tiers on update.**
   - Tiers sent with their numeric `id` are updated; others are created; tiers not sent are deleted.
   - A tier with sales cannot be deleted.
   - A tier's `quantity` cannot go below what is sold; `available` is recomputed as `quantity − sold`.
   - Older clients that send only `available` still work.
-- When every tier sends a `quantity`, **capacity = sum of quantities**. Capacity can never drop below the places already booked or held.
-- Drafts are visible only to their owner. Creating an event needs the **organizer role**. Editing needs ownership.
-- `organizerStats` (`revenue`, `ticketsSold`) appears only for the owner and counts **confirmed** bookings.
+- When every tier sends a `quantity`, **capacity = sum of quantity × admits** (a couple ticket uses two places). Capacity can never drop below the places already booked or held.
+- Drafts are visible only to their owner. Creating an event needs the **organizer role** (or admin) and an unsuspended account. Editing needs ownership.
+- **Every new event is saved as a draft**, whatever status is sent.
+- `organizerStats` (`revenue`, `ticketsSold`), `confirmedAttendees` (people) and `listingFee` (`status`, `amountDue`, `categoryFee`, `amountPaid`, `reference`, `publishRequested`, `paidAt`, `onlinePayment`) appear only for the owner and count **confirmed** bookings.
+- Payment details never appear in any event, booking or ticket payload.
+
+**Publishing.** One set of rules (`gatherings/publishing.py`), checked in this order on every path that can make an event public (create, full update, partial update, the staff console's status action, the listing-fee confirmation, and `Gathering.save()` as a backstop):
+
+1. The organizer is not suspended (HTTP 403, `organizer_suspended`).
+2. An event with any paid ticket has payment details: its own or the organizer's default (HTTP 400, `payment_details_missing`).
+3. The listing fee is settled: paid or waived, or the category's fee is 0 (HTTP 402, `listing_fee_due` with `amountDue`; `listing_fee_pending` while a payment is being confirmed).
+
+The order means nobody pays a fee for an event that still could not be published.
+
+**Listing fee.**
+- Charged once per event. The first publish while nothing is due settles it for good; unpublishing and republishing never charges again, even if the category's fee is raised later.
+- The amount actually paid is recorded; a later change to a category's fee does not affect events already paid or waived.
+- Moving a paid event to a category with a higher fee is refused (HTTP 402, `category_upgrade_due`, with `amountDue`, `category`, `targetCategory`) until the difference is paid; the category changes when that payment is confirmed. Moving to a cheaper category is free and gives no refund. An unpaid draft can change category freely; it then owes the new category's fee.
+- Free events pay the listing fee like any other; the admin sets a category's fee to 0 to exempt it.
+- Existing events (data migration) and the seeded demo events count as paid.
+- An event whose listing fee was paid cannot be deleted (unpublish it instead).
+
+**Ticket tiers and pricing** (inside the booking transaction, under the gathering and tier row locks):
+- The tier's sales window must be open.
+- The places needed are quantity × admits; they must fit in the event's places left, and the quantity in the tier's tickets left.
+- The unit price is the flash-sale price while the sale runs and its allowance lasts, otherwise the normal price. A request bigger than the sale allowance left is refused with how many remain at the sale price, rather than charging a mix of prices.
+- The promo code applies on top of whichever price is in effect.
+- The booking records the unit price charged, whether it was the sale price, and the people it admits. A failed or expired booking gives back its places, tickets and sale allowance once; a late payment re-takes them only if still available.
+
+**Earnings and payouts.**
+- The platform collects every ticket payment (an M-Pesa STK Push pays into the account whose credentials the platform holds; it cannot be pointed at an organizer's own number or Till) and pays organizers out to their payment details.
+- Earnings per event = confirmed bookings' totals, after discounts. Balance = earnings − payouts recorded.
+- A payout can never exceed the balance: `payouts.services.record_payout` locks the organizer's row before checking. Payouts are made by hand today; `payouts/automated.py` is where Daraja B2C or card-gateway split payments would be added.
 
 **Bookings**
 
@@ -613,13 +762,16 @@ Notable data migrations:
 | `gatherings/0006` | Event owners get the organizer role |
 | `tickets/0006` | Links bookings to tiers, sets tier quantities, seeds `KARIBU15` |
 | `tickets/0008` | Existing bookings are marked confirmed |
+| `accounts/0004` | Staff and superusers get the admin role; event owners keep the organizer role |
+| `listings/0002` | Every existing event gets a listing fee that counts as paid |
 
 ### 9.5 Django admin
 
 `/admin/` has:
 
-- Users, gatherings, tiers, agenda items, bookings, bookmarks and promo codes.
-- **Payments**: read-only, filterable by provider, status and `needs_refund`.
+- Users (with role and suspension filters), gatherings, tiers, agenda items, bookings, bookmarks and promo codes.
+- **Payments**: read-only, filterable by purpose, provider, status and `needs_refund`.
+- Category fees, platform payment account, listing fees (read-only), notifications, payment details and payouts.
 
 ---
 
@@ -659,6 +811,20 @@ They all sit behind one interface: `payments/providers/base.py`, with `initiate`
 | Daraja C2B Paybill | live | The attendee pays the Paybill with their own account number. The validation callback rejects an unknown account (`C2B00012`) or a wrong amount (`C2B00013`). The confirmation callback is matched on account number and exact amount. |
 | Paystack | live | Hosted checkout (`/transaction/initialize`, amount in KES cents, `channels: ['card']`, return to `FRONTEND_URL/?booking=<id>`). The webhook must carry a valid `x-paystack-signature` (HMAC-SHA512 of the raw body); then `/transaction/verify/<reference>` decides. The status poll also verifies. |
 
+### Listing-fee payments (pay to publish)
+
+```
+ POST /gatherings/<id>/listing-fee/pay/ ─▶ pending ──(provider confirms, amount matches)──▶ paid ──▶ published
+                                            │                                              (if publish was asked)
+                                            └──(provider reports failure)──▶ failed: fee unpaid, admins notified
+ Admin: Waive (reason) ──▶ waived          Admin: Mark paid (reason + reference) ──▶ paid (Payment, provider manual)
+```
+
+- Listing-fee payments are `Payment` rows with `purpose='listing_fee'`, through the same provider interface. `record_success` and `record_failure` hand them to `listings.services`, which locks gathering → listing fee → payment.
+- **Idempotent**: a repeated confirmation records nothing more and publishes and notifies only once (notifications also carry a unique key). A failure report after a success changes nothing. A wrong amount, or money for a fee already settled another way, is flagged `needs_refund` and publishes nothing.
+- Starting a new attempt marks earlier pending ones as replaced. An attempt left pending longer than `PAYMENT_HOLD_MINUTES` stops blocking a new one.
+- `listings.services.listing_fee_provider()` returns the gateway that takes listing fees online: the simulated one in `PAYMENTS_MODE=simulated`, none in live mode (pay by hand, an admin records it). Daraja STK Push or a card gateway would plug in there.
+
 ### Callback security
 
 Callback endpoints are public and cannot carry a JWT, so each is protected differently.
@@ -696,20 +862,24 @@ Base URL `/api`. Authenticated calls send `Authorization: Bearer <access token>`
 | GET / PATCH | `/auth/profile/` | user | `{id, name, email, avatarUrl, bio, city, role, joinedDate, authProvider}` |
 | POST | `/auth/avatar/upload/` | user | multipart `file` |
 | POST | `/auth/password/change/`, `/auth/password/reset/` | user / public | |
-| POST | `/auth/become-organizer/` | user | Upgrades to `curator`; returns the profile |
+| POST | `/auth/become-organizer/` | user | Upgrades an attendee to `curator` (never changes an admin); returns the profile |
+
+The profile also has `isSuspended` and `suspensionReason`; `role` can be `admin`.
 
 ### Events
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/gatherings/`, `/gatherings/{id}/` | public | `?search=`; adds `organizerStats` for the owner |
-| POST | `/gatherings/` | organizer | Create |
-| PUT / PATCH / DELETE | `/gatherings/{id}/` | owner | |
+| POST | `/gatherings/` | organizer, not suspended | Create; always saved as a draft. Admins are notified when a listing fee is due |
+| PUT / PATCH / DELETE | `/gatherings/{id}/` | owner | Publishing follows the rules in section 9.3 (403 / 400 / 402 with `{error, code, amountDue?}`). DELETE is refused (403) once the listing fee was paid |
+| GET | `/gatherings/{id}/listing-fee/` | owner | `{status, amountDue, categoryFee, amountPaid, reference, publishRequested, paidAt, onlinePayment, payment, platform: {method, methodLabel, businessNumber, accountNumber, accountName, instructions, isConfigured}, clearedCategory, eventId, eventStatus, category}`; also asks the provider about a pending payment |
+| POST | `/gatherings/{id}/listing-fee/pay/` | owner, not suspended, throttled | `{mpesaPhoneNumber, category?}` (`category` pays the difference for a dearer category). 400 nothing due / payment details missing, 503 `listing_fee_offline` in live mode |
 | GET | `/gatherings/my_gatherings/` | user | |
 | GET | `/gatherings/{id}/attendees/` | owner | `{counts: {bookings, people, checkedInBookings, checkedInPeople}, attendees: [...]}` |
 | POST | `/gatherings/{id}/check-in/` | owner | `{ticket}` → `{result, message, attendee?}` (409 for already / wrong event / not paid, 404 not found) |
 
-Tier fields in `pricing.tiers[]`: `id`, `name`, `price`, `description`, `quantity`, `available`, `sold` (read-only), `perks`.
+Tier fields in `pricing.tiers[]`: `id`, `name`, `price`, `description`, `quantity`, `available`, `sold` (read-only), `perks`, `admits`, `salePrice`, `saleStartsAt`, `saleEndsAt`, `saleQuantity`, `onSaleFrom`, `onSaleUntil` (ISO, UTC), and read-only `saleRemaining`, `saleActive`, `currentPrice` (the price in effect when the response was made) and `salesState` (`on_sale`, `not_started`, `ended`).
 
 ### Bookings and payments
 
@@ -728,6 +898,7 @@ Tier fields in `pricing.tiers[]`: `id`, `name`, `price`, `description`, `quantit
 `TicketBooking` gained these fields (none were removed):
 
 - `status`, `expiresAt`
+- `admits` (people in total), `admitsPerTicket`, `isSalePrice`
 - `ticketUrl`: the QR link, null until confirmed
 - `checkedInAt`
 - `ticketCode`: null until confirmed
@@ -748,13 +919,36 @@ The client fields `mpesaReceiptNumber` and `totalInKes` are still accepted, for 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/bookmarks/`, POST `/bookmarks/toggle/{id}/` | user | |
-| GET | `/config/` | public | `{mpesaPaybill, mpesaAccountName, paymentsMode, paymentMethods: {mpesaStk, mpesaPaybill, card}, paymentHoldMinutes}` |
+| GET | `/config/` | public | `{mpesaPaybill, mpesaAccountName, paymentsMode, paymentMethods: {mpesaStk, mpesaPaybill, card}, paymentHoldMinutes, listingFeeOnline}` |
+| GET / PUT / DELETE | `/payouts/details/` | organizer | The organizer's default payment details: `{method, phoneNumber, tillNumber, paybillNumber, paybillAccount, bankName, bankAccountName, bankAccountNumber}`; GET returns `{details}` (with `summary`, `methodLabel`) or `{details: null}` |
+| GET / PUT / DELETE | `/payouts/events/{id}/details/` | owner | One event's override: `{override, effective, usesDefault}`; DELETE goes back to the default |
+| GET | `/payouts/summary/` | organizer | `{earnings, payoutsTotal, balance, events: [{eventId, title, ticketsSold, people, earnings, discounts, …}], payouts, details}` |
+| GET | `/notifications/?limit=` | user | `{unreadCount, results: [{id, kind, title, body, eventId, createdAt, readAt}]}` |
+| POST | `/notifications/read/` | user | `{ids: [...]}` or `{all: true}` → `{unreadCount}` |
 | GET | `/geocode/?q=` | user, throttled | `{results: [{name, lat, lng}]}` from Nominatim, cached; 503 when unavailable |
 | GET | `/health/` | public | `{status, database, cache}`, 200 or 503 |
 | GET | `/schema/`, `/docs/` | public | OpenAPI and Swagger UI |
 | GET / POST | `/console/<ADMIN_CONSOLE_PATH>/…` | staff on the secret path; 404 for everyone else | `session/`, `overview/`, `organizers/`, `organizers/<id>/`, `organizers/<id>/role/`, `events/<id>/status/`, `payments/`, `payments/<uuid>/`, `payments/<uuid>/resolve-refund/`, `bookings/`, `actions/`. Deliberately left out of `/api/schema/`. |
 
-Errors: DRF validation format or `{"error": "..."}`.
+### Admin dashboard (`/api/admin/`, role admin; 403 for every other signed-in user, 401 when signed out)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `overview/` | `{organizers, suspendedOrganizers, eventsAwaitingPayment, feesCollectedThisMonth, feesCollectedAllTime, balancesOutstanding, unpaidFeesTotal, monthStart}` |
+| GET / POST | `organizers/` | List: `?search=&status=active\|suspended\|invited&role=curator\|patron&sort=name\|joined\|events\|sales\|fees&page=`. Create: `{name, email, city?, bio?}` → organizer + `inviteSent` (set-password email) |
+| GET / PATCH / DELETE | `organizers/{id}/` | Detail with `events`, `eventEarnings`, `payouts`. PATCH `{name?, email?, city?, bio?, role?: patron\|curator}`. DELETE `{confirmEmail}`; 409 `has_bookings` / `has_payments` with `canSuspend` |
+| POST | `organizers/{id}/resend-invite/` | Only before the password is set |
+| PUT / DELETE | `organizers/{id}/payment-details/` | The organizer's default payment details |
+| POST | `organizers/{id}/suspend/`, `organizers/{id}/reactivate/` | Suspend: `{reason, takeDownEvents}` → `eventsTakenDown` |
+| GET / POST | `organizers/{id}/payouts/` | `{earnings, payoutsTotal, balance, payouts}`; POST `{amount, reference, paidOn, note?}`; 400 if more than the balance |
+| GET / PUT | `category-fees/` | `{fees: [{category, amount, updatedAt, updatedBy, eventsAwaitingPayment}]}`; PUT `{fees: [{category, amount}]}` |
+| GET / PUT | `platform-payment/` | `{method, businessNumber, accountNumber, accountName, instructions}` |
+| GET | `listing-fees/` | `?status=&category=&organizerId=&search=&dateFrom=&dateTo=&page=` → page of fees + `totals {count, byStatus, amountPaid, amountWaived, amountUnpaid}` |
+| POST | `listing-fees/{eventId}/waive/`, `listing-fees/{eventId}/mark-paid/` | `{reason}` / `{reason, reference}` |
+
+Admin dashboard endpoints are part of `/api/schema/`, unlike the hidden staff console.
+
+Errors: DRF validation format or `{"error": "..."}`; publishing rules add a `code` (section 9.3).
 
 ---
 
@@ -762,9 +956,10 @@ Errors: DRF validation format or `{"error": "..."}`.
 
 ### App shell
 
-- There is no router library. `App.tsx` switches between the views `discover` (grid or calendar), `details`, `organizer`, `profile` and `ticket`.
+- There is no router library. `App.tsx` switches between the views `discover` (grid or calendar), `details`, `organizer`, `profile`, `ticket`, `console` and `admin` (admins only).
 - It holds events, bookmarks, confirmed bookings, search, tag filter and modal state.
-- It handles the deep links `?event=`, `?ticket=` and `?booking=`.
+- It handles the deep links `?event=`, `?ticket=`, `?booking=`, `?view=admin` (admins) and `?signin=1` (after setting a password).
+- It opens the **Pay to publish** step when publishing is refused because the listing fee is due.
 - It opens checkout and the **Become an organizer** screen.
 
 ### Auth and API
@@ -773,6 +968,8 @@ Errors: DRF validation format or `{"error": "..."}`.
 - **`services/api.ts`** is an Axios client with the Bearer token and a single shared refresh on 401. Its API groups:
   - `authApi`, `gatheringsApi`, `bookingsApi` (`create`, `list`, `status`, `pay`), `bookmarksApi`
   - `promoApi`, `ticketsApi` (`get`, `lookup`, `resend`, `pdfUrl`), `checkInApi`, `geocodeApi`
+  - `listingFeeApi` (`get`, `pay`), `payoutsApi` (payment details, event overrides, `summary`), `adminApi`, `notificationsApi`
+  - `publishBlockedReason` / `PublishBlocked` read the server's publish-rule refusals (`code`, `amountDue`, …)
   - `getPublicConfig` (cached)
 
 ### Checkout
@@ -796,9 +993,17 @@ Errors: DRF validation format or `{"error": "..."}`.
 | `CheckInPanel` | Camera scan via `utils/qrScanner.ts` (native `BarcodeDetector`, or a lazily loaded WASM polyfill bundled with the app), typed codes, attendee list |
 | `CoordinatePicker` | Address search, draggable pin |
 | `BecomeOrganizerModal` | The organizer upgrade screen |
+| `PayListingFeePanel` | Pay to publish (or pay a category difference): platform details, M-Pesa payment, server polling |
+| `EarningsPanel` | Organizer earnings per event, payouts received, balance |
+| `PayoutDetailsFields`, `PayoutDetailsCard` | Payment details form (profile, event form, admin) |
+| `admin/AdminDashboard` | Overview, organizers, listing fees, category fees, platform payment (lazy loaded) |
+| `admin/NotificationBell` | Admin notifications with unread count; polls |
+| `admin/ReasonDialog` | Reason (and reference) for admin actions that change money or access |
 | `map/VenueMap` | Leaflet map, lazy loaded |
 
-Large libraries load only when needed: Leaflet (about 150 kB), and the QR decoder (about 44 kB of JS plus a 1.1 MB WASM file).
+Large libraries load only when needed: Leaflet (about 150 kB), and the QR decoder (about 44 kB of JS plus a 1.1 MB WASM file). The admin dashboard (about 43 kB) loads only for admins.
+
+**Tier and time helpers.** `utils/tiers.ts` mirrors the server's pricing rule so prices and countdowns change on time (`tierPriceAt`, `saleSecondsLeft`, `tierSalesState`, `admitsLabel`, the presets). `utils/time.ts` converts between Nairobi `datetime-local` values and UTC, and formats Nairobi times. `utils/useNow.ts` ticks only while a sale countdown is on screen.
 
 ---
 
@@ -832,7 +1037,7 @@ The same palette is used for the PDF ticket, the email, the map pin and the QR c
 
 ## 14. Testing
 
-### Backend: 87 tests (`manage.py test`), all passing
+### Backend: 155 tests (`manage.py test`), all passing
 
 All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite runs offline.
 
@@ -844,13 +1049,23 @@ All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite
 | `payments` | 24 | Phone normalisation; simulated lifecycle (pending → confirmed, failure + retry on the same booking, expiry and sold-out reopening, the command, confirmed-only counts, promo use returned); idempotency (repeated success and failure, amount mismatch, late success with and without availability); Daraja STK (request fields, callback, wrong secret, IP allowlist, cancel, query fallback, refusal, invalid phone); C2B (validation codes, confirmation, repeat, second payment, underpayment); Paystack (initialize, bad signature, verify-before-trust, status poll); live mode without credentials |
 | `core` | 11 | Public config, API schema and docs, geocoding (auth, cache, upstream failure), health (ok, database down, cache down), production settings (refuses the dev key, HTTPS protections) |
 | `console` | 13 | Access (only staff on the secret path; 404 for signed-out, attendees, organizers, wrong path and inactive staff; off when unset or short; lockout after repeated guesses; hidden from the schema); overview counts confirmed sales only; organizer list and detail; payment and booking search and filters; refund resolution (note required, once only, logged); role revoke and restore; unpublish and republish (full events return as sold out) |
+| `accounts` (new) | +4 | Admin role follows `is_staff` both ways and for superusers; become-organizer never demotes an admin; the role data migration; suspension on the profile |
+| `gatherings` (new) | +2 | A suspended organizer cannot create or publish (PATCH and PUT) but still sees and edits their drafts |
+| `tickets` (new) | +13 | Capacity counts people; couple and group tickets (price, people, the last group ticket, the last place); flash-sale price at the start, before, and at the end; the sale limit and the last sale ticket (no mixed prices); a failed payment returns the sale ticket and places; promo on top of the sale price; tier sales window; the public tier payload; sale validation; free events clear sales; admits locked once sold |
+| `payouts` | 11 | Each payment-details format; attendees have none; paid events need details to publish (PATCH and PUT); default and event override; free events need none; only the owner reads or changes them; details never appear in any public event response; earnings from confirmed bookings after discounts; a payout never exceeds the balance (more than the balance, decimals, future dates, the exact balance, then nothing left); balances on the admin overview; only organizers see earnings |
+| `listings` | 25 | New events are drafts and admins are notified (in app and email) only when a fee is due; an unpaid event cannot be published by PATCH, PUT, `sold_out`, create, the staff console or `save()`; free events pay too; paying publishes and notifies once, repeated confirmations change nothing; charged once even after unpublishing and a fee change; category upgrade pays the difference first, cheaper is free; unpaid drafts change category freely; failure leaves a draft and notifies; nothing to pay and payment details checked before taking money; owner only; suspended cannot pay or publish; live mode is paid by hand; a paid fee's event cannot be deleted; pending then confirmed by polling; a late failure after success; a wrong amount never publishes; seeded and migrated events count as paid |
+| `adminpanel` | 13 | **Every admin endpoint returns 403** to attendees, organizers, a demoted former admin and an inactive admin (and 401 signed out), and changes nothing; admins and superusers get in; creating an organizer emails a working set-password link (followed through Django's pages to signing in); list search and filters; edit details, email clash, role and payment details; admins' roles are not editable here; suspend with and without taking events down, then reactivate; delete needs the typed email and no bookings; category fees (validation, exempting clears unpaid events); platform payment details; listing-fee list, filters and totals; waive and mark paid need a reason and record who, and mark paid publishes when asked and notifies the other admins |
 
 Some test fixtures were changed where the work changed behaviour on purpose (the assertions were not):
+
+- **New events are drafts** (listing fee). The tier-editor test now publishes the event it creates before booking it; it also asserts the new event is a draft.
+- **Payment details** (Part 3 of the admin round). Owners in the older event tests are given payment details, because publishing a paid event now needs them.
+- **Throttle cache.** New tests that make guest bookings clear the shared rate-limit cache, as the payments and console suites already did.
 
 - **Organizer role.** The original gatherings test owner is created with the organizer role, because creating events now requires it.
 - **Simulated delay.** The original paying test classes run the simulated gateway with no delay, because paid bookings are now confirmed by the payment provider rather than at creation.
 
-### Frontend: 23 tests (`npm test`, Vitest)
+### Frontend: 34 tests (`npm test`, Vitest)
 
 | File | Covers |
 |---|---|
@@ -859,6 +1074,8 @@ Some test fixtures were changed where the work changed behaviour on purpose (the
 | `share.test.ts` | Invite text, channel URLs and encoding, behaviour outside the browser |
 | `ticketPrinting.test.ts` | Payment summaries, confirmation email text |
 | `checkout.test.ts` | Stages, payment actions, failure messages, countdown, polling back-off, Kenyan phone normalisation and errors |
+| `tiers.test.ts` | Flash-sale price at the boundaries and when the allowance is used up, countdown, sales window, admits label, Nairobi time conversions, durations |
+| `payoutDetails.test.ts` | M-Pesa, Till, Paybill and bank formats |
 
 `npm run lint` (TypeScript) and `npm run build` also pass.
 
@@ -871,6 +1088,8 @@ The flows were also exercised in a headless browser:
 - The real Leaflet map and the address search.
 
 The production Docker stack was built and checked end to end, including media, a paid booking and the PDF.
+
+The admin round was walked through end to end in headless Chrome against a fresh clone with no `.env` (simulated payments): the admin set a category fee and the platform details and created an organizer; the organizer set a password from the emailed link, added payment details, created an event with VVIP, VIP, Regular, Couple and Group tickets and a flash sale, was sent to Pay to publish, paid, and the event went live with the admin notified; a guest booked a Couple ticket (KSh 2,500, admits 2) and a flash-sale VIP ticket (KSh 3,500 instead of 5,000), taking the attendee count from 0 to 3; the organizer saw KSh 6,000 earned; the admin recorded a KSh 5,000 payout and both sides showed KSh 1,000 outstanding. Mobile layouts were checked at 390 px.
 
 ---
 
@@ -888,6 +1107,10 @@ The production Docker stack was built and checked end to end, including media, a
 | **Parking / Getting there tabs** | General guidance text; only Arrival shows organizer-written text (`venue.mapNote`) | Editor fields for these notes, if wanted |
 | **Guest bookings** | Rate-limited per IP; no account recovery beyond code + email lookup | None |
 | **Frontend tests** | Cover utilities and checkout logic, not components | Component tests could be added |
+| **Listing fees online in live mode** | Only the simulated gateway takes listing fees online. With `PAYMENTS_MODE=live`, organizers pay the platform Paybill or Till by hand (quoting their reference) and an admin records it | A provider in `listings.services.listing_fee_provider()` (Daraja STK Push into the platform shortcode, or a card gateway) |
+| **Payouts** | Made by hand outside MagiVents and recorded by an admin | Daraja B2C or card-gateway split payments, at `payouts/automated.py` |
+| **Platform commission** | None: organizers earn the full ticket totals after discounts | A commission rule in `payouts/ledger.py`, if the business wants one |
+| **Admin role from the dashboard** | Admins are made in the Django admin (staff status) or with `createsuperuser`, not from the dashboard | None |
 
 ---
 
@@ -955,6 +1178,7 @@ Then:
 **8. Operations**
 - Watch the admin **Payments** list for `needs_refund`.
 - Keep the `holds` service running.
+- In the admin dashboard: set the category listing fees and the platform payment details before organizers publish; record listing fees paid by hand (live mode) and payouts once sent.
 
 ---
 
@@ -1002,3 +1226,14 @@ Then:
 7. **This documentation.**
 
 **Afterwards:** the in-app **staff console** on a secret path for staff accounts, covering platform sales, organizer oversight, the payment refund queue, bookings and an audit log. Promo codes and a proper bookings list were also registered in the Django admin.
+
+**Admin round (13–14 October 2026)**, one commit per part in each repository:
+
+1. **Roles**: `admin` role synced with `is_staff`; organizer suspension; one publish gate with a model backstop.
+2. **Ticket tiers**: presets, couple and group tickets (`admits`), flash sales, tier sales windows.
+3. **Organizer payment details**: default and per-event; required to publish paid events; private.
+4. **Listing fee (pay to publish)**: category fees, platform payment details, listing fees through the generalised `Payment`; notifications. (Built before the dashboard, which needs it.)
+5. **Admin dashboard**: role-based API and view, organizers CRUD with invitations, suspension and safe deletion, fees, notifications bell.
+6. **Earnings and payouts**: ledger, payouts capped at the balance, organizer earnings view.
+
+Then a fix for the admin navbar layout and the flash-sale label, and this documentation.
