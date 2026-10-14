@@ -202,7 +202,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   {user.name}
                 </h1>
                 <Badge variant="terracotta" size="sm">
-                  {user.role === 'curator' ? 'Organizer' : 'Attendee'}
+                  {user.role === 'admin' ? 'Admin' : user.role === 'curator' ? 'Organizer' : 'Attendee'}
                 </Badge>
               </div>
 

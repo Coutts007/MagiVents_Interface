@@ -145,7 +145,9 @@ function MainLayout() {
     open: false,
     thenCreate: false
   });
-  const isOrganizer = user?.role === 'curator';
+  // Admins keep the organizer abilities
+  const isOrganizer = user?.role === 'curator' || user?.role === 'admin';
+  const isSuspended = Boolean(user?.isSuspended);
 
   // Social Sharing Modal State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -398,6 +400,10 @@ function MainLayout() {
       setBecomeOrganizer({ open: true, thenCreate: true });
       return;
     }
+    if (isSuspended) {
+      setNotice('Your organizer account is suspended, so you cannot create events. Contact MagiVents for help.');
+      return;
+    }
     setEventToEdit(null);
     setIsEditorOpen(true);
   };
@@ -539,6 +545,7 @@ function MainLayout() {
             onViewEvent={handleSelectEvent}
             onToggleStatus={handleToggleStatus}
             isOrganizer={isOrganizer}
+            suspensionReason={isSuspended ? user?.suspensionReason || '' : null}
             onBecomeOrganizer={() => {
               if (requireAuth()) setBecomeOrganizer({ open: true, thenCreate: false });
             }}

@@ -14,7 +14,8 @@ import {
   Layers,
   BadgePercent,
   CalendarDays,
-  ScanLine
+  ScanLine,
+  ShieldAlert
 } from 'lucide-react';
 import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
@@ -33,6 +34,8 @@ export interface OrganizerDashboardProps {
   onToggleStatus: (eventId: string) => void;
   /** False for attendees, who must become organizers before managing events */
   isOrganizer: boolean;
+  /** Set (possibly empty) when an admin has suspended this organizer; null otherwise */
+  suspensionReason?: string | null;
   onBecomeOrganizer: () => void;
 }
 
@@ -52,8 +55,10 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   onViewEvent,
   onToggleStatus,
   isOrganizer,
+  suspensionReason = null,
   onBecomeOrganizer
 }) => {
+  const isSuspended = suspensionReason !== null;
   const [section, setSection] = useState<DashboardSection>('events');
   const [activeTab, setActiveTab] = useState<'all' | 'published' | 'draft'>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -98,7 +103,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           </p>
         </div>
 
-        {isOrganizer && (
+        {isOrganizer && !isSuspended && (
           <Button
             variant="primary"
             size="md"
@@ -127,6 +132,18 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
         </div>
       ) : (
       <>
+      {isSuspended && (
+        <div role="status" className="mt-8 p-4 sm:p-5 rounded-2xl border border-amber-300 bg-amber-50 text-sm text-amber-900 flex items-start gap-3">
+          <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
+          <div>
+            <p className="font-semibold">Your organizer account is suspended</p>
+            <p className="text-xs mt-1 leading-relaxed">
+              You can still see your events, sales and attendees, but you cannot create or publish events.
+              {suspensionReason ? ` Reason: ${suspensionReason}` : ''} Contact MagiVents to have it reactivated.
+            </p>
+          </div>
+        </div>
+      )}
       {/* Section switcher */}
       <div role="tablist" aria-label="Dashboard sections" className="mt-8 bg-[#EFE8DD] p-1 rounded-2xl border border-[#D8CDBC] inline-flex items-center gap-1 shadow-xs overflow-x-auto max-w-full">
         {SECTIONS.map(({ id, label, icon: Icon }) => (
