@@ -476,10 +476,13 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                         </span>
                       </div>
                       {onSale && endsIn !== null && (
-                        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-gold/90 text-[#1E1814] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                          <Zap className="w-3 h-3" aria-hidden="true" />
-                          Flash sale · ends in <span className="tabular-nums normal-case">{formatDuration(endsIn)}</span>
-                          {typeof tier.saleRemaining === 'number' && ` · ${tier.saleRemaining} left at this price`}
+                        <span className="mt-2 flex items-start gap-1.5 rounded-xl bg-brand-gold/90 text-[#1E1814] px-2.5 py-1 text-[11px] leading-snug">
+                          <Zap className="w-3 h-3 mt-0.5 shrink-0" aria-hidden="true" />
+                          <span>
+                            <strong className="uppercase tracking-wider text-[10px]">Flash sale</strong> · ends in{' '}
+                            <span className="tabular-nums font-semibold">{formatDuration(endsIn)}</span>
+                            {typeof tier.saleRemaining === 'number' && ` · ${tier.saleRemaining} left at this price`}
+                          </span>
                         </span>
                       )}
                       {!onSale && startsIn !== null && tier.salePrice !== null && tier.salePrice !== undefined && (

@@ -44,6 +44,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   discoverTab = 'grid'
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
+  // Admins have an extra link and the notification bell, so the wide search field needs a wider screen
+  const isAdmin = isAuthenticated && user?.role === 'admin';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
@@ -90,14 +92,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Zone 2: Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className={`hidden md:flex items-center ${isAdmin ? 'gap-6' : 'gap-8'}`}>
           {navLinks.map((item) => (
             <button
               key={item.label}
               onClick={() => {
                 onNavigate(item.view, item.tab);
               }}
-              className={`relative py-2 text-sm font-medium tracking-wide transition-colors duration-300 cursor-pointer ${
+              className={`relative py-2 text-sm font-medium tracking-wide whitespace-nowrap transition-colors duration-300 cursor-pointer ${
                 item.active ? 'text-[#F3E9DE]' : 'text-[#CDBFB2] hover:text-[#F3E9DE]'
               }`}
             >
@@ -120,7 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={onOpenSearch}
             aria-label="Search events"
             title="Search events (press /)"
-            className="hidden lg:flex items-center gap-2.5 w-56 xl:w-64 pl-4 pr-2 py-2 rounded-full border border-white/15 bg-white/5 text-left text-xs text-[#CDBFB2] hover:border-[#98613D] hover:text-[#F3E9DE] transition-colors cursor-pointer min-h-[44px]"
+            className={`hidden ${isAdmin ? '2xl:flex' : 'lg:flex'} items-center gap-2.5 w-56 xl:w-64 pl-4 pr-2 py-2 rounded-full border border-white/15 bg-white/5 text-left text-xs text-[#CDBFB2] hover:border-[#98613D] hover:text-[#F3E9DE] transition-colors cursor-pointer min-h-[44px]`}
           >
             <Search className="w-4 h-4 shrink-0" />
             <span className="flex-1 truncate">Search events</span>
@@ -130,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             onClick={onOpenSearch}
             aria-label="Search events"
-            className="lg:hidden p-2.5 rounded-full text-[#CDBFB2] hover:text-[#F3E9DE] hover:bg-white/10 transition-colors duration-300 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className={`${isAdmin ? '2xl:hidden' : 'lg:hidden'} p-2.5 rounded-full text-[#CDBFB2] hover:text-[#F3E9DE] hover:bg-white/10 transition-colors duration-300 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center`}
           >
             <Search className="w-5 h-5" />
           </button>
