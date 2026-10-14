@@ -319,6 +319,7 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | `AI_PROVIDER` | `anthropic` | `anthropic` or `mock`. Any other value stops the server at start-up |
 | `AI_API_KEY` | empty | The Anthropic API key, on the server only (never sent to the browser). Empty = the mock provider answers with labelled sample suggestions |
 | `AI_MODEL` | `claude-opus-5-5` (when empty) | The Claude model id |
+| `AI_WORKSPACE_ID` | empty | Only for an organization-level API key that is not scoped to a workspace: the Anthropic workspace ID (`wrkspc_…`), sent as the `anthropic-workspace-id` header. Without it such a key is refused, and the assistant reports that it is not set up correctly |
 | `AI_REQUESTS_PER_HOUR` | `60` | Assistant requests each organizer may make per hour |
 | `AI_TIMEOUT_SECONDS` | `30` | A provider call is abandoned with a clear error after this long |
 
