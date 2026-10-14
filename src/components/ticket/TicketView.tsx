@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { TicketQRCode } from '../ui/TicketQRCode';
 import { PrintableTicketModal } from './PrintableTicketModal';
 import { EmailConfirmationModal } from './EmailConfirmationModal';
+import { admitsLabel, bookingPeople } from '../../utils/tiers';
 
 export interface TicketViewProps {
   /** A ticket opened from its QR code or email link, or found with the form */
@@ -97,7 +98,7 @@ export const TicketView: React.FC<TicketViewProps> = ({
                 <div>
                   <dt className="text-[11px] uppercase tracking-wider text-[#675A50]">Ticket</dt>
                   <dd>
-                    {booking.tierName} · admits {booking.quantity} {booking.quantity === 1 ? 'person' : 'people'}
+                    {booking.tierName} · {admitsLabel(bookingPeople(booking)).toLowerCase()}
                   </dd>
                 </div>
                 <div>

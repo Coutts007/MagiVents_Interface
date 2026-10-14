@@ -1,5 +1,6 @@
 import { TicketBooking } from '../types';
 import { formatKES } from './format';
+import { bookingPeople } from './tiers';
 
 export const MAGIVENTS_CONTACT_EMAIL = 'magiventskenya@gmail.com';
 
@@ -60,7 +61,7 @@ Your booking on MagiVents is confirmed.
 Event: ${booking.eventTitle}
 Date & time: ${booking.eventDate}, ${booking.eventTime}
 Venue: ${booking.venueName}
-Ticket: ${booking.tierName} (${guestsLabel(booking.quantity)})
+Ticket: ${booking.tierName} (${guestsLabel(bookingPeople(booking))})
 Ticket code: ${booking.ticketCode}
 ${paymentLines}
 

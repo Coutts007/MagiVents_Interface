@@ -17,6 +17,7 @@ import { ticketsApi } from '../../services/api';
 import { TicketQRCode } from '../ui/TicketQRCode';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { admitsLabel, bookingPeople } from '../../utils/tiers';
 
 export interface PrintableTicketModalProps {
   isOpen: boolean;
@@ -148,7 +149,7 @@ export const PrintableTicketModal: React.FC<PrintableTicketModalProps> = ({
                   {booking.tierName}
                 </span>
                 <span className="text-xs text-[#675A50]">
-                  Admits {booking.quantity} {booking.quantity === 1 ? 'person' : 'people'}
+                  {admitsLabel(bookingPeople(booking))}
                 </span>
               </div>
             </div>

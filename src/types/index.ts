@@ -43,6 +43,22 @@ export interface TicketTier {
   /** Tickets already sold or held, set by the server */
   sold?: number;
   perks: string[];
+  /** People one ticket admits: 1 by default, 2 for a couple, the group size for a group ticket */
+  admits?: number;
+  /** Flash sale: the lower price between saleStartsAt and saleEndsAt (ISO, UTC), for up to saleQuantity tickets */
+  salePrice?: number | null;
+  saleStartsAt?: string | null;
+  saleEndsAt?: string | null;
+  saleQuantity?: number | null;
+  /** Set by the server: tickets still available at the sale price (null when the sale has no limit) */
+  saleRemaining?: number | null;
+  /** Set by the server when the response was made */
+  saleActive?: boolean;
+  currentPrice?: number;
+  /** The tier's own sales window (ISO, UTC); e.g. an Early Bird tier closes by itself */
+  onSaleFrom?: string | null;
+  onSaleUntil?: string | null;
+  salesState?: 'on_sale' | 'not_started' | 'ended';
 }
 
 export interface AgendaItem {
@@ -99,6 +115,8 @@ export interface EventItem {
   createdAt?: string;
   /** Sales from real bookings; only sent to the event's organizer, null for everyone else */
   organizerStats?: { revenue: number; ticketsSold: number } | null;
+  /** People admitted by confirmed bookings (a couple ticket counts 2); only sent to the organizer */
+  confirmedAttendees?: number | null;
 }
 
 export interface TicketBooking {
@@ -109,8 +127,14 @@ export interface TicketBooking {
   eventTime: string;
   venueName: string;
   tierName: string;
+  /** Tickets bought */
   quantity: number;
+  /** People the booking admits in total, and per ticket (a couple ticket admits 2) */
+  admits?: number;
+  admitsPerTicket?: number;
+  /** The unit price actually charged, and whether it was a flash-sale price */
   unitPrice: number;
+  isSalePrice?: boolean;
   totalPrice: number;
   attendeeName: string;
   attendeeEmail: string;

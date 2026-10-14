@@ -9,7 +9,8 @@ import {
   Check,
   Info,
   ShieldCheck,
-  Users
+  Users,
+  Zap
 } from 'lucide-react';
 import { EventItem, TicketTier } from '../../types';
 import { Badge } from '../ui/Badge';
@@ -17,6 +18,9 @@ import { Button } from '../ui/Button';
 import { Avatar } from '../ui/Avatar';
 import { EventArtwork } from '../ui/EventArtwork';
 import { formatKES } from '../../utils/format';
+import { admitsLabel, saleSecondsLeft, saleSecondsUntilStart, tierPriceAt, tierSalesState } from '../../utils/tiers';
+import { formatDuration, formatNairobiDateTime } from '../../utils/time';
+import { useNow } from '../../utils/useNow';
 import { LocationMap } from './LocationMap';
 
 export interface EventDetailsViewProps {
@@ -62,9 +66,30 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
     setQuantity(1);
   }, [event]);
 
-  const totalPrice = event.isFree ? 0 : selectedTier.price * quantity;
+  // Ticks every second while any flash sale is running or about to start, so prices and countdowns stay live
+  const hasSales = event.pricing.tiers.some((t) => t.salePrice !== null && t.salePrice !== undefined);
+  const now = useNow(hasSales && !event.isFree);
+  const selectedPrice = event.isFree ? { price: 0, onSale: false } : tierPriceAt(selectedTier, now);
+  const admitsPerTicket = selectedTier.admits || 1;
+  const totalPrice = selectedPrice.price * quantity;
   const placesLeft = Math.max(0, event.capacity - event.attendeeCount);
-  const isSoldOut = event.status === 'sold_out' || placesLeft === 0 || selectedTier.available < 1;
+  // A couple or group ticket uses several places, so fewer tickets may fit than the tier has left
+  const maxTickets = Math.max(
+    0,
+    Math.min(
+      selectedTier.available,
+      Math.floor(placesLeft / admitsPerTicket),
+      selectedPrice.onSale && typeof selectedTier.saleRemaining === 'number' ? selectedTier.saleRemaining : Infinity
+    )
+  );
+  const salesState = tierSalesState(selectedTier, now);
+  const isSoldOut = event.status === 'sold_out' || placesLeft === 0 || maxTickets < 1;
+  const cannotBook = isSoldOut || salesState !== 'on_sale';
+
+  // Keep the quantity possible when the sale allowance or availability changes
+  useEffect(() => {
+    if (maxTickets > 0 && quantity > maxTickets) setQuantity(maxTickets);
+  }, [maxTickets, quantity]);
   const location = [event.venue.neighborhood, event.venue.city].filter(Boolean).join(', ');
 
   const handleShare = () => {
@@ -409,35 +434,77 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                 <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block">
                   Ticket type
                 </label>
+                <div role="radiogroup" aria-label="Ticket type" className="space-y-3">
                 {event.pricing.tiers.map((tier) => {
                   const isSelected = selectedTier.id === tier.id;
+                  const { price, onSale } = event.isFree ? { price: 0, onSale: false } : tierPriceAt(tier, now);
+                  const endsIn = event.isFree ? null : saleSecondsLeft(tier, now);
+                  const startsIn = event.isFree ? null : saleSecondsUntilStart(tier, now);
+                  const state = tierSalesState(tier, now);
+                  const admits = tier.admits || 1;
                   return (
-                    <div
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
                       key={tier.id}
                       onClick={() => setSelectedTier(tier)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                      className={`w-full text-left p-4 rounded-2xl border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8A4F33] ${
                         isSelected
                           ? 'border-[#8A4F33] bg-[#8A4F33]/5 shadow-sand-sm'
                           : 'border-[#D8CDBC] hover:border-[#675A50] bg-ivory'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-[#1E1814] text-sm">{tier.name}</span>
-                        <span className="font-serif font-bold text-[#1E1814] tabular-nums">
-                          {event.isFree ? 'Free' : formatKES(tier.price)}
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="font-medium text-[#1E1814] text-sm">
+                          {tier.name}
+                          {admits > 1 && (
+                            <span className="block text-[11px] font-normal text-[#8A4F33] mt-0.5">
+                              {admitsLabel(admits)} · one ticket
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-right shrink-0">
+                          {onSale && (
+                            <s className="block text-[11px] text-[#675A50] tabular-nums" aria-label={`Normal price ${formatKES(tier.price)}`}>
+                              {formatKES(tier.price)}
+                            </s>
+                          )}
+                          <span className={`font-serif font-bold tabular-nums ${onSale ? 'text-[#8A4F33]' : 'text-[#1E1814]'}`}>
+                            {event.isFree ? 'Free' : formatKES(price)}
+                          </span>
                         </span>
                       </div>
+                      {onSale && endsIn !== null && (
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-brand-gold/90 text-[#1E1814] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                          <Zap className="w-3 h-3" aria-hidden="true" />
+                          Flash sale · ends in <span className="tabular-nums normal-case">{formatDuration(endsIn)}</span>
+                          {typeof tier.saleRemaining === 'number' && ` · ${tier.saleRemaining} left at this price`}
+                        </span>
+                      )}
+                      {!onSale && startsIn !== null && tier.salePrice !== null && tier.salePrice !== undefined && (
+                        <span className="mt-2 block text-[11px] text-[#8A4F33]">
+                          Flash sale at {formatKES(tier.salePrice)} from {formatNairobiDateTime(tier.saleStartsAt)} (Nairobi time)
+                        </span>
+                      )}
                       {tier.description && (
                         <p className="text-xs text-[#675A50] mt-1 leading-relaxed">
                           {tier.description}
                         </p>
                       )}
                       <span className="text-[11px] text-[#675A50]/80 mt-2 block tabular-nums">
-                        {tier.available > 0 ? `${tier.available} left` : 'Sold out'}
+                        {state === 'not_started'
+                          ? `On sale from ${formatNairobiDateTime(tier.onSaleFrom)}`
+                          : state === 'ended'
+                            ? 'Sales closed'
+                            : tier.available > 0
+                              ? `${tier.available} left${tier.onSaleUntil ? ` · until ${formatNairobiDateTime(tier.onSaleUntil)}` : ''}`
+                              : 'Sold out'}
                       </span>
-                    </div>
+                    </button>
                   );
                 })}
+                </div>
               </div>
               )}
 
@@ -462,8 +529,8 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                   <button
                     type="button"
                     aria-label="More tickets"
-                    onClick={() => setQuantity((q) => Math.min(selectedTier.available, q + 1))}
-                    disabled={quantity >= selectedTier.available}
+                    onClick={() => setQuantity((q) => Math.min(maxTickets, q + 1))}
+                    disabled={quantity >= maxTickets}
                     className="w-10 h-10 rounded-xl bg-ivory border border-[#D8CDBC] flex items-center justify-center font-bold text-[#1E1814] hover:bg-[#D8CDBC]/50 disabled:opacity-40 cursor-pointer shadow-xs"
                   >
                     +
@@ -488,6 +555,10 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
               <div className="border-t border-[#D8CDBC] pt-4 mb-6 flex items-baseline justify-between">
                 <div>
                   <span className="text-xs text-[#675A50] block">Total</span>
+                  <span className="text-[11px] text-[#675A50] block">
+                    {admitsLabel(quantity * admitsPerTicket)}
+                    {selectedPrice.onSale ? ' · sale price' : ''}
+                  </span>
                 </div>
                 <div className="text-right">
                   <span className="font-serif text-3xl font-bold text-[#1E1814] tabular-nums">
@@ -501,10 +572,18 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                 variant="primary"
                 fullWidth
                 size="lg"
-                disabled={isSoldOut}
+                disabled={cannotBook}
                 onClick={() => onBookTickets(event, selectedTier, quantity)}
               >
-                {isSoldOut ? 'Sold out' : event.isFree ? 'Register for free' : 'Proceed to checkout'}
+                {isSoldOut
+                  ? 'Sold out'
+                  : salesState === 'not_started'
+                    ? 'Not on sale yet'
+                    : salesState === 'ended'
+                      ? 'Sales closed'
+                      : event.isFree
+                        ? 'Register for free'
+                        : 'Proceed to checkout'}
               </Button>
 
               {/* Assurance Guarantee */}

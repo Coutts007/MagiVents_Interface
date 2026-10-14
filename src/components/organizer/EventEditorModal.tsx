@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useId, useMemo } from 'react';
-import { ArrowDown, ArrowUp, Check, ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, ChevronDown, Plus, Trash2, Zap } from 'lucide-react';
 import { AgendaItem, EventItem, EventCategory, TicketTier } from '../../types';
 import { EVENT_CATEGORIES } from '../../data/categories';
 import { useAuth } from '../../context/AuthContext';
@@ -7,6 +7,8 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { ImageUploadZone } from '../ui/ImageUploadZone';
 import { Coordinates, CoordinatePicker } from './CoordinatePicker';
+import { TIER_PRESETS, TierPreset } from '../../utils/tiers';
+import { isoToNairobiInput, nairobiInputToIso } from '../../utils/time';
 
 export interface EventEditorModalProps {
   isOpen: boolean;
@@ -32,6 +34,19 @@ interface TierRow {
   perks: string;
   /** Tickets already sold, so the quantity cannot go below this */
   sold: number;
+  /** People one ticket admits (2 for a couple, the group size for a group) */
+  admits: string;
+  /** Flash sale; times are Nairobi datetime-local values */
+  hasSale: boolean;
+  salePrice: string;
+  saleQuantity: string;
+  saleStartsAt: string;
+  saleEndsAt: string;
+  /** The tier's own sales window, Nairobi datetime-local values */
+  onSaleFrom: string;
+  onSaleUntil: string;
+  /** Whether the flash-sale and sales-window fields are shown */
+  showMore: boolean;
 }
 
 const inputClass =
@@ -56,8 +71,23 @@ const newTierRow = (tier: Partial<TicketTier> = {}, isFree = false): TierRow => 
   quantity: tier.quantity !== undefined ? String(tier.quantity) : tier.available !== undefined ? String(tier.available + (tier.sold || 0)) : '',
   description: tier.description || '',
   perks: (tier.perks || []).join(', '),
-  sold: tier.sold || 0
+  sold: tier.sold || 0,
+  admits: String(tier.admits || 1),
+  hasSale: tier.salePrice !== null && tier.salePrice !== undefined,
+  salePrice: tier.salePrice ? String(tier.salePrice) : '',
+  saleQuantity: tier.saleQuantity ? String(tier.saleQuantity) : '',
+  saleStartsAt: isoToNairobiInput(tier.saleStartsAt),
+  saleEndsAt: isoToNairobiInput(tier.saleEndsAt),
+  onSaleFrom: isoToNairobiInput(tier.onSaleFrom),
+  onSaleUntil: isoToNairobiInput(tier.onSaleUntil),
+  showMore: Boolean(tier.salePrice || tier.onSaleFrom || tier.onSaleUntil)
 });
+
+const presetRow = (preset: TierPreset, isFree: boolean): TierRow =>
+  newTierRow(
+    { name: preset.name, admits: preset.admits, description: preset.description, perks: preset.perks },
+    isFree
+  );
 
 /** "2026-11-28" -> "Saturday, 28 Nov 2026" */
 function formatDisplayDate(isoDate: string): string {
@@ -284,7 +314,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
 
   // --- Ticket types ---------------------------------------------------------
 
-  const updateTier = (key: string, field: keyof TierRow, value: string) => {
+  const updateTier = <K extends keyof TierRow>(key: string, field: K, value: TierRow[K]) => {
     setTiers((rows) => rows.map((row) => (row.key === key ? { ...row, [field]: value } : row)));
   };
 
@@ -302,8 +332,8 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     setTiers((rows) => rows.filter((row) => row.key !== key));
   };
 
-  // Capacity is always the total of the ticket types
-  const capacity = tiers.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
+  // Capacity is the number of people all ticket types admit: a couple ticket uses two places
+  const capacity = tiers.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.admits) || 1), 0);
 
   // --- Saving ---------------------------------------------------------------
 
@@ -326,6 +356,21 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       const quantity = Number(row.quantity);
       if (!Number.isInteger(quantity) || quantity < 1) problems.push(`${label} needs a quantity of at least 1.`);
       else if (quantity < row.sold) problems.push(`${label} already has ${row.sold} sold, so its quantity cannot be lower.`);
+      const admits = Number(row.admits);
+      if (!Number.isInteger(admits) || admits < 1 || admits > 100) problems.push(`${label}: each ticket admits 1 to 100 people.`);
+      if (row.hasSale && !isFree) {
+        const salePrice = Number(row.salePrice);
+        if (!Number.isInteger(salePrice) || salePrice < 1) problems.push(`${label}: enter a flash-sale price in whole shillings.`);
+        else if (salePrice >= Number(row.price)) problems.push(`${label}: the sale price must be lower than the normal price.`);
+        if (!row.saleStartsAt || !row.saleEndsAt) problems.push(`${label}: a flash sale needs a start and an end.`);
+        else if (row.saleEndsAt <= row.saleStartsAt) problems.push(`${label}: the flash sale must end after it starts.`);
+        if (row.saleQuantity && !(Number(row.saleQuantity) >= 1 && Number(row.saleQuantity) <= quantity)) {
+          problems.push(`${label}: the sale limit must be between 1 and the number of tickets.`);
+        }
+      }
+      if (row.onSaleFrom && row.onSaleUntil && row.onSaleUntil <= row.onSaleFrom) {
+        problems.push(`${label}: sales must close after they open.`);
+      }
     });
     if (endTime && startTime && endTime <= startTime) {
       problems.push('The end time must be after the start time.');
@@ -351,7 +396,15 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         perks: row.perks
           .split(',')
           .map((perk) => perk.trim())
-          .filter(Boolean)
+          .filter(Boolean),
+        admits: Number(row.admits) || 1,
+        // Times typed in Nairobi time are sent as UTC
+        salePrice: row.hasSale && !isFree ? Number(row.salePrice) : null,
+        saleStartsAt: row.hasSale && !isFree ? nairobiInputToIso(row.saleStartsAt) : null,
+        saleEndsAt: row.hasSale && !isFree ? nairobiInputToIso(row.saleEndsAt) : null,
+        saleQuantity: row.hasSale && !isFree && row.saleQuantity ? Number(row.saleQuantity) : null,
+        onSaleFrom: nairobiInputToIso(row.onSaleFrom),
+        onSaleUntil: nairobiInputToIso(row.onSaleUntil)
       };
     });
 
@@ -573,6 +626,21 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
             </Button>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Add a ready-made ticket type">
+            <span className="text-[11px] text-[#675A50]">Quick add:</span>
+            {TIER_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => setTiers((rows) => [...rows, presetRow(preset, isFree)])}
+                className="px-3 py-1 rounded-full border border-[#D8CDBC] bg-ivory text-xs font-medium text-[#1E1814] hover:border-[#8A4F33] hover:text-[#8A4F33] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8A4F33]"
+              >
+                + {preset.name}
+                {preset.admits > 1 && <span className="text-[#675A50]"> ({preset.admits})</span>}
+              </button>
+            ))}
+          </div>
+
           <label className="flex items-center gap-2.5 cursor-pointer select-none w-fit">
             <input
               type="checkbox"
@@ -596,7 +664,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                   <li key={row.key} className="p-3 rounded-xl border border-[#D8CDBC] bg-[#EFE8DD] space-y-2">
                     <div className="flex items-start gap-2">
                       <span className="mt-2.5 w-5 text-xs font-semibold text-[#675A50] shrink-0">{n}.</span>
-                      <div className="grid grid-cols-2 sm:grid-cols-[1fr_120px_110px] gap-2 flex-1">
+                      <div className="grid grid-cols-2 sm:grid-cols-[1fr_110px_100px_90px] gap-2 flex-1">
                         <input
                           type="text"
                           aria-label={`Ticket type ${n} name`}
@@ -631,6 +699,20 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                           value={row.quantity}
                           onChange={(e) => updateTier(row.key, 'quantity', e.target.value)}
                           placeholder="Quantity"
+                          className={inputClass}
+                        />
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          step="1"
+                          inputMode="numeric"
+                          aria-label={`People each ticket of type ${n} admits`}
+                          title="People one ticket admits: 2 for a couple, the group size for a group"
+                          value={row.admits}
+                          disabled={row.sold > 0}
+                          onChange={(e) => updateTier(row.key, 'admits', e.target.value)}
+                          placeholder="Admits"
                           className={inputClass}
                         />
                       </div>
@@ -683,10 +765,82 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                         className={inputClass}
                       />
                     </div>
-                    {row.sold > 0 && (
-                      <p className="pl-7 text-[11px] text-[#675A50]">
-                        {row.sold} sold · {Math.max(0, (Number(row.quantity) || 0) - row.sold)} left
-                      </p>
+                    <p className="pl-7 text-[11px] text-[#675A50]">
+                      {Number(row.admits) > 1
+                        ? `Each ticket admits ${row.admits} people and uses ${row.admits} places.`
+                        : 'Each ticket admits one person.'}
+                      {row.sold > 0 && ` ${row.sold} sold · ${Math.max(0, (Number(row.quantity) || 0) - row.sold)} left.`}
+                    </p>
+                    <div className="pl-7">
+                      <button
+                        type="button"
+                        aria-expanded={row.showMore}
+                        aria-controls={`${row.key}-more`}
+                        onClick={() => updateTier(row.key, 'showMore', !row.showMore)}
+                        className="text-[11px] font-semibold text-[#8A4F33] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Zap className="w-3 h-3" aria-hidden="true" />
+                        {row.showMore ? 'Hide flash sale and sales dates' : 'Flash sale and sales dates'}
+                      </button>
+                    </div>
+                    {row.showMore && (
+                      <div id={`${row.key}-more`} className="pl-7 space-y-3">
+                        {!isFree && (
+                          <fieldset className="p-3 rounded-xl border border-[#D8CDBC] bg-ivory space-y-2">
+                            <legend className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[#1E1814]">Flash sale</legend>
+                            <label className="flex items-center gap-2 text-xs text-[#1E1814] cursor-pointer w-fit">
+                              <input
+                                type="checkbox"
+                                checked={row.hasSale}
+                                onChange={(e) => updateTier(row.key, 'hasSale', e.target.checked)}
+                                className="w-4 h-4 accent-[#8A4F33] cursor-pointer"
+                              />
+                              Sell at a lower price for a limited time
+                            </label>
+                            {row.hasSale && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <label className="text-[11px] text-[#675A50]">
+                                  Sale price (KSh)
+                                  <input type="number" min="1" step="1" inputMode="numeric" value={row.salePrice}
+                                    onChange={(e) => updateTier(row.key, 'salePrice', e.target.value)} className={`${inputClass} mt-1`} />
+                                </label>
+                                <label className="text-[11px] text-[#675A50]">
+                                  Tickets at this price (optional)
+                                  <input type="number" min="1" step="1" inputMode="numeric" value={row.saleQuantity}
+                                    placeholder="No limit"
+                                    onChange={(e) => updateTier(row.key, 'saleQuantity', e.target.value)} className={`${inputClass} mt-1`} />
+                                </label>
+                                <label className="text-[11px] text-[#675A50]">
+                                  Starts (Nairobi time)
+                                  <input type="datetime-local" value={row.saleStartsAt}
+                                    onChange={(e) => updateTier(row.key, 'saleStartsAt', e.target.value)} className={`${inputClass} mt-1`} />
+                                </label>
+                                <label className="text-[11px] text-[#675A50]">
+                                  Ends (Nairobi time)
+                                  <input type="datetime-local" value={row.saleEndsAt}
+                                    onChange={(e) => updateTier(row.key, 'saleEndsAt', e.target.value)} className={`${inputClass} mt-1`} />
+                                </label>
+                              </div>
+                            )}
+                          </fieldset>
+                        )}
+                        <fieldset className="p-3 rounded-xl border border-[#D8CDBC] bg-ivory space-y-2">
+                          <legend className="px-1 text-[11px] font-semibold uppercase tracking-wider text-[#1E1814]">Sales dates (optional)</legend>
+                          <p className="text-[11px] text-[#675A50]">Leave empty to sell this ticket type until the event. An Early Bird type can close by itself.</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <label className="text-[11px] text-[#675A50]">
+                              On sale from (Nairobi time)
+                              <input type="datetime-local" value={row.onSaleFrom}
+                                onChange={(e) => updateTier(row.key, 'onSaleFrom', e.target.value)} className={`${inputClass} mt-1`} />
+                            </label>
+                            <label className="text-[11px] text-[#675A50]">
+                              On sale until (Nairobi time)
+                              <input type="datetime-local" value={row.onSaleUntil}
+                                onChange={(e) => updateTier(row.key, 'onSaleUntil', e.target.value)} className={`${inputClass} mt-1`} />
+                            </label>
+                          </div>
+                        </fieldset>
+                      </div>
                     )}
                   </li>
                 );

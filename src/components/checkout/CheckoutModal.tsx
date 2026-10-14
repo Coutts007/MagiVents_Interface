@@ -24,6 +24,8 @@ import {
 } from '../../services/api';
 import { checkoutStage, normalizeKenyanPhone, phoneError as getPhoneError, pollDelay } from '../../utils/checkout';
 import { formatKES } from '../../utils/format';
+import { admitsLabel, tierPriceAt } from '../../utils/tiers';
+import { useNow } from '../../utils/useNow';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { INITIAL_PAYMENT_CHOICE, MpesaPaymentSection, PaymentChoice } from './MpesaPaymentSection';
@@ -89,6 +91,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   findEvent
 }) => {
   const { user } = useAuth();
+  // Keeps the shown price right if a flash sale ends while checkout is open
+  const now = useNow(isOpen && tier?.salePrice !== null && tier?.salePrice !== undefined);
   const [step, setStep] = useState<'form' | 'payment' | 'success'>('form');
   const [fullName, setFullName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -229,8 +233,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   if (!isOpen) return null;
   if (!booking && (!event || !tier)) return null;
 
-  // All amounts are Kenyan shillings; the server recomputes them when booking
-  const baseTotal = tier ? tier.price * quantity : 0;
+  // All amounts are Kenyan shillings; the server recomputes them (and decides the flash-sale price) when booking
+  const tierPrice = tier ? tierPriceAt(tier, now) : { price: 0, onSale: false };
+  const baseTotal = tierPrice.price * quantity;
   const finalTotal = Math.max(0, baseTotal - discount);
   const isFree = Boolean(event?.isFree) || baseTotal === 0;
   // The event behind the ticket, also when checkout was reopened from a booking link
@@ -398,6 +403,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               <div className="pt-3 border-t border-[#D8CDBC] flex justify-between items-center text-xs">
                 <span className="text-[#1E1814] font-medium">
                   {tier.name} × {quantity}
+                  <span className="block text-[11px] font-normal text-[#675A50]">
+                    {admitsLabel(quantity * (tier.admits || 1))}
+                    {tierPrice.onSale ? ` · flash-sale price ${formatKES(tierPrice.price)} each` : ''}
+                  </span>
                 </span>
                 <span className="font-serif font-bold text-[#1E1814] text-base tabular-nums">
                   {formatKES(baseTotal)}
@@ -620,6 +629,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     </span>
                     <span>
                       {confirmedBooking?.tierName} × {confirmedBooking?.quantity}
+                      <span className="block">{admitsLabel(confirmedBooking?.admits ?? confirmedBooking?.quantity ?? 1)}</span>
                     </span>
                   </div>
                   <div>

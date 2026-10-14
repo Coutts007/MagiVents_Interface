@@ -30,6 +30,7 @@ import { EventArtwork } from '../ui/EventArtwork';
 import { formatKES } from '../../utils/format';
 import { PrintableTicketModal } from '../ticket/PrintableTicketModal';
 import { EmailConfirmationModal } from '../ticket/EmailConfirmationModal';
+import { admitsLabel, bookingPeople } from '../../utils/tiers';
 
 export interface ProfileViewProps {
   onNavigate: (view: 'discover' | 'organizer') => void;
@@ -364,7 +365,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                     <div className="p-3 bg-[#E9E2D6] rounded-xl flex items-center justify-between text-xs text-[#1E1814]">
                       <span>
-                        {booking.tierName} × {booking.quantity}
+                        {booking.tierName} × {booking.quantity} · {admitsLabel(bookingPeople(booking)).toLowerCase()}
                       </span>
                       <div className="text-right">
                         <span className="font-serif font-bold tabular-nums block">
@@ -768,7 +769,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <div>
                     <span className="font-semibold text-[#1E1814] block">Tier</span>
                     <span>
-                      {selectedPass.tierName} ({selectedPass.quantity} {selectedPass.quantity === 1 ? 'person' : 'people'})
+                      {selectedPass.tierName} ({admitsLabel(bookingPeople(selectedPass)).toLowerCase()})
                     </span>
                   </div>
                   <div>

@@ -67,7 +67,11 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   const stats = useMemo(() => {
     const totalEvents = events.length;
     // Confirmed bookings only; tickets held by unpaid bookings are not attendees yet
-    const activeAttendees = events.reduce((acc, curr) => acc + (curr.organizerStats?.ticketsSold || 0), 0);
+    // People, not tickets: a couple ticket admits two
+    const activeAttendees = events.reduce(
+      (acc, curr) => acc + (curr.confirmedAttendees ?? curr.organizerStats?.ticketsSold ?? 0),
+      0
+    );
     // Sales come from the server, summed from the bookings actually made
     const grossRevenue = events.reduce((acc, curr) => acc + (curr.organizerStats?.revenue || 0), 0);
     const ticketsSold = events.reduce((acc, curr) => acc + (curr.organizerStats?.ticketsSold || 0), 0);
@@ -276,9 +280,8 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
         {filteredEvents.length > 0 ? (
           <div className="divide-y divide-[#D8CDBC]">
             {filteredEvents.map((event) => {
-              const fillPercentage = Math.round(
-                ((event.organizerStats?.ticketsSold || 0) / event.capacity) * 100
-              );
+              const people = event.confirmedAttendees ?? event.organizerStats?.ticketsSold ?? 0;
+              const fillPercentage = Math.round((people / event.capacity) * 100);
 
               return (
                 <div
@@ -333,7 +336,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                     <div className="flex justify-between text-xs text-[#675A50]">
                       <span>Attendees</span>
                       <span className="font-medium text-[#1E1814] tabular-nums">
-                        {event.organizerStats?.ticketsSold ?? 0} / {event.capacity}
+                        {people} / {event.capacity}
                       </span>
                     </div>
                     <div className="w-full bg-[#D8CDBC] h-2 rounded-full overflow-hidden">
