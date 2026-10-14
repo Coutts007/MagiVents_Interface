@@ -117,6 +117,26 @@ export interface EventItem {
   organizerStats?: { revenue: number; ticketsSold: number } | null;
   /** People admitted by confirmed bookings (a couple ticket counts 2); only sent to the organizer */
   confirmedAttendees?: number | null;
+  /** The event's listing fee (pay to publish); only sent to the organizer */
+  listingFee?: ListingFeeSummary | null;
+}
+
+export type ListingFeeStatus = 'unpaid' | 'pending' | 'paid' | 'waived' | 'exempt';
+
+export interface ListingFeeSummary {
+  status: ListingFeeStatus;
+  /** Whole KES still to pay before the event can be published */
+  amountDue: number;
+  /** The current fee of the event's category */
+  categoryFee: number;
+  amountPaid: number;
+  /** Quote this when paying the platform by hand */
+  reference: string;
+  /** The organizer asked to publish: the event goes live as soon as the fee is confirmed */
+  publishRequested: boolean;
+  paidAt: string | null;
+  /** False when fees are paid by hand and confirmed by an admin */
+  onlinePayment: boolean;
 }
 
 export interface TicketBooking {
@@ -162,7 +182,7 @@ export type BookingStatus = 'pending' | 'confirmed' | 'failed' | 'expired';
 /** The latest payment attempt for a booking, as reported by the server */
 export interface PaymentAttempt {
   id: string;
-  provider: 'simulated' | 'mpesa_stk' | 'mpesa_paybill' | 'paystack';
+  provider: 'simulated' | 'mpesa_stk' | 'mpesa_paybill' | 'paystack' | 'manual';
   method: 'mpesa' | 'card';
   status: 'pending' | 'succeeded' | 'failed';
   reference: string;

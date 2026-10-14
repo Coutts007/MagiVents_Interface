@@ -10,6 +10,8 @@ import {
   consoleApi,
   gatheringsApi,
   getApiErrorMessage,
+  publishBlockedReason,
+  PublishBlocked,
   ticketsApi
 } from './services/api';
 import { Navbar } from './components/navigation/Navbar';
@@ -26,6 +28,8 @@ import { ShareModal } from './components/share/ShareModal';
 import { Footer } from './components/common/Footer';
 import { SearchDialog } from './components/search/SearchDialog';
 import { TicketView } from './components/ticket/TicketView';
+import { Modal } from './components/ui/Modal';
+import { PayListingFeePanel } from './components/organizer/PayListingFeePanel';
 
 // Staff console code is only downloaded once the server has confirmed a staff member on the secret path
 const AdminConsole = lazy(() => import('./components/console/AdminConsole').then((m) => ({ default: m.AdminConsole })));
@@ -124,6 +128,9 @@ function MainLayout() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // "Pay KSh X to publish": the event whose listing fee is being paid
+  const [payFeeFor, setPayFeeFor] = useState<{ eventId: string; title: string; amountDue?: number } | null>(null);
 
   // Modals
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -435,7 +442,9 @@ function MainLayout() {
       const updated = await gatheringsApi.setStatus(eventId, event.status === 'published' ? 'draft' : 'published');
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
     } catch (err) {
-      setNotice(getApiErrorMessage(err, 'Could not change the status of this event.'));
+      if (!openPayStepFor(event, err)) {
+        setNotice(getApiErrorMessage(err, 'Could not change the status of this event.'));
+      }
     }
   };
 
@@ -451,17 +460,32 @@ function MainLayout() {
         ? await gatheringsApi.update(existingId, toEventInput(savedItem))
         : await gatheringsApi.create(toEventInput(savedItem));
     } catch (err) {
+      const reason = publishBlockedReason(err);
+      // e.g. moving a paid event to a dearer category: the editor offers to pay the difference
+      if (reason) throw new PublishBlocked(reason);
       throw new Error(getApiErrorMessage(err, 'Could not save this event.'));
     }
     upsertEvent(saved);
     return saved;
   };
 
-  /** Publishes a saved draft. The server checks every publishing rule and says what is missing. */
-  const handlePublishEvent = async (eventId: string): Promise<void> => {
+  /** Opens the Pay to publish step when the server refused because the listing fee is due. */
+  const openPayStepFor = (event: { id: string; title: string }, err: unknown): boolean => {
+    const reason = publishBlockedReason(err);
+    if (!reason || !['listing_fee_due', 'listing_fee_pending'].includes(reason.code)) return false;
+    setPayFeeFor({ eventId: event.id, title: event.title, amountDue: reason.amountDue });
+    return true;
+  };
+
+  /**
+   * Publishes a saved draft. The server checks every publishing rule; when only the listing fee is missing,
+   * the Pay to publish step opens instead of an error.
+   */
+  const handlePublishEvent = async (event: EventItem): Promise<void> => {
     try {
-      upsertEvent(await gatheringsApi.setStatus(eventId, 'published'));
+      upsertEvent(await gatheringsApi.setStatus(event.id, 'published'));
     } catch (err) {
+      if (openPayStepFor(event, err)) return;
       throw new Error(getApiErrorMessage(err, 'Could not publish this event.'));
     }
   };
@@ -553,6 +577,9 @@ function MainLayout() {
             onDeleteEvent={handleDeleteEvent}
             onViewEvent={handleSelectEvent}
             onToggleStatus={handleToggleStatus}
+            onPayListingFee={(event) =>
+              setPayFeeFor({ eventId: event.id, title: event.title, amountDue: event.listingFee?.amountDue })
+            }
             isOrganizer={isOrganizer}
             suspensionReason={isSuspended ? user?.suspensionReason || '' : null}
             onBecomeOrganizer={() => {
@@ -622,6 +649,29 @@ function MainLayout() {
         onPublish={handlePublishEvent}
         eventToEdit={eventToEdit}
       />
+
+      {/* Pay to publish */}
+      <Modal
+        isOpen={payFeeFor !== null}
+        onClose={() => setPayFeeFor(null)}
+        title="Pay to publish"
+        subtitle={payFeeFor?.title}
+        maxWidth="lg"
+      >
+        {payFeeFor && (
+          <PayListingFeePanel
+            key={payFeeFor.eventId}
+            eventId={payFeeFor.eventId}
+            eventTitle={payFeeFor.title}
+            amountHint={payFeeFor.amountDue}
+            onSettled={() => refreshEvents()}
+            onCancel={() => {
+              setPayFeeFor(null);
+              refreshEvents();
+            }}
+          />
+        )}
+      </Modal>
 
       {/* Attendee -> organizer upgrade */}
       <BecomeOrganizerModal

@@ -17,7 +17,7 @@ import {
   ScanLine,
   ShieldAlert
 } from 'lucide-react';
-import { EventItem } from '../../types';
+import { EventItem, ListingFeeStatus, ListingFeeSummary } from '../../types';
 import { Badge } from '../ui/Badge';
 import { EventArtwork } from '../ui/EventArtwork';
 import { formatKES } from '../../utils/format';
@@ -32,6 +32,8 @@ export interface OrganizerDashboardProps {
   onDeleteEvent: (eventId: string) => void;
   onViewEvent: (event: EventItem) => void;
   onToggleStatus: (eventId: string) => void;
+  /** Opens the Pay to publish step for an event whose listing fee is due */
+  onPayListingFee: (event: EventItem) => void;
   /** False for attendees, who must become organizers before managing events */
   isOrganizer: boolean;
   /** Set (possibly empty) when an admin has suspended this organizer; null otherwise */
@@ -47,6 +49,22 @@ const SECTIONS: { id: DashboardSection; label: string; icon: React.ElementType }
   { id: 'checkin', label: 'Check-in', icon: ScanLine }
 ];
 
+const FEE_LABELS: Record<ListingFeeStatus, string> = {
+  unpaid: 'Fee unpaid',
+  pending: 'Fee pending',
+  paid: 'Fee paid',
+  waived: 'Fee waived',
+  exempt: 'No listing fee'
+};
+
+/** The event's listing-fee state, e.g. "Fee unpaid · KSh 500" */
+const ListingFeeBadge: React.FC<{ fee: ListingFeeSummary }> = ({ fee }) => (
+  <Badge variant={fee.status === 'unpaid' ? 'charcoal' : fee.status === 'pending' ? 'neutral' : 'sand'} size="sm">
+    {FEE_LABELS[fee.status]}
+    {fee.status === 'unpaid' || fee.status === 'pending' ? ` · ${formatKES(fee.amountDue)}` : ''}
+  </Badge>
+);
+
 export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   events,
   onCreateEvent,
@@ -54,6 +72,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
   onDeleteEvent,
   onViewEvent,
   onToggleStatus,
+  onPayListingFee,
   isOrganizer,
   suspensionReason = null,
   onBecomeOrganizer
@@ -307,6 +326,7 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                             Free
                           </Badge>
                         )}
+                        {event.listingFee && <ListingFeeBadge fee={event.listingFee} />}
                         <span className="text-xs text-[#675A50] font-medium">
                           {event.category}
                         </span>
@@ -368,6 +388,17 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                         <Clock className="w-4 h-4 text-amber-600" />
                       )}
                     </button>
+
+                    {event.status === 'draft' && event.listingFee && event.listingFee.amountDue > 0 && !isSuspended && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon={<Wallet className="w-3.5 h-3.5" />}
+                        onClick={() => onPayListingFee(event)}
+                      >
+                        {event.listingFee.status === 'pending' ? 'Payment pending' : 'Pay to publish'}
+                      </Button>
+                    )}
 
                     <Button
                       variant="secondary"

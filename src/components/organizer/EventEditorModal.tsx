@@ -10,7 +10,8 @@ import { Coordinates, CoordinatePicker } from './CoordinatePicker';
 import { TIER_PRESETS, TierPreset } from '../../utils/tiers';
 import { isoToNairobiInput, nairobiInputToIso } from '../../utils/time';
 import { PayoutDetails, PayoutDetailsInput, payoutDetailsError, toPayoutInput } from '../../utils/payoutDetails';
-import { getApiErrorMessage, payoutsApi } from '../../services/api';
+import { getApiErrorMessage, payoutsApi, PublishBlocked, PublishBlockedError } from '../../services/api';
+import { PayListingFeePanel } from './PayListingFeePanel';
 import { PayoutDetailsFields } from './PayoutDetailsFields';
 
 export interface EventEditorModalProps {
@@ -21,8 +22,11 @@ export interface EventEditorModalProps {
    * rejects with a readable Error if the server refuses it
    */
   onSave: (event: EventItem, existingId: string | null) => Promise<EventItem>;
-  /** Publishes a saved draft; rejects with a readable Error when a publishing rule is not met yet */
-  onPublish: (eventId: string) => Promise<void>;
+  /**
+   * Publishes a saved draft (opening the Pay to publish step when the listing fee is due); rejects with a
+   * readable Error when another publishing rule is not met yet
+   */
+  onPublish: (event: EventItem) => Promise<void>;
   eventToEdit: EventItem | null;
 }
 
@@ -235,6 +239,8 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [payoutMode, setPayoutMode] = useState<'default' | 'event'>('default');
   const [payoutForm, setPayoutForm] = useState<PayoutDetailsInput>(toPayoutInput(null));
   const [payoutErrorField, setPayoutErrorField] = useState<keyof PayoutDetailsInput | null>(null);
+  // Moving a paid event to a dearer category: pay the difference, then the save is tried again
+  const [upgrade, setUpgrade] = useState<{ reason: PublishBlockedError; intent: 'publish' | 'draft' | 'keep' } | null>(null);
 
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
@@ -260,6 +266,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    setUpgrade(null);
     setSavedId(eventToEdit?.id ?? null);
     setPayoutMode('default');
     setHadOverride(false);
@@ -551,7 +558,11 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       saved = await onSave(savedItem, savedId);
       setSavedId(saved.id);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Could not save this event.');
+      if (err instanceof PublishBlocked && err.reason.code === 'category_upgrade_due') {
+        setUpgrade({ reason: err.reason, intent });
+      } else {
+        setSaveError(err instanceof Error ? err.message : 'Could not save this event.');
+      }
       setIsSaving(false);
       return;
     }
@@ -570,7 +581,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     }
     try {
       if (intent === 'publish' && saved.status === 'draft') {
-        await onPublish(saved.id);
+        await onPublish(saved);
       }
       onClose();
     } catch (err) {
@@ -1146,6 +1157,25 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800">
             {saveError}
           </div>
+        )}
+
+        {upgrade && savedId && (
+          <section aria-label="Pay the difference for the new category" className="p-4 rounded-2xl border border-[#8A4F33]/40 bg-ivory">
+            <p className="text-sm text-[#1E1814] mb-4">{upgrade.reason.error}</p>
+            <PayListingFeePanel
+              eventId={savedId}
+              eventTitle={title}
+              targetCategory={upgrade.reason.targetCategory}
+              amountHint={upgrade.reason.amountDue}
+              onSettled={() => {
+                // The category has changed on the server; save the rest of the changes now
+                const { intent } = upgrade;
+                setUpgrade(null);
+                save(intent);
+              }}
+              onCancel={() => setUpgrade(null)}
+            />
+          </section>
         )}
 
         {/* Actions */}

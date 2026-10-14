@@ -1,5 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { BookingWithPayment, EventItem, TicketBooking } from '../types';
+import { BookingWithPayment, EventItem, ListingFeeSummary, PaymentAttempt, TicketBooking } from '../types';
 import { UserProfile } from '../types/auth';
 import { PayoutDetails, PayoutDetailsInput } from '../utils/payoutDetails';
 
@@ -173,6 +173,8 @@ export interface PublicConfig {
   /** Which checkout options work with the server's configuration */
   paymentMethods: { mpesaStk: boolean; mpesaPaybill: boolean; card: boolean };
   paymentHoldMinutes: number;
+  /** False in live mode: listing fees are paid by hand and confirmed by an admin */
+  listingFeeOnline?: boolean;
 }
 
 let configPromise: Promise<PublicConfig> | null = null;
@@ -217,6 +219,72 @@ export const gatheringsApi = {
   setStatus: (id: string, status: EventItem['status']) =>
     API.patch<EventItem>(`/gatherings/${id}/`, { status }).then((r) => r.data),
   remove: (id: string) => API.delete(`/gatherings/${id}/`)
+};
+
+// --- Listing fee (pay to publish) ----------------------------------------------------
+
+export interface PlatformPaymentDetails {
+  method: 'paybill' | 'till';
+  methodLabel: string;
+  businessNumber: string;
+  /** Paybill account number to quote (the event's own reference when the platform sets none) */
+  accountNumber: string;
+  accountName: string;
+  instructions: string;
+  isConfigured: boolean;
+}
+
+export interface ListingFeeState extends ListingFeeSummary {
+  eventId: string;
+  eventStatus: EventItem['status'];
+  category: string;
+  clearedCategory: string | null;
+  payment: PaymentAttempt | null;
+  platform: PlatformPaymentDetails;
+}
+
+/** A refused publish or category change: what is due and why (HTTP 402 / 400 / 403 from the server) */
+export interface PublishBlockedError {
+  error: string;
+  code:
+    | 'listing_fee_due'
+    | 'listing_fee_pending'
+    | 'category_upgrade_due'
+    | 'payment_details_missing'
+    | 'organizer_suspended'
+    | string;
+  amountDue?: number;
+  eventId?: string;
+  category?: string;
+  targetCategory?: string;
+}
+
+/** The server's reason for refusing to publish, when the error is one of the publishing rules */
+export function publishBlockedReason(error: unknown): PublishBlockedError | null {
+  if (!axios.isAxiosError(error)) return null;
+  const data = error.response?.data as Partial<PublishBlockedError> | undefined;
+  return data && typeof data.code === 'string' && typeof data.error === 'string' ? (data as PublishBlockedError) : null;
+}
+
+/** Thrown by App when a save or publish is refused by a publishing rule, so the caller can act on it */
+export class PublishBlocked extends Error {
+  reason: PublishBlockedError;
+  constructor(reason: PublishBlockedError) {
+    super(reason.error);
+    this.reason = reason;
+  }
+}
+
+export const listingFeeApi = {
+  /** Polled by the Pay to publish step; the server also checks a pending payment with the provider */
+  get: (eventId: string) =>
+    API.get<ListingFeeState>(`/gatherings/${encodeURIComponent(eventId)}/listing-fee/`).then((r) => r.data),
+  /** Starts an online payment; `category` pays the difference for moving to a dearer category */
+  pay: (eventId: string, mpesaPhoneNumber: string, category?: string) =>
+    API.post<ListingFeeState>(`/gatherings/${encodeURIComponent(eventId)}/listing-fee/pay/`, {
+      mpesaPhoneNumber,
+      ...(category ? { category } : {})
+    }).then((r) => r.data)
 };
 
 // --- Organizer payment details (where MagiVents pays out ticket money) ---------------
