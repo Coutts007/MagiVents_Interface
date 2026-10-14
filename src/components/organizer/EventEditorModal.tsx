@@ -9,12 +9,20 @@ import { ImageUploadZone } from '../ui/ImageUploadZone';
 import { Coordinates, CoordinatePicker } from './CoordinatePicker';
 import { TIER_PRESETS, TierPreset } from '../../utils/tiers';
 import { isoToNairobiInput, nairobiInputToIso } from '../../utils/time';
+import { PayoutDetails, PayoutDetailsInput, payoutDetailsError, toPayoutInput } from '../../utils/payoutDetails';
+import { getApiErrorMessage, payoutsApi } from '../../services/api';
+import { PayoutDetailsFields } from './PayoutDetailsFields';
 
 export interface EventEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Persists the event; rejects with a readable Error if the server refuses it */
-  onSave: (event: EventItem) => Promise<void>;
+  /**
+   * Persists the event (creating it when `existingId` is null) and resolves with what the server stored;
+   * rejects with a readable Error if the server refuses it
+   */
+  onSave: (event: EventItem, existingId: string | null) => Promise<EventItem>;
+  /** Publishes a saved draft; rejects with a readable Error when a publishing rule is not met yet */
+  onPublish: (eventId: string) => Promise<void>;
   eventToEdit: EventItem | null;
 }
 
@@ -215,9 +223,18 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  onPublish,
   eventToEdit
 }) => {
   const { user } = useAuth();
+  // Id of the event once saved, so saving again (e.g. after a failed publish) updates instead of duplicating
+  const [savedId, setSavedId] = useState<string | null>(null);
+  // Payment details: the organizer's default, or different ones for this event only
+  const [defaultPayout, setDefaultPayout] = useState<PayoutDetails | null>(null);
+  const [hadOverride, setHadOverride] = useState(false);
+  const [payoutMode, setPayoutMode] = useState<'default' | 'event'>('default');
+  const [payoutForm, setPayoutForm] = useState<PayoutDetailsInput>(toPayoutInput(null));
+  const [payoutErrorField, setPayoutErrorField] = useState<keyof PayoutDetailsInput | null>(null);
 
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
@@ -240,6 +257,34 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [agenda, setAgenda] = useState<AgendaRow[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSavedId(eventToEdit?.id ?? null);
+    setPayoutMode('default');
+    setHadOverride(false);
+    setPayoutForm(toPayoutInput(null));
+    setPayoutErrorField(null);
+    let cancelled = false;
+    payoutsApi
+      .getDetails()
+      .then((details) => !cancelled && setDefaultPayout(details))
+      .catch(() => !cancelled && setDefaultPayout(null));
+    if (eventToEdit) {
+      payoutsApi
+        .getEventDetails(eventToEdit.id)
+        .then((details) => {
+          if (cancelled || !details.override) return;
+          setHadOverride(true);
+          setPayoutMode('event');
+          setPayoutForm(toPayoutInput(details.override));
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [eventToEdit, isOpen]);
 
   useEffect(() => {
     setSaveError(null);
@@ -378,6 +423,11 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     if (filledAgenda.some((row) => !row.time || !row.title.trim())) {
       problems.push('Each agenda item needs a time and a title.');
     }
+    if (payoutMode === 'event' && !isFree) {
+      const payoutProblem = payoutDetailsError(payoutForm);
+      setPayoutErrorField(payoutProblem?.field ?? null);
+      if (payoutProblem) problems.push(`Payment details: ${payoutProblem.message}`);
+    }
     return problems;
   };
 
@@ -408,16 +458,22 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       };
     });
 
-  /** The status the primary button saves with: new and draft events are published, others keep theirs */
-  const primaryStatus: EventItem['status'] =
-    !eventToEdit || eventToEdit.status === 'draft' ? 'published' : eventToEdit.status;
+  /** The primary button publishes new and draft events; published events keep their status */
+  const currentStatus: EventItem['status'] = eventToEdit?.status ?? 'draft';
+  const primaryPublishes = currentStatus === 'draft';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    save(primaryStatus);
+    save(primaryPublishes ? 'publish' : 'keep');
   };
 
-  const save = async (status: EventItem['status']) => {
+  /**
+   * 'publish': save (new events are always saved as drafts first), apply the payment details, then publish.
+   * 'draft': save as a draft (unpublishes a published event). 'keep': save with the current status.
+   */
+  const save = async (intent: 'publish' | 'draft' | 'keep') => {
+    // Publishing happens after saving, so the event itself is saved with its current status
+    const status: EventItem['status'] = intent === 'draft' ? 'draft' : currentStatus;
     // Rows with nothing typed in them are dropped
     const filledAgenda = agenda.filter((row) => row.time || row.title.trim() || row.detail.trim());
     const problems = validate(filledAgenda);
@@ -490,11 +546,37 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
 
     setIsSaving(true);
     setSaveError(null);
+    let saved: EventItem;
     try {
-      await onSave(savedItem);
-      onClose();
+      saved = await onSave(savedItem, savedId);
+      setSavedId(saved.id);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save this event.');
+      setIsSaving(false);
+      return;
+    }
+    try {
+      if (payoutMode === 'event' && !isFree) {
+        await payoutsApi.saveEventDetails(saved.id, payoutForm);
+        setHadOverride(true);
+      } else if (hadOverride) {
+        await payoutsApi.removeEventDetails(saved.id);
+        setHadOverride(false);
+      }
+    } catch (err) {
+      setSaveError(`The event was saved, but its payment details were not: ${getApiErrorMessage(err)}`);
+      setIsSaving(false);
+      return;
+    }
+    try {
+      if (intent === 'publish' && saved.status === 'draft') {
+        await onPublish(saved.id);
+      }
+      onClose();
+    } catch (err) {
+      setSaveError(
+        `Saved as a draft. ${err instanceof Error ? err.message : 'It could not be published yet.'}`
+      );
     } finally {
       setIsSaving(false);
     }
@@ -849,6 +931,49 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           )}
         </div>
 
+        {/* Payment details for this event's ticket money */}
+        {!isFree && (
+          <fieldset className="space-y-3 p-4 rounded-2xl border border-[#D8CDBC] bg-[#EFE8DD]">
+            <legend className={`${labelClass} px-1`}>Payment details</legend>
+            <p className="text-[11px] text-[#675A50] leading-relaxed">
+              MagiVents collects the ticket payments and pays out your sales to these details. Paid events cannot be
+              published until payment details are set.
+            </p>
+            <div role="radiogroup" aria-label="Payment details for this event" className="space-y-2">
+              <label className="flex items-start gap-2 text-sm text-[#1E1814] cursor-pointer">
+                <input
+                  type="radio"
+                  name="payout-mode"
+                  checked={payoutMode === 'default'}
+                  onChange={() => setPayoutMode('default')}
+                  className="mt-1 accent-[#8A4F33]"
+                />
+                <span>
+                  Use my default details
+                  <span className="block text-[11px] text-[#675A50]">
+                    {defaultPayout
+                      ? defaultPayout.summary
+                      : 'You have none yet. Add them in your profile under Payment details, or use details for this event below.'}
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-[#1E1814] cursor-pointer">
+                <input
+                  type="radio"
+                  name="payout-mode"
+                  checked={payoutMode === 'event'}
+                  onChange={() => setPayoutMode('event')}
+                  className="mt-1 accent-[#8A4F33]"
+                />
+                <span>Use different details for this event only</span>
+              </label>
+            </div>
+            {payoutMode === 'event' && (
+              <PayoutDetailsFields value={payoutForm} onChange={setPayoutForm} errorField={payoutErrorField} />
+            )}
+          </fieldset>
+        )}
+
         {/* Image */}
         <div className="pt-1">
           <ImageUploadZone
@@ -1032,7 +1157,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
             {eventToEdit && eventToEdit.status !== 'draft' ? 'Unpublish as draft' : 'Save as draft'}
           </Button>
           <Button variant="primary" type="submit" disabled={isSaving}>
-            {isSaving ? 'Saving…' : primaryStatus === eventToEdit?.status ? 'Save changes' : 'Publish event'}
+            {isSaving ? 'Saving…' : primaryPublishes ? 'Publish event' : 'Save changes'}
           </Button>
         </div>
       </form>

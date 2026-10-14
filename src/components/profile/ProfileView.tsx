@@ -15,6 +15,7 @@ import {
   Camera,
   Share2,
   Trash2,
+  Wallet,
   Printer,
   Smartphone
 } from 'lucide-react';
@@ -31,6 +32,7 @@ import { formatKES } from '../../utils/format';
 import { PrintableTicketModal } from '../ticket/PrintableTicketModal';
 import { EmailConfirmationModal } from '../ticket/EmailConfirmationModal';
 import { admitsLabel, bookingPeople } from '../../utils/tiers';
+import { PayoutDetailsCard } from '../organizer/PayoutDetailsCard';
 
 export interface ProfileViewProps {
   onNavigate: (view: 'discover' | 'organizer') => void;
@@ -53,7 +55,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const { user, updateProfile, changePassword, logout, isLoading: authLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'passes' | 'saved' | 'security'>('passes');
+  const [activeTab, setActiveTab] = useState<'passes' | 'saved' | 'security' | 'payouts'>('passes');
 
   // Edit Profile Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -281,7 +283,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       {/* Tabs Navigation */}
-      <div className="border-b border-[#D8CDBC] flex gap-8 mb-8">
+      <div className="border-b border-[#D8CDBC] flex gap-6 sm:gap-8 mb-8 overflow-x-auto whitespace-nowrap">
         <button
           onClick={() => setActiveTab('passes')}
           className={`pb-4 text-sm font-medium transition-colors relative cursor-pointer ${
@@ -326,7 +328,26 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#8A4F33]" />
           )}
         </button>
+
+        {(user.role === 'curator' || user.role === 'admin') && (
+          <button
+            onClick={() => setActiveTab('payouts')}
+            className={`pb-4 text-sm font-medium transition-colors relative cursor-pointer ${
+              activeTab === 'payouts' ? 'text-[#1E1814]' : 'text-[#675A50] hover:text-[#1E1814]'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-[#8A4F33]" />
+              Payment details
+            </span>
+            {activeTab === 'payouts' && (
+              <span className="absolute bottom-0 left-0 w-full h-[2px] bg-[#8A4F33]" />
+            )}
+          </button>
+        )}
       </div>
+
+      {activeTab === 'payouts' && <PayoutDetailsCard />}
 
       {/* TAB 1: Purchased Passes */}
       {activeTab === 'passes' && (

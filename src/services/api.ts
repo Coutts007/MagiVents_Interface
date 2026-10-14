@@ -1,6 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { BookingWithPayment, EventItem, TicketBooking } from '../types';
 import { UserProfile } from '../types/auth';
+import { PayoutDetails, PayoutDetailsInput } from '../utils/payoutDetails';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
@@ -216,6 +217,30 @@ export const gatheringsApi = {
   setStatus: (id: string, status: EventItem['status']) =>
     API.patch<EventItem>(`/gatherings/${id}/`, { status }).then((r) => r.data),
   remove: (id: string) => API.delete(`/gatherings/${id}/`)
+};
+
+// --- Organizer payment details (where MagiVents pays out ticket money) ---------------
+
+export interface EventPayoutDetails {
+  override: PayoutDetails | null;
+  effective: PayoutDetails | null;
+  usesDefault: boolean;
+}
+
+export const payoutsApi = {
+  /** The organizer's default details, or null */
+  getDetails: () => API.get<{ details: PayoutDetails | null }>('/payouts/details/').then((r) => r.data.details),
+  saveDetails: (details: PayoutDetailsInput) =>
+    API.put<{ details: PayoutDetails }>('/payouts/details/', details).then((r) => r.data.details),
+  removeDetails: () => API.delete('/payouts/details/'),
+  /** One event's details (override and the details that apply); owner only */
+  getEventDetails: (eventId: string) =>
+    API.get<EventPayoutDetails>(`/payouts/events/${encodeURIComponent(eventId)}/details/`).then((r) => r.data),
+  saveEventDetails: (eventId: string, details: PayoutDetailsInput) =>
+    API.put<EventPayoutDetails>(`/payouts/events/${encodeURIComponent(eventId)}/details/`, details).then((r) => r.data),
+  /** Goes back to the organizer's default details */
+  removeEventDetails: (eventId: string) =>
+    API.delete<EventPayoutDetails>(`/payouts/events/${encodeURIComponent(eventId)}/details/`).then((r) => r.data)
 };
 
 // --- Bookings & bookmarks -----------------------------------------------------

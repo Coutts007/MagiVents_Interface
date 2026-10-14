@@ -439,22 +439,31 @@ function MainLayout() {
     }
   };
 
-  const handleSaveEvent = async (savedItem: EventItem): Promise<void> => {
+  const upsertEvent = (saved: EventItem) =>
+    setEvents((prev) =>
+      prev.some((e) => e.id === saved.id) ? prev.map((e) => (e.id === saved.id ? saved : e)) : [saved, ...prev]
+    );
+
+  const handleSaveEvent = async (savedItem: EventItem, existingId: string | null): Promise<EventItem> => {
     let saved: EventItem;
     try {
-      saved = eventToEdit
-        ? await gatheringsApi.update(eventToEdit.id, toEventInput(savedItem))
+      saved = existingId
+        ? await gatheringsApi.update(existingId, toEventInput(savedItem))
         : await gatheringsApi.create(toEventInput(savedItem));
     } catch (err) {
       throw new Error(getApiErrorMessage(err, 'Could not save this event.'));
     }
-    setEvents((prev) => {
-      const exists = prev.some((e) => e.id === saved.id);
-      if (exists) {
-        return prev.map((e) => (e.id === saved.id ? saved : e));
-      }
-      return [saved, ...prev];
-    });
+    upsertEvent(saved);
+    return saved;
+  };
+
+  /** Publishes a saved draft. The server checks every publishing rule and says what is missing. */
+  const handlePublishEvent = async (eventId: string): Promise<void> => {
+    try {
+      upsertEvent(await gatheringsApi.setStatus(eventId, 'published'));
+    } catch (err) {
+      throw new Error(getApiErrorMessage(err, 'Could not publish this event.'));
+    }
   };
 
   return (
@@ -610,6 +619,7 @@ function MainLayout() {
         isOpen={isEditorOpen}
         onClose={() => setIsEditorOpen(false)}
         onSave={handleSaveEvent}
+        onPublish={handlePublishEvent}
         eventToEdit={eventToEdit}
       />
 
