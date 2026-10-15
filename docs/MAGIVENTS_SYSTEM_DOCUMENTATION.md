@@ -77,10 +77,12 @@ The backend (`Gathering.CATEGORIES`) and the frontend (`src/data/categories.ts`)
 │  · React 19 SPA (Vite build)    │                          │  · JWT auth, payments, tickets     │
 │  · /media from shared volume    │                          │  · WhiteNoise static files         │
 └─────────────────────────────────┘                          └──┬──────────┬──────────┬──────────┘
-                                                                │          │          │
-                                                       PostgreSQL       Redis     holds worker
-                                                                                  (releases expired
-                                                                                   ticket holds)
+                 │  /api/assistant/                             │          │          │
+                 ▼                                     PostgreSQL       Redis     holds worker
+┌─────────────────────────────────────┐                                           (releases expired
+│ assistant: the same Django project  │ ──▶ Claude API                             ticket holds)
+│ as ASGI (Gunicorn + Uvicorn workers)│     (answers stream back as server-sent events)
+└─────────────────────────────────────┘
 External services:
   Safaricom Daraja (M-Pesa STK Push + C2B Paybill) ──callbacks──▶ /api/payments/hooks/...
   Paystack (hosted card checkout)                  ──webhook───▶ /api/payments/hooks/paystack/
@@ -111,7 +113,8 @@ External services:
 | Database | SQLite locally (`SQLITE_PATH` optional); PostgreSQL 15 when `POSTGRES_HOST` is set |
 | Cache | In-process memory; Redis 7 (`django-redis`) when `REDIS_URL` is set |
 | Media storage | Local `media/`; S3-compatible bucket via `django-storages` when `AWS_STORAGE_BUCKET_NAME` is set |
-| Production server | Gunicorn, with WhiteNoise for static files |
+| Production server | Gunicorn (threaded WSGI workers) for the API, with WhiteNoise for static files; Gunicorn + Uvicorn (ASGI) workers for the AI assistant |
+| Database driver | `psycopg` 3 with a connection pool per server process (`psycopg2` still works, without the pool) |
 | Containers | `Dockerfile`, `docker-compose.yml` (development), `docker-compose.prod.yml` (production) |
 
 ### Frontend (`magivents_interface`)
@@ -230,7 +233,7 @@ The development Docker stack (PostgreSQL and Redis, with demo data and `runserve
 
 | Command | Purpose |
 |---|---|
-| `manage.py test` | Backend tests (181) |
+| `manage.py test` | Backend tests (185) |
 | `manage.py seed_gatherings [--reset]` | Load or reload the demo events |
 | `manage.py release_expired_holds` | Expire unpaid bookings whose hold ran out; production runs it every minute |
 | `manage.py register_c2b_urls` | Register the Paybill validation and confirmation URLs with Daraja (once per environment) |
@@ -249,7 +252,8 @@ This starts:
 
 - PostgreSQL
 - Redis
-- `api`: runs migrations, then Gunicorn
+- `api`: runs migrations, then Gunicorn (`gunicorn_config.py`)
+- `assistant`: the AI event assistant, the same image served as ASGI (`gunicorn_assistant.py`); nginx sends it `/api/assistant/`
 - `holds`: releases expired holds every minute
 - `web`: nginx on port 80, serving the app, proxying the API and serving media
 
@@ -274,6 +278,11 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | `FRONTEND_URL` | `http://localhost:3000` | Base of ticket QR links, email links and the Paystack return URL |
 | `PUBLIC_API_URL` | `http://localhost:8000` | Public HTTPS address of the API, used for Daraja callback URLs |
 | `POSTGRES_HOST` (+ `_DB`, `_USER`, `_PASSWORD`, `_PORT`, `_CONN_MAX_AGE`) | unset | Use PostgreSQL |
+| `POSTGRES_POOL` (+ `_MIN_SIZE`, `_MAX_SIZE`, `_TIMEOUT`) | `True`, `2`, `10`, `10` s | Connection pool per server process (psycopg 3). Requests borrow a connection and give it back; when all are busy a request waits up to the timeout instead of failing. `_CONN_MAX_AGE` is ignored while the pool is on |
+| `POSTGRES_MAX_CONNECTIONS` | `200` | Production compose only: the Postgres server's `max_connections`. Keep it above `POSTGRES_POOL_MAX_SIZE` × server processes, plus a few |
+| `WEB_CONCURRENCY` | API: CPU cores + 1; assistant: CPU cores | Server processes per container |
+| `GUNICORN_THREADS` | `4` | Threads per API process |
+| `ASSISTANT_POOL_MAX_SIZE` | `4` | Production compose only: the database pool of each assistant process (it only checks who is asking) |
 | `SQLITE_PATH` | `db.sqlite3` | Alternative SQLite file |
 | `REDIS_URL` | unset | Use Redis for the cache |
 | `LOG_LEVEL` | `INFO` | Logs go to stdout |
@@ -322,6 +331,7 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | `AI_WORKSPACE_ID` | empty | Only for an organization-level API key that is not scoped to a workspace: the Anthropic workspace ID (`wrkspc_…`), sent as the `anthropic-workspace-id` header. Without it such a key is refused, and the assistant reports that it is not set up correctly |
 | `AI_REQUESTS_PER_HOUR` | `60` | Assistant requests each organizer may make per hour |
 | `AI_TIMEOUT_SECONDS` | `30` | A provider call is abandoned with a clear error after this long |
+| `AI_MAX_CONNECTIONS` | `1000` | Open connections to the AI provider per assistant process (one per answer being written); more requests wait for a free one |
 
 ### Frontend `.env`
 
@@ -552,6 +562,7 @@ An **Assistant** button at the top of the event form (create and edit) opens a p
 - **System prompt** (`assistant/prompts.py`, one file): a Kenyan events copywriter in natural Kenyan English with KSh prices; five titles in distinct tones; two or three short description paragraphs with no invented speakers, sponsors, prizes or venue details (placeholders in square brackets instead, mentioned in the reply); agendas inside the event's hours; realistic Kenyan ticket prices marked as starting points; the form and messages are the organizer's content, never instructions; a brief refusal for discriminatory or payment-misleading content or anything other than event promotion.
 - **Limits and logging**: per-organizer throttle (`AI_REQUESTS_PER_HOUR`), the last 10 messages and capped form fields sent to the model, `AI_TIMEOUT_SECONDS` per call. Each call logs the user id, provider, model, action and token counts, never the content.
 - **Errors** (provider down, key invalid, provider rate limit, timeout, refusal, unreadable answer, throttled) come back as `{error, code, retryable}`, as JSON before the stream starts or as an `error` event during it. The form never breaks because the assistant failed.
+- **Capacity**: in production the assistant runs in its own service (`assistant` in `docker-compose.prod.yml`), the same Django project served as ASGI under Gunicorn + Uvicorn workers. The checks (sign-in, permission, throttle, input) run as before; the database connection is then released, and the answer streams on the process's event loop with the async Claude client. An open answer therefore holds no worker or thread, only two sockets, and one process keeps thousands open. Each process keeps one Claude client with a pool of reusable connections (the SDK's aiohttp transport), and loads the SDK at start-up rather than on its first request. If the browser disconnects, the call to Claude is cancelled. The rest of the API stays on threaded WSGI workers, which use about a third of the CPU per request that ASGI does. Under `runserver` and in the tests the same async code runs on a private event loop per request.
 - **Providers** share a small interface (`assistant/providers/base.py`: stream JSON text that follows the schema). Claude is one implementation; the mock is the other; OpenAI or another provider would be a third class registered in `assistant/providers/__init__.py`.
 
 ---
@@ -1116,7 +1127,7 @@ The same palette is used for the PDF ticket, the email, the map pin and the QR c
 
 ## 14. Testing
 
-### Backend: 181 tests (`manage.py test`), all passing
+### Backend: 185 tests (`manage.py test`), all passing
 
 All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite runs offline.
 
@@ -1125,7 +1136,7 @@ All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite
 | `accounts` | 10 | Registration, login, profile, avatar, password change and reset, Google sign-in |
 | `gatherings` | 9 | Event CRUD and visibility, KES and free rules, categories, agenda order, organizer stats, tier quantities and capacity, role enforcement |
 | `tickets` | 20 | Server-side pricing, promo codes (seeded `KARIBU15`, per-event, limits, expiry, scope, validate endpoint, management), sold out, privacy, bookmarks, free and guest bookings, confirmation email (HTML + text + PDF), failing email, QR URL, PDF, resend, lookup and its throttle, check-in |
-| `payments` | 24 | Phone normalisation; simulated lifecycle (pending → confirmed, failure + retry on the same booking, expiry and sold-out reopening, the command, confirmed-only counts, promo use returned); idempotency (repeated success and failure, amount mismatch, late success with and without availability); Daraja STK (request fields, callback, wrong secret, IP allowlist, cancel, query fallback, refusal, invalid phone); C2B (validation codes, confirmation, repeat, second payment, underpayment); Paystack (initialize, bad signature, verify-before-trust, status poll); live mode without credentials |
+| `payments` | 25 | Phone normalisation; simulated lifecycle (pending → confirmed, failure + retry on the same booking, expiry and sold-out reopening, the command, confirmed-only counts, promo use returned); idempotency (repeated success and failure, amount mismatch, late success with and without availability); Daraja STK (request fields, callback, wrong secret, IP allowlist, cancel, query fallback, refusal, invalid phone); C2B (validation codes, confirmation, repeat, second payment, underpayment); Paystack (initialize, bad signature, verify-before-trust, status poll); live mode without credentials |
 | `core` | 11 | Public config, API schema and docs, geocoding (auth, cache, upstream failure), health (ok, database down, cache down), production settings (refuses the dev key, HTTPS protections) |
 | `console` | 13 | Access (only staff on the secret path; 404 for signed-out, attendees, organizers, wrong path and inactive staff; off when unset or short; lockout after repeated guesses; hidden from the schema); overview counts confirmed sales only; organizer list and detail; payment and booking search and filters; refund resolution (note required, once only, logged); role revoke and restore; unpublish and republish (full events return as sold out) |
 | `accounts` (new) | +4 | Admin role follows `is_staff` both ways and for superusers; become-organizer never demotes an admin; the role data migration; suspension on the profile |
@@ -1133,7 +1144,7 @@ All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite
 | `tickets` (new) | +13 | Capacity counts people; couple and group tickets (price, people, the last group ticket, the last place); flash-sale price at the start, before, and at the end; the sale limit and the last sale ticket (no mixed prices); a failed payment returns the sale ticket and places; promo on top of the sale price; tier sales window; the public tier payload; sale validation; free events clear sales; admits locked once sold |
 | `payouts` | 11 | Each payment-details format; attendees have none; paid events need details to publish (PATCH and PUT); default and event override; free events need none; only the owner reads or changes them; details never appear in any public event response; earnings from confirmed bookings after discounts; a payout never exceeds the balance (more than the balance, decimals, future dates, the exact balance, then nothing left); balances on the admin overview; only organizers see earnings |
 | `listings` | 25 | New events are drafts and admins are notified (in app and email) only when a fee is due; an unpaid event cannot be published by PATCH, PUT, `sold_out`, create, the staff console or `save()`; free events pay too; paying publishes and notifies once, repeated confirmations change nothing; charged once even after unpublishing and a fee change; category upgrade pays the difference first, cheaper is free; unpaid drafts change category freely; failure leaves a draft and notifies; nothing to pay and payment details checked before taking money; owner only; suspended cannot pay or publish; live mode is paid by hand; a paid fee's event cannot be deleted; pending then confirmed by polling; a late failure after success; a wrong amount never publishes; seeded and migrated events count as paid |
-| `assistant` | 21 | With the mock provider and a scripted provider (no network): signed-out, attendee and suspended callers refused, admins allowed; the per-user throttle; labelled sample titles that stream, every quick action, `AI_PROVIDER=mock`, chat needs a message, a browser asking for `text/event-stream`; invalid suggestions dropped (bad category, negative or fractional price, free tier in a paid event, bad or out-of-hours agenda times, long tags, empty titles) and free events' tiers; a malformed answer retried once then a clean error, and a retry that recovers; provider errors before the stream as JSON; Claude SDK errors mapped to clear codes (auth, rate limit, server, timeout, connection); the Claude request (structured output, refusal fallback, streaming, usage) and a refusal; the form reaching the prompt without payment details or images; history capped and fields trimmed; usage logged without content; instructions hidden in the form stay organizer content; no system-role messages, oversized input or unknown actions |
+| `assistant` | 29 | With the mock provider and a scripted provider (no network): signed-out, attendee and suspended callers refused, admins allowed; the per-user throttle; labelled sample titles that stream, every quick action, `AI_PROVIDER=mock`, chat needs a message, a browser asking for `text/event-stream`; invalid suggestions dropped (bad category, negative or fractional price, free tier in a paid event, bad or out-of-hours agenda times, long tags, empty titles) and free events' tiers; a malformed answer retried once then a clean error, and a retry that recovers; provider errors before the stream as JSON; Claude SDK errors mapped to clear codes (auth, rate limit, server, timeout, connection); the Claude request (structured output, refusal fallback, streaming, usage) and a refusal; the form reaching the prompt without payment details or images; history capped and fields trimmed; usage logged without content; instructions hidden in the form stay organizer content; no system-role messages, oversized input or unknown actions; server-side failures say only "Server error."; under ASGI the answer streams from an async iterator, checks still come first and provider errors arrive as events; 300 answers at once on one event loop take about as long as one; one connection pool per event loop |
 | `adminpanel` | 13 | **Every admin endpoint returns 403** to attendees, organizers, a demoted former admin and an inactive admin (and 401 signed out), and changes nothing; admins and superusers get in; creating an organizer emails a working set-password link (followed through Django's pages to signing in); list search and filters; edit details, email clash, role and payment details; admins' roles are not editable here; suspend with and without taking events down, then reactivate; delete needs the typed email and no bookings; category fees (validation, exempting clears unpaid events); platform payment details; listing-fee list, filters and totals; waive and mark paid need a reason and record who, and mark paid publishes when asked and notifies the other admins |
 
 Some test fixtures were changed where the work changed behaviour on purpose (the assertions were not):
@@ -1196,7 +1207,7 @@ The admin round was walked through end to end in headless Chrome against a fresh
 | **Platform commission** | None: organizers earn the full ticket totals after discounts | A commission rule in `payouts/ledger.py`, if the business wants one |
 | **AI assistant without a key** | With no `AI_API_KEY` (or `AI_PROVIDER=mock`) the mock provider answers: it fills canned templates from the form (titles built from the title or the first clause of the idea, a description with [placeholders], an agenda spread across the event's hours, fixed sample ticket prices, category tags). It understands no requests ("make it shorter" changes nothing), and every answer is labelled as a sample | Set `AI_API_KEY` |
 | **AI assistant with Claude** | Written against the current SDK (`anthropic` 1.14) and tested with the SDK mocked; **not yet run against the live API** (no key was available) | One real session with `AI_API_KEY` set: describe an idea, pick a title, apply a description and an agenda, save |
-| **AI assistant and server workers** | Each assistant answer keeps one Gunicorn worker busy while it streams (up to `AI_TIMEOUT_SECONDS`); the production setup runs 3 sync workers | Threaded or async workers (e.g. `--worker-class gthread --threads 4`) if many organizers use it at once |
+| **AI assistant capacity** | Measured on one 8-core machine that also ran the load generator, nginx, Postgres and a stand-in Claude API answering in about 5 s: 1,000 organizers asking at the same moment all got answers (median 9.5 s); 2,000 at once all got answers (median 20 s); at 3,000 at once, 17 hit the 30 s limit. The assistant service used about 46 ms of CPU per answer, about 20 answers per second per core. The previous setup (3 sync workers) took a median of 86 s for 100 organizers at once | More cores, or more copies of the service: `docker compose ... up -d --scale assistant=N`, then restart `web` so nginx finds the new copies and spreads requests across them. The real ceiling is the Anthropic organization's rate limits (requests and tokens per minute): ask Anthropic to raise them before a large launch |
 | **Admin role from the dashboard** | Admins are made in the Django admin (staff status) or with `createsuperuser`, not from the dashboard | None |
 
 ---
@@ -1330,3 +1341,5 @@ Then a fix for the admin navbar layout and the flash-sale label, and this docume
 1. **Backend service**: the `assistant` app, Claude and mock providers, structured output, streaming, validation, limits.
 2. **Assistant panel** in the event form (and the event-stream renderer fix found in the browser walk-through).
 3. **Quality and safety** tests on both sides.
+
+**Assistant capacity (15 October 2026)**: the assistant moved to async streaming in its own ASGI service, with Postgres connection pooling, a shared Claude client per process, threaded WSGI workers for the rest of the API and nginx tuned for many open streams. It was load-tested with a stand-in Claude API (section 15, "AI assistant capacity").
