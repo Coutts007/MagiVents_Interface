@@ -106,6 +106,8 @@ export interface EventItem {
     avatarUrl?: string;
     bio: string;
   };
+  /** The organizer's website (http/https), shown as "Visit website" on the event page; empty when none */
+  websiteUrl?: string;
   agenda: AgendaItem[];
   status: 'published' | 'draft' | 'sold_out';
   isFeatured?: boolean;

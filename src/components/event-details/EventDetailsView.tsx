@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  ExternalLink,
   MapPin,
   Share2,
   Bookmark,
@@ -17,7 +18,7 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Avatar } from '../ui/Avatar';
 import { EventArtwork } from '../ui/EventArtwork';
-import { formatKES } from '../../utils/format';
+import { formatKES, normalizeWebsiteUrl, websiteHost } from '../../utils/format';
 import { admitsLabel, saleSecondsLeft, saleSecondsUntilStart, tierPriceAt, tierSalesState } from '../../utils/tiers';
 import { formatDuration, formatNairobiDateTime } from '../../utils/time';
 import { useNow } from '../../utils/useNow';
@@ -69,6 +70,8 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
   // Ticks every second while any flash sale is running or about to start, so prices and countdowns stay live
   const hasSales = event.pricing.tiers.some((t) => t.salePrice !== null && t.salePrice !== undefined);
   const now = useNow(hasSales && !event.isFree);
+  // Only http(s) links are shown, whatever the stored value
+  const websiteUrl = normalizeWebsiteUrl(event.websiteUrl);
   const selectedPrice = event.isFree ? { price: 0, onSale: false } : tierPriceAt(selectedTier, now);
   const admitsPerTicket = selectedTier.admits || 1;
   const totalPrice = selectedPrice.price * quantity;
@@ -375,6 +378,19 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                     <p className="text-sm text-[#675A50] leading-relaxed">
                       {event.host.bio}
                     </p>
+                  )}
+                  {websiteUrl && (
+                    <a
+                      href={websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="mt-4 inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-full border border-[#8A4F33] text-[#8A4F33] hover:bg-[#8A4F33] hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-[#8A4F33]"
+                    >
+                      <ExternalLink className="w-4 h-4" aria-hidden="true" />
+                      Visit website
+                      <span className="text-xs opacity-80">({websiteHost(websiteUrl)})</span>
+                      <span className="sr-only">(opens in a new tab)</span>
+                    </a>
                   )}
                 </div>
               </div>

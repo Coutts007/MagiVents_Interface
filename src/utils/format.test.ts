@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatKES, getInitials, toLocalIsoDate } from './format';
+import { formatKES, getInitials, normalizeWebsiteUrl, toLocalIsoDate, websiteHost } from './format';
 
 describe('formatKES', () => {
   it('formats whole shillings with thousands separators', () => {
@@ -33,5 +33,25 @@ describe('toLocalIsoDate', () => {
   it('pads month and day', () => {
     expect(toLocalIsoDate(new Date(2026, 0, 5))).toBe('2026-01-05');
     expect(toLocalIsoDate(new Date(2026, 10, 28))).toBe('2026-11-28');
+  });
+});
+
+describe('normalizeWebsiteUrl', () => {
+  it('adds https:// to a bare address and keeps http(s) links', () => {
+    expect(normalizeWebsiteUrl(' nairobitech.co.ke/summit ')).toBe('https://nairobitech.co.ke/summit');
+    expect(normalizeWebsiteUrl('http://example.com')).toBe('http://example.com/');
+  });
+
+  it('rejects empty, non-web and malformed addresses', () => {
+    expect(normalizeWebsiteUrl('')).toBeNull();
+    expect(normalizeWebsiteUrl('javascript:alert(1)')).toBeNull();
+    expect(normalizeWebsiteUrl('ftp://files.example.com')).toBeNull();
+    expect(normalizeWebsiteUrl('not a site')).toBeNull();
+  });
+});
+
+describe('websiteHost', () => {
+  it('shows the site name without www', () => {
+    expect(websiteHost('https://www.example.co.ke/tickets')).toBe('example.co.ke');
   });
 });

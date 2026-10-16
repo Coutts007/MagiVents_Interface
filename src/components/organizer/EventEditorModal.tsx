@@ -16,6 +16,7 @@ import { AssistantPanel } from './AssistantPanel';
 import { AssistantSuggestion } from '../../services/api';
 import { applySuggestion, ApplyMode, AssistantFormState } from '../../utils/assistant';
 import { PayoutDetailsFields } from './PayoutDetailsFields';
+import { normalizeWebsiteUrl } from '../../utils/format';
 
 export interface EventEditorModalProps {
   isOpen: boolean;
@@ -265,6 +266,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [description, setDescription] = useState('');
   const [hostName, setHostName] = useState('');
   const [hostRole, setHostRole] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [attendeeNote, setAttendeeNote] = useState('');
   const [tags, setTags] = useState('');
   const [agenda, setAgenda] = useState<AgendaRow[]>([]);
@@ -326,6 +328,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       setDescription(eventToEdit.description);
       setHostName(eventToEdit.host.name);
       setHostRole(eventToEdit.host.role);
+      setWebsiteUrl(eventToEdit.websiteUrl || '');
       setAttendeeNote(eventToEdit.curatorNote || '');
       setTags(eventToEdit.tags.join(', '));
       setAgenda(eventToEdit.agenda.map((item) => newRow(item)));
@@ -347,6 +350,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       setDescription('');
       setHostName('');
       setHostRole('');
+      setWebsiteUrl('');
       setAttendeeNote('');
       setTags('');
       setAgenda([]);
@@ -410,6 +414,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     if (tiers.length === 0) missing.push('at least one ticket type');
 
     const problems = missing.length ? [`Please fill in: ${missing.join(', ')}.`] : [];
+    if (websiteUrl.trim() && !normalizeWebsiteUrl(websiteUrl)) {
+      problems.push('Enter a valid website address, e.g. https://example.co.ke');
+    }
     tiers.forEach((row, index) => {
       const label = row.name.trim() || `Ticket type ${index + 1}`;
       if (!row.name.trim()) problems.push(`Ticket type ${index + 1} needs a name.`);
@@ -549,6 +556,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         name: hostName.trim() || user?.name || '',
         role: hostRole.trim()
       },
+      websiteUrl: websiteUrl.trim() ? normalizeWebsiteUrl(websiteUrl) ?? '' : '',
       agenda: filledAgenda.map(({ time, title: itemTitle, detail }) => ({
         time,
         title: itemTitle.trim(),
@@ -1237,6 +1245,19 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
               className={inputClass}
             />
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Event or organizer website</label>
+          <input
+            type="url"
+            inputMode="url"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+            placeholder="e.g. https://example.co.ke"
+            className={inputClass}
+          />
+          <p className={hintClass}>Optional. Attendees see a "Visit website" link on the event page.</p>
         </div>
 
         {/* Tags & Note */}
