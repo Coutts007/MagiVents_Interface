@@ -35,6 +35,13 @@ export const tokenStore = {
   }
 };
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /** Send without the sign-in token, so the response can come from the shared cache (public data only) */
+    anonymous?: boolean;
+  }
+}
+
 const API = axios.create({
   baseURL: BASE_URL,
   headers: {
@@ -46,7 +53,7 @@ const API = axios.create({
 API.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = tokenStore.access;
-    if (token && config.headers) {
+    if (token && config.headers && !config.anonymous) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -232,7 +239,12 @@ export const geocodeApi = {
 export type EventInput = Omit<EventItem, 'id' | 'attendeeCount' | 'organizerId' | 'organizerStats'>;
 
 export const gatheringsApi = {
-  list: () => API.get<EventItem[]>('/gatherings/').then((r) => r.data),
+  /**
+   * All events. Only organizers and admins need the personal version (their own drafts and sales figures);
+   * everyone else gets the public list, which nginx and the API serve from a shared cache.
+   */
+  list: (personal = false) =>
+    API.get<EventItem[]>('/gatherings/', { anonymous: !personal }).then((r) => r.data),
   create: (event: EventInput) => API.post<EventItem>('/gatherings/', event).then((r) => r.data),
   update: (id: string, event: EventInput) =>
     API.put<EventItem>(`/gatherings/${id}/`, event).then((r) => r.data),

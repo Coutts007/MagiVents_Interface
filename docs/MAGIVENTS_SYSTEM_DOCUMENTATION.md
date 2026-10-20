@@ -255,7 +255,10 @@ This starts:
 - `api`: runs migrations, then Gunicorn (`gunicorn_config.py`)
 - `assistant`: the AI event assistant, the same image served as ASGI (`gunicorn_assistant.py`); nginx sends it `/api/assistant/`
 - `holds`: releases expired holds every minute
-- `web`: nginx on port 80, serving the app, proxying the API and serving media
+- `mailer`: sends ticket emails (PDF attached) for confirmed bookings, checking every 5 seconds, so bookings never wait for the mail server
+- `web`: nginx on port 80, serving the app, proxying the API and serving media. It caches the public event list and event pages for visitors who are not signed in, and the app settings for everyone, for as long as the API allows (10 seconds)
+
+**Scaling out.** The API is stateless (JWT sign-in, Redis cache), so more instances raise capacity: `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --scale api=3`, then `docker compose ... restart web` so nginx finds every instance. Keep instances × processes × `POSTGRES_POOL_MAX_SIZE` below `POSTGRES_MAX_CONNECTIONS`. The mailer can be scaled the same way (`--scale mailer=2`); two senders never email the same booking. Measured capacity is in section 15 ("Site capacity").
 
 Put a TLS-terminating proxy in front of port 80. It must set `X-Forwarded-Proto`. The production file never seeds demo data and never runs `runserver`.
 
@@ -320,6 +323,16 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | `MEDIA_ROOT`, `STATIC_ROOT` | `media/`, `staticfiles/` | |
 | `GEOCODER_URL`, `GEOCODER_USER_AGENT` | public Nominatim, `MagiVents/1.0 (…)` | Address search for the map pin |
 | `GUEST_BOOKING_RATE`, `PROMO_VALIDATE_RATE`, `TICKET_LOOKUP_RATE`, `TICKET_RESEND_RATE`, `PAYMENT_ATTEMPT_RATE`, `GEOCODE_RATE` | 20/hour, 30/minute, 10/hour, 5/hour, 20/hour, 30/hour | Per-IP (or per-user) rate limits |
+| `LOGIN_EMAIL_RATE`, `LOGIN_IP_RATE`, `REGISTER_IP_RATE` | 10/minute, 120/minute, 60/hour | Sign-in attempts per account and per IP (both `/api/auth/login/` and `/api/auth/token/`), sign-ups per IP. The IP limits are generous because many mobile users share one carrier IP |
+| `BOOKING_EMAILS_IN_BACKGROUND` | `False` (production compose: `True`) | `True`: the booking request only marks the ticket email, and `manage.py send_booking_emails --loop 5` (the `mailer` service) builds the PDF and sends it |
+
+### Performance
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `CATALOG_CACHE_SECONDS` | `0` in development, `10` when `DJANGO_DEBUG=False` | How long the public event list and event pages are cached and shared (Redis, and nginx for visitors who are not signed in). Ticket counts in the list can lag by this much; a booking always re-checks availability. Event edits, publishing and unpublishing replace the cached copy at once |
+| `AUTH_USER_CACHE_SECONDS` | `0` in development, `60` when `DJANGO_DEBUG=False` | How long a signed-in user's record is cached instead of loaded on every request. Saving or deleting the user drops it at once, so suspensions and role changes apply to the next request |
+| `HOLDS_SWEEP_SECONDS` | `15` | Event pages give back tickets held by expired bookings at most this often (bookings and the `holds` worker always do) |
 
 ### AI event assistant
 
@@ -1051,7 +1064,7 @@ Errors: DRF validation format or `{"error": "..."}`; publishing rules add a `cod
 ### Auth and API
 
 - **`AuthContext`** restores the session and provides login, signup, Google, reset, profile update, password change, `becomeOrganizer` and logout.
-- **`services/api.ts`** is an Axios client with the Bearer token and a single shared refresh on 401. Its API groups:
+- **`services/api.ts`** is an Axios client with the Bearer token and a single shared refresh on 401. A request made with `{ anonymous: true }` goes without the token. `gatheringsApi.list(personal)` uses this: attendees and visitors load the public event list, which nginx and the API serve from a shared cache, and only organizers and admins (`App.tsx`, `seesOwnEvents`) ask for their personal version with drafts and sales figures. Its API groups:
   - `authApi`, `gatheringsApi`, `bookingsApi` (`create`, `list`, `status`, `pay`), `bookmarksApi`
   - `promoApi`, `ticketsApi` (`get`, `lookup`, `resend`, `pdfUrl`), `checkInApi`, `geocodeApi`
   - `listingFeeApi` (`get`, `pay`), `payoutsApi` (payment details, event overrides, `summary`), `adminApi`, `notificationsApi`
@@ -1127,7 +1140,7 @@ The same palette is used for the PDF ticket, the email, the map pin and the QR c
 
 ## 14. Testing
 
-### Backend: 185 tests (`manage.py test`), all passing
+### Backend: 195 tests (`manage.py test`), all passing
 
 All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite runs offline.
 
@@ -1145,6 +1158,7 @@ All external HTTP (Safaricom, Paystack, Nominatim, SMTP) is mocked, so the suite
 | `payouts` | 11 | Each payment-details format; attendees have none; paid events need details to publish (PATCH and PUT); default and event override; free events need none; only the owner reads or changes them; details never appear in any public event response; earnings from confirmed bookings after discounts; a payout never exceeds the balance (more than the balance, decimals, future dates, the exact balance, then nothing left); balances on the admin overview; only organizers see earnings |
 | `listings` | 25 | New events are drafts and admins are notified (in app and email) only when a fee is due; an unpaid event cannot be published by PATCH, PUT, `sold_out`, create, the staff console or `save()`; free events pay too; paying publishes and notifies once, repeated confirmations change nothing; charged once even after unpublishing and a fee change; category upgrade pays the difference first, cheaper is free; unpaid drafts change category freely; failure leaves a draft and notifies; nothing to pay and payment details checked before taking money; owner only; suspended cannot pay or publish; live mode is paid by hand; a paid fee's event cannot be deleted; pending then confirmed by polling; a late failure after success; a wrong amount never publishes; seeded and migrated events count as paid |
 | `assistant` | 29 | With the mock provider and a scripted provider (no network): signed-out, attendee and suspended callers refused, admins allowed; the per-user throttle; labelled sample titles that stream, every quick action, `AI_PROVIDER=mock`, chat needs a message, a browser asking for `text/event-stream`; invalid suggestions dropped (bad category, negative or fractional price, free tier in a paid event, bad or out-of-hours agenda times, long tags, empty titles) and free events' tiers; a malformed answer retried once then a clean error, and a retry that recovers; provider errors before the stream as JSON; Claude SDK errors mapped to clear codes (auth, rate limit, server, timeout, connection); the Claude request (structured output, refusal fallback, streaming, usage) and a refusal; the form reaching the prompt without payment details or images; history capped and fields trimmed; usage logged without content; instructions hidden in the form stay organizer content; no system-role messages, oversized input or unknown actions; server-side failures say only "Server error."; under ASGI the answer streams from an async iterator, checks still come first and provider errors arrive as events; 300 answers at once on one event loop take about as long as one; one connection pool per event loop |
+| Performance (new) | +9 | `gatherings`: visitors and attendees share the cached list, ticket sales keep it, edits and publish/unpublish replace it at once, organizers always get their own fresh copy with drafts and sales figures, gzipped copy, `my_gatherings` keeps sales figures; `tickets`: with background emails the booking only marks the email and the worker sends it once, and keeps it for the next run when the mail server cannot be reached; `accounts`: guessing one account's password is limited (other accounts unaffected, `/api/auth/token/` too), the cached sign-in copy is used and dropped when the user changes or is deactivated |
 | `adminpanel` | 13 | **Every admin endpoint returns 403** to attendees, organizers, a demoted former admin and an inactive admin (and 401 signed out), and changes nothing; admins and superusers get in; creating an organizer emails a working set-password link (followed through Django's pages to signing in); list search and filters; edit details, email clash, role and payment details; admins' roles are not editable here; suspend with and without taking events down, then reactivate; delete needs the typed email and no bookings; category fees (validation, exempting clears unpaid events); platform payment details; listing-fee list, filters and totals; waive and mark paid need a reason and record who, and mark paid publishes when asked and notifies the other admins |
 
 Some test fixtures were changed where the work changed behaviour on purpose (the assertions were not):
@@ -1156,7 +1170,7 @@ Some test fixtures were changed where the work changed behaviour on purpose (the
 - **Organizer role.** The original gatherings test owner is created with the organizer role, because creating events now requires it.
 - **Simulated delay.** The original paying test classes run the simulated gateway with no delay, because paid bookings are now confirmed by the payment provider rather than at creation.
 
-### Frontend: 51 tests (`npm test`, Vitest)
+### Frontend: 54 tests (`npm test`, Vitest)
 
 | File | Covers |
 |---|---|
@@ -1208,6 +1222,7 @@ The admin round was walked through end to end in headless Chrome against a fresh
 | **AI assistant without a key** | With no `AI_API_KEY` (or `AI_PROVIDER=mock`) the mock provider answers: it fills canned templates from the form (titles built from the title or the first clause of the idea, a description with [placeholders], an agenda spread across the event's hours, fixed sample ticket prices, category tags). It understands no requests ("make it shorter" changes nothing), and every answer is labelled as a sample | Set `AI_API_KEY` |
 | **AI assistant with Claude** | Written against the current SDK (`anthropic` 1.14) and tested with the SDK mocked; **not yet run against the live API** (no key was available) | One real session with `AI_API_KEY` set: describe an idea, pick a title, apply a description and an agenda, save |
 | **AI assistant capacity** | Measured on one 8-core machine that also ran the load generator, nginx, Postgres and a stand-in Claude API answering in about 5 s: 1,000 organizers asking at the same moment all got answers (median 9.5 s); 2,000 at once all got answers (median 20 s); at 3,000 at once, 17 hit the 30 s limit. The assistant service used about 46 ms of CPU per answer, about 20 answers per second per core. The previous setup (3 sync workers) took a median of 86 s for 100 organizers at once | More cores, or more copies of the service: `docker compose ... up -d --scale assistant=N`, then restart `web` so nginx finds the new copies and spreads requests across them. The real ceiling is the Anthropic organization's rate limits (requests and tokens per minute): ask Anthropic to raise them before a large launch |
+| **Site capacity** | Load-tested on 20 October 2026 with k6 on one 8-core machine (`MagiVents_backend/loadtest/`): the API on 4 cores, PostgreSQL on 1, nginx and the mailer sharing 1, the load generator on 2; 200 events and 100,000 past bookings; people behaving like the real app (one event-list load per visit, profile and tickets when signed in, about 1 visit in 10 booking, paid bookings polling). **10,000 simultaneous users: no errors in 159,848 requests, 95% of responses within 0.52 s** (event list 3 ms, signed-in pages 0.65 s, bookings 0.9 s); ticket emails ran up to about a minute behind at the peak and caught up. At 12,500 users nothing failed but signed-in pages slowed to about 10 s: 10,000 is the most a 4-core API and a 1-core database take. Before the October 20 changes the same data lagged at 100 users | More API instances (`--scale api=N`, then restart `web`) and a second database core for 15,000+; `--scale mailer=2` for more than about 30 bookings a second. Behind a CDN that honours `Cache-Control`, the public event list would not reach the server at all |
 | **Admin role from the dashboard** | Admins are made in the Django admin (staff status) or with `createsuperuser`, not from the dashboard | None |
 
 ---
@@ -1343,3 +1358,11 @@ Then a fix for the admin navbar layout and the flash-sale label, and this docume
 3. **Quality and safety** tests on both sides.
 
 **Assistant capacity (15 October 2026)**: the assistant moved to async streaming in its own ASGI service, with Postgres connection pooling, a shared Claude client per process, threaded WSGI workers for the rest of the API and nginx tuned for many open streams. It was load-tested with a stand-in Claude API (section 15, "AI assistant capacity").
+
+**Performance for 10,000 users (20 October 2026)**, after a load test found the site slowed down as it sold tickets (the event list summed every booking for every visitor) and stopped keeping up at about 1,250 users. One commit in each repository:
+
+- **Backend**: sales totals only for organizers; a shared cache of the public event list and event pages (Redis, gzipped, replaced at once on edits); expired holds swept at most every 15 s from pages; ticket emails sent by a `mailer` worker instead of inside the booking request, with a QR code drawn straight onto the PDF (91 ms to 28 ms a ticket); the signed-in user cached for 60 s; sign-in rate limits per account and IP.
+- **Frontend**: nginx caches the event list for visitors and the app settings for everyone, gzips responses, and attendees load the public list without their token so it comes from the cache.
+
+Measured result: 10,000 simultaneous users on a 4-core API with no errors (section 15, "Site capacity").
+

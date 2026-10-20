@@ -182,16 +182,18 @@ function MainLayout() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<AuthModalMode>('login');
 
+  // Organizers and admins see their own drafts and sales figures; everyone else shares the cached public list
+  const seesOwnEvents = user?.role === 'curator' || user?.role === 'admin';
   const loadEvents = useCallback(async () => {
     setIsEventsLoading(true);
     try {
-      setEvents(await gatheringsApi.list());
+      setEvents(await gatheringsApi.list(seesOwnEvents));
     } catch (err) {
       setNotice(getApiErrorMessage(err, 'Could not load events.'));
     } finally {
       setIsEventsLoading(false);
     }
-  }, []);
+  }, [seesOwnEvents]);
 
   // Reload events when the session changes, so an organizer's own drafts are included
   useEffect(() => {
