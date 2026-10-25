@@ -34,6 +34,10 @@ import { PrintableTicketModal } from '../ticket/PrintableTicketModal';
 import { TicketQRCode } from '../ui/TicketQRCode';
 import { EmailConfirmationModal } from '../ticket/EmailConfirmationModal';
 
+/** After an M-Pesa payment is shown as not completed, check for a late success every 5 s for 5 minutes */
+const LATE_PAYMENT_DELAY_MS = 5000;
+const LATE_PAYMENT_CHECKS = 60;
+
 export interface CheckoutModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -203,6 +207,41 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, pendingId, paymentId]);
+
+  // An M-Pesa payment shown as not completed can still succeed: the phone's answer may reach the server after
+  // the status check gave up. Keep looking for a few minutes so the ticket appears without a reload.
+  const lateMpesaId =
+    booking && booking.payment?.method === 'mpesa' && ['failed', 'expired'].includes(checkoutStage(booking))
+      ? booking.id
+      : null;
+  useEffect(() => {
+    if (!isOpen || !lateMpesaId) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let attempt = 0;
+    const poll = () => {
+      timer = setTimeout(async () => {
+        try {
+          const next = await bookingsApi.status(lateMpesaId);
+          if (cancelled) return;
+          if (checkoutStage(next) === 'confirmed') {
+            showBooking(next);
+            return;
+          }
+        } catch {
+          // Retried on the next tick
+        }
+        attempt += 1;
+        if (!cancelled && attempt < LATE_PAYMENT_CHECKS) poll();
+      }, LATE_PAYMENT_DELAY_MS);
+    };
+    poll();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, lateMpesaId, paymentId]);
 
   const handleRetry = async (choice: PaymentChoice) => {
     if (!booking) return;
