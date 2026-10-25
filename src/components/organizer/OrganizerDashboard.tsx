@@ -307,7 +307,8 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
           <div className="divide-y divide-[#D8CDBC]">
             {filteredEvents.map((event) => {
               const people = event.confirmedAttendees ?? event.organizerStats?.ticketsSold ?? 0;
-              const fillPercentage = Math.round((people / event.capacity) * 100);
+              // Events without a capacity limit show no fill bar
+              const fillPercentage = event.capacity ? Math.round((people / event.capacity) * 100) : null;
 
               return (
                 <div
@@ -363,15 +364,19 @@ export const OrganizerDashboard: React.FC<OrganizerDashboardProps> = ({
                     <div className="flex justify-between text-xs text-[#675A50]">
                       <span>Attendees</span>
                       <span className="font-medium text-[#1E1814] tabular-nums">
-                        {people} / {event.capacity}
+                        {event.capacity === null ? people : `${people} / ${event.capacity}`}
                       </span>
                     </div>
-                    <div className="w-full bg-[#D8CDBC] h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-[#8A4F33] h-full rounded-full transition-all duration-500"
-                        style={{ width: `${Math.min(100, fillPercentage)}%` }}
-                      />
-                    </div>
+                    {fillPercentage === null ? (
+                      <p className="text-[11px] text-[#675A50]">No limit on places</p>
+                    ) : (
+                      <div className="w-full bg-[#D8CDBC] h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-[#8A4F33] h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, fillPercentage)}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Inline Action Buttons: Edit, Delete, Toggle Status, View */}

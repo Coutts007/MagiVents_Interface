@@ -8,7 +8,7 @@ import { Button } from '../ui/Button';
 import { ImageUploadZone } from '../ui/ImageUploadZone';
 import { Coordinates, CoordinatePicker } from './CoordinatePicker';
 import { TIER_PRESETS, TierPreset } from '../../utils/tiers';
-import { isoToNairobiInput, nairobiInputToIso } from '../../utils/time';
+import { eventDuration, formatRunTime, isoToNairobiInput, nairobiInputToIso } from '../../utils/time';
 import { PayoutDetails, PayoutDetailsInput, payoutDetailsError, toPayoutInput } from '../../utils/payoutDetails';
 import { getApiErrorMessage, payoutsApi, PublishBlocked, PublishBlockedError } from '../../services/api';
 import { PayListingFeePanel } from './PayListingFeePanel';
@@ -45,6 +45,7 @@ interface TierRow {
   id: string;
   name: string;
   price: string;
+  /** Empty for no limit */
   quantity: string;
   description: string;
   perks: string;
@@ -84,7 +85,10 @@ const newTierRow = (tier: Partial<TicketTier> = {}, isFree = false): TierRow => 
   id: tier.id || '',
   name: tier.name ?? (isFree ? 'Free Entry' : 'General Admission'),
   price: tier.price ? String(tier.price) : '',
-  quantity: tier.quantity !== undefined ? String(tier.quantity) : tier.available !== undefined ? String(tier.available + (tier.sold || 0)) : '',
+  quantity:
+    tier.quantity !== undefined
+      ? tier.quantity === null ? '' : String(tier.quantity)
+      : typeof tier.available === 'number' ? String(tier.available + (tier.sold || 0)) : '',
   description: tier.description || '',
   perks: (tier.perks || []).join(', '),
   sold: tier.sold || 0,
@@ -260,6 +264,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
   const [venueAddress, setVenueAddress] = useState('');
   const [venueCity, setVenueCity] = useState('');
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  // Used when the event has no ticket types: one price for everyone, and an optional limit on places
+  const [generalPrice, setGeneralPrice] = useState('');
+  const [generalCapacity, setGeneralCapacity] = useState('');
   const [isFree, setIsFree] = useState(false);
   const [tiers, setTiers] = useState<TierRow[]>([]);
   const [imageUrl, setImageUrl] = useState('');
@@ -319,11 +326,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       setVenueCity(eventToEdit.venue.city);
       setCoordinates(eventToEdit.venue.coordinates ?? null);
       setIsFree(Boolean(eventToEdit.isFree));
-      setTiers(
-        eventToEdit.pricing.tiers.length
-          ? eventToEdit.pricing.tiers.map((tier) => newTierRow(tier))
-          : [newTierRow({ price: eventToEdit.pricing.startingPrice, quantity: eventToEdit.capacity }, eventToEdit.isFree)]
-      );
+      setTiers(eventToEdit.pricing.tiers.map((tier) => newTierRow(tier)));
+      setGeneralPrice(!eventToEdit.isFree && eventToEdit.pricing.startingPrice ? String(eventToEdit.pricing.startingPrice) : '');
+      setGeneralCapacity(eventToEdit.capacity ? String(eventToEdit.capacity) : '');
       setImageUrl(eventToEdit.imageUrl);
       setDescription(eventToEdit.description);
       setHostName(eventToEdit.host.name);
@@ -345,7 +350,10 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
       setVenueCity('');
       setCoordinates(null);
       setIsFree(false);
-      setTiers([newTierRow()]);
+      // Ticket types are optional: without any, everyone pays the one price below
+      setTiers([]);
+      setGeneralPrice('');
+      setGeneralCapacity('');
       setImageUrl('');
       setDescription('');
       setHostName('');
@@ -397,8 +405,14 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     setTiers((rows) => rows.filter((row) => row.key !== key));
   };
 
-  // Capacity is the number of people all ticket types admit: a couple ticket uses two places
-  const capacity = tiers.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.admits) || 1), 0);
+  // Capacity is the number of people all ticket types admit: a couple ticket uses two places. A ticket type
+  // without a quantity (or, without ticket types, an empty places field) means there is no limit: null.
+  const capacity: number | null = tiers.length
+    ? tiers.some((row) => !row.quantity.trim())
+      ? null
+      : tiers.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.admits) || 1), 0)
+    : generalCapacity.trim() ? Number(generalCapacity) : null;
+  const runTime = eventDuration(startTime, endTime);
 
   // --- Saving ---------------------------------------------------------------
 
@@ -411,19 +425,33 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
     if (!startTime) missing.push('start time');
     if (!venueName.trim()) missing.push('venue name');
     if (!venueCity.trim()) missing.push('town or city');
-    if (tiers.length === 0) missing.push('at least one ticket type');
+    if (tiers.length === 0 && !isFree && !generalPrice.trim()) missing.push('ticket price');
 
     const problems = missing.length ? [`Please fill in: ${missing.join(', ')}.`] : [];
     if (websiteUrl.trim() && !normalizeWebsiteUrl(websiteUrl)) {
       problems.push('Enter a valid website address, e.g. https://example.co.ke');
     }
+    if (tiers.length === 0) {
+      if (!isFree && generalPrice.trim() && !(Number(generalPrice) > 0)) {
+        problems.push('Enter a ticket price above KSh 0, or mark the event as free.');
+      }
+      const places = Number(generalCapacity);
+      if (generalCapacity.trim() && (!Number.isInteger(places) || places < 1)) {
+        problems.push('The number of places must be a whole number of at least 1, or left empty for no limit.');
+      } else if (generalCapacity.trim() && eventToEdit && places < eventToEdit.attendeeCount) {
+        problems.push(`${eventToEdit.attendeeCount} places are already booked, so the limit cannot be lower.`);
+      }
+    }
     tiers.forEach((row, index) => {
       const label = row.name.trim() || `Ticket type ${index + 1}`;
       if (!row.name.trim()) problems.push(`Ticket type ${index + 1} needs a name.`);
       if (!isFree && !(Number(row.price) > 0)) problems.push(`${label} needs a price above KSh 0 (or mark the event as free).`);
-      const quantity = Number(row.quantity);
-      if (!Number.isInteger(quantity) || quantity < 1) problems.push(`${label} needs a quantity of at least 1.`);
-      else if (quantity < row.sold) problems.push(`${label} already has ${row.sold} sold, so its quantity cannot be lower.`);
+      // An empty quantity means no limit
+      const limited = Boolean(row.quantity.trim());
+      const quantity = limited ? Number(row.quantity) : Infinity;
+      if (limited && (!Number.isInteger(quantity) || quantity < 1)) {
+        problems.push(`${label}: enter a quantity of at least 1, or leave it empty for no limit.`);
+      } else if (quantity < row.sold) problems.push(`${label} already has ${row.sold} sold, so its quantity cannot be lower.`);
       const admits = Number(row.admits);
       if (!Number.isInteger(admits) || admits < 1 || admits > 100) problems.push(`${label}: each ticket admits 1 to 100 people.`);
       if (row.hasSale && !isFree) {
@@ -440,8 +468,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         problems.push(`${label}: sales must close after they open.`);
       }
     });
-    if (endTime && startTime && endTime <= startTime) {
-      problems.push('The end time must be after the start time.');
+    // An end time earlier than the start is the next day (18:00 to 02:00), so only the same time is a mistake
+    if (endTime && startTime && endTime === startTime) {
+      problems.push('The end time is the same as the start time. Change it, or leave it empty.');
     }
     if (filledAgenda.some((row) => !row.time || !row.title.trim())) {
       problems.push('Each agenda item needs a time and a title.');
@@ -456,7 +485,8 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
 
   const buildTiers = (): TicketTier[] =>
     tiers.map((row) => {
-      const quantity = Number(row.quantity);
+      // null for no limit
+      const quantity = row.quantity.trim() ? Number(row.quantity) : null;
       return {
         // New tiers get a placeholder id; the server creates them and assigns a real one
         id: row.id || `tier-new-${row.key}`,
@@ -465,7 +495,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         price: isFree ? 0 : Number(row.price),
         description: row.description.trim(),
         quantity,
-        available: quantity - row.sold,
+        available: quantity === null ? null : quantity - row.sold,
         perks: row.perks
           .split(',')
           .map((perk) => perk.trim())
@@ -507,7 +537,9 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
 
     const builtTiers = buildTiers();
     // The cheapest ticket is the price shown on the event
-    const startingPrice = isFree ? 0 : Math.min(...builtTiers.map((tier) => tier.price));
+    const startingPrice = isFree
+      ? 0
+      : builtTiers.length ? Math.min(...builtTiers.map((tier) => tier.price)) : Number(generalPrice);
     const parsedTags = tags
       .split(',')
       .map((t) => t.trim())
@@ -530,7 +562,7 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           : summary,
       date: formatDisplayDate(isoDate),
       isoDate,
-      time: endTime ? `${startTime} — ${endTime}` : startTime,
+      time: endTime ? `${startTime} — ${endTime}${runTime?.nextDay ? ' (next day)' : ''}` : startTime,
       venue: {
         neighborhood: '',
         ...eventToEdit?.venue,
@@ -772,6 +804,12 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
             <label className={labelClass}>End time</label>
             <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputClass} />
           </div>
+          {runTime && (
+            <p className={`${hintClass} sm:col-span-2 -mt-2`} aria-live="polite">
+              Runs for {formatRunTime(runTime.minutes)}
+              {runTime.nextDay && ', ending the next day'}.
+            </p>
+          )}
         </div>
 
         {/* Venue */}
@@ -821,11 +859,19 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <span className={labelClass}>Ticket types *</span>
+              <span className={labelClass}>Ticket types (optional)</span>
               <p className="text-[11px] text-[#675A50]">
-                Capacity is the total of all ticket types:{' '}
-                <strong className="text-[#1E1814] tabular-nums">{capacity}</strong>{' '}
-                {capacity === 1 ? 'place' : 'places'}
+                {tiers.length === 0 ? (
+                  'Add types such as VIP or Couple, or keep one price for everyone.'
+                ) : capacity === null ? (
+                  'No limit on places: a ticket type has no quantity.'
+                ) : (
+                  <>
+                    Capacity is the total of all ticket types:{' '}
+                    <strong className="text-[#1E1814] tabular-nums">{capacity}</strong>{' '}
+                    {capacity === 1 ? 'place' : 'places'}
+                  </>
+                )}
               </p>
             </div>
             <Button
@@ -866,8 +912,38 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
           </label>
 
           {tiers.length === 0 ? (
-            <div className="p-4 rounded-xl border border-dashed border-[#D8CDBC] bg-[#EFE8DD] text-xs text-[#675A50] text-center">
-              Add at least one ticket type, such as <strong>General Admission</strong> or <strong>VIP</strong>.
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-dashed border-[#D8CDBC] bg-[#EFE8DD]">
+              {!isFree && (
+                <div>
+                  <label className={labelClass} htmlFor="general-price">Ticket price (KSh) *</label>
+                  <input
+                    id="general-price"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    value={generalPrice}
+                    onChange={(e) => setGeneralPrice(e.target.value)}
+                    placeholder="e.g. 1500"
+                    className={inputClass}
+                  />
+                </div>
+              )}
+              <div>
+                <label className={labelClass} htmlFor="general-capacity">Number of places</label>
+                <input
+                  id="general-capacity"
+                  type="number"
+                  min={Math.max(1, eventToEdit?.attendeeCount ?? 0)}
+                  step="1"
+                  inputMode="numeric"
+                  value={generalCapacity}
+                  onChange={(e) => setGeneralCapacity(e.target.value)}
+                  placeholder="No limit"
+                  className={inputClass}
+                />
+                <p className={hintClass}>Leave empty for no limit.</p>
+              </div>
             </div>
           ) : (
             <ol className="space-y-3">
@@ -911,7 +987,8 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                           aria-label={`Ticket type ${n} quantity`}
                           value={row.quantity}
                           onChange={(e) => updateTier(row.key, 'quantity', e.target.value)}
-                          placeholder="Quantity"
+                          placeholder="No limit"
+                          title="Tickets of this type; leave empty for no limit"
                           className={inputClass}
                         />
                         <input
@@ -982,7 +1059,11 @@ export const EventEditorModal: React.FC<EventEditorModalProps> = ({
                       {Number(row.admits) > 1
                         ? `Each ticket admits ${row.admits} people and uses ${row.admits} places.`
                         : 'Each ticket admits one person.'}
-                      {row.sold > 0 && ` ${row.sold} sold · ${Math.max(0, (Number(row.quantity) || 0) - row.sold)} left.`}
+                      {!row.quantity.trim() && ' No limit on the number of tickets.'}
+                      {row.sold > 0 &&
+                        (row.quantity.trim()
+                          ? ` ${row.sold} sold · ${Math.max(0, (Number(row.quantity) || 0) - row.sold)} left.`
+                          : ` ${row.sold} sold.`)}
                     </p>
                     <div className="pl-7">
                       <button

@@ -30,6 +30,7 @@ import { SearchDialog } from './components/search/SearchDialog';
 import { TicketView } from './components/ticket/TicketView';
 import { Modal } from './components/ui/Modal';
 import { PayListingFeePanel } from './components/organizer/PayListingFeePanel';
+import { placesLeft } from './utils/tiers';
 
 // Staff console code is only downloaded once the server has confirmed a staff member on the secret path
 const AdminConsole = lazy(() => import('./components/console/AdminConsole').then((m) => ({ default: m.AdminConsole })));
@@ -394,7 +395,7 @@ function MainLayout() {
       name: event.isFree ? 'Free Entry' : 'General Admission',
       price: event.isFree ? 0 : event.pricing.startingPrice,
       description: '',
-      available: event.capacity - event.attendeeCount,
+      available: placesLeft(event),
       perks: []
     };
     openCheckout(event, tier, 1);

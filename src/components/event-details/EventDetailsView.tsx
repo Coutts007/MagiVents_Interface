@@ -19,7 +19,15 @@ import { Button } from '../ui/Button';
 import { Avatar } from '../ui/Avatar';
 import { EventArtwork } from '../ui/EventArtwork';
 import { formatKES, normalizeWebsiteUrl, websiteHost } from '../../utils/format';
-import { admitsLabel, saleSecondsLeft, saleSecondsUntilStart, tierPriceAt, tierSalesState } from '../../utils/tiers';
+import {
+  MAX_TICKETS_PER_BOOKING,
+  admitsLabel,
+  placesLeft,
+  saleSecondsLeft,
+  saleSecondsUntilStart,
+  tierPriceAt,
+  tierSalesState
+} from '../../utils/tiers';
 import { formatDuration, formatNairobiDateTime } from '../../utils/time';
 import { useNow } from '../../utils/useNow';
 import { LocationMap } from './LocationMap';
@@ -53,7 +61,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
       name: 'General Admission',
       price: event.isFree ? 0 : event.pricing.startingPrice,
       description: '',
-      available: Math.max(0, event.capacity - event.attendeeCount),
+      available: placesLeft(event),
       perks: []
     };
 
@@ -75,20 +83,22 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
   const selectedPrice = event.isFree ? { price: 0, onSale: false } : tierPriceAt(selectedTier, now);
   const admitsPerTicket = selectedTier.admits || 1;
   const totalPrice = selectedPrice.price * quantity;
-  const placesLeft = Math.max(0, event.capacity - event.attendeeCount);
+  // Null for no limit
+  const places = placesLeft(event);
   // A couple or group ticket uses several places, so fewer tickets may fit than the tier has left
   const maxTickets = Math.max(
     0,
     Math.min(
-      selectedTier.available,
-      Math.floor(placesLeft / admitsPerTicket),
+      MAX_TICKETS_PER_BOOKING,
+      selectedTier.available ?? Infinity,
+      places === null ? Infinity : Math.floor(places / admitsPerTicket),
       selectedPrice.onSale && typeof selectedTier.saleRemaining === 'number' ? selectedTier.saleRemaining : Infinity,
       // Free events: one registration per person
       event.isFree ? 1 : Infinity
     )
   );
   const salesState = tierSalesState(selectedTier, now);
-  const isSoldOut = event.status === 'sold_out' || placesLeft === 0 || maxTickets < 1;
+  const isSoldOut = event.status === 'sold_out' || places === 0 || maxTickets < 1;
   const cannotBook = isSoldOut || salesState !== 'on_sale';
 
   // Keep the quantity possible when the sale allowance or availability changes
@@ -518,8 +528,8 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                           ? `On sale from ${formatNairobiDateTime(tier.onSaleFrom)}`
                           : state === 'ended'
                             ? 'Sales closed'
-                            : tier.available > 0
-                              ? `${tier.available} left${tier.onSaleUntil ? ` · until ${formatNairobiDateTime(tier.onSaleUntil)}` : ''}`
+                            : tier.available === null || tier.available > 0
+                              ? `${tier.available === null ? 'Available' : `${tier.available} left`}${tier.onSaleUntil ? ` · until ${formatNairobiDateTime(tier.onSaleUntil)}` : ''}`
                               : 'Sold out'}
                       </span>
                     </button>
@@ -627,7 +637,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                 <span>Capacity</span>
               </div>
               <span className="font-semibold text-[#1E1814] tabular-nums">
-                {event.attendeeCount} / {event.capacity} booked
+                {event.capacity === null ? `${event.attendeeCount} booked · no limit` : `${event.attendeeCount} / ${event.capacity} booked`}
               </span>
             </div>
           </div>

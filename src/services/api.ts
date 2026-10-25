@@ -541,7 +541,7 @@ export interface ConsoleEventRow {
   city: string;
   status: 'published' | 'draft' | 'sold_out';
   isFree: boolean;
-  capacity: number;
+  capacity: number | null;
   ticketsSold: number;
   held: number;
   revenue: number;

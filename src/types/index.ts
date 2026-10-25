@@ -36,10 +36,10 @@ export interface TicketTier {
   name: string;
   price: number;
   description: string;
-  /** Total tickets of this type (set by the organizer) */
-  quantity?: number;
-  /** Tickets still available */
-  available: number;
+  /** Total tickets of this type (set by the organizer); null for no limit */
+  quantity?: number | null;
+  /** Tickets still available; null for no limit */
+  available: number | null;
   /** Tickets already sold or held, set by the server */
   sold?: number;
   perks: string[];
@@ -97,7 +97,8 @@ export interface EventItem {
     startingPrice: number;
     tiers: TicketTier[];
   };
-  capacity: number;
+  /** Places in total; null for no limit */
+  capacity: number | null;
   attendeeCount: number;
   imageUrl: string;
   host: {

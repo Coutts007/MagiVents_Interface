@@ -176,7 +176,7 @@ const OrganizerDetail: React.FC<{ api: ConsoleApi; id: string; onBack: () => voi
                     {event.isFree && <StatusPill status="free" label="Free" />}
                   </div>
                   <p className="text-xs text-[#675A50]">
-                    {event.date} · {event.city} · {event.ticketsSold}/{event.capacity} sold
+                    {event.date} · {event.city} · {event.capacity === null ? `${event.ticketsSold} sold` : `${event.ticketsSold}/${event.capacity} sold`}
                     {event.held ? ` · ${event.held} held` : ''} · {formatKES(event.revenue, null)}
                   </p>
                 </div>

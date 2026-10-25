@@ -61,3 +61,29 @@ export function formatDuration(totalSeconds: number): string {
   if (hours > 0) return `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
   return `${minutes}m ${pad(seconds)}s`;
 }
+
+/** "HH:MM" -> minutes after midnight, or null */
+function minutesOf(time: string): number | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+/**
+ * How long an event runs from its start to its end time. An end at or before the start is on the next day
+ * (18:00 to 02:00 is 8 hours), so evening events that run past midnight need no date of their own.
+ */
+export function eventDuration(start: string, end: string): { minutes: number; nextDay: boolean } | null {
+  const from = minutesOf(start);
+  const to = minutesOf(end);
+  if (from === null || to === null || from === to) return null;
+  const nextDay = to < from;
+  return { minutes: (nextDay ? to + 24 * 60 : to) - from, nextDay };
+}
+
+/** 510 -> "8 hours 30 minutes", 45 -> "45 minutes", 60 -> "1 hour" */
+export function formatRunTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const part = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+  return [hours ? part(hours, 'hour') : '', rest ? part(rest, 'minute') : ''].filter(Boolean).join(' ');
+}

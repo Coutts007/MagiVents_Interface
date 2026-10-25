@@ -4,6 +4,7 @@ import { EventItem } from '../../types';
 import { Badge } from '../ui/Badge';
 import { EventArtwork } from '../ui/EventArtwork';
 import { formatKES } from '../../utils/format';
+import { placesLeft } from '../../utils/tiers';
 
 /** "2026-10-24" -> "Sat, 24 Oct 2026" (parsed as a local date, so it never shifts a day) */
 function formatEventDate(isoDate: string, fallback: string): string {
@@ -37,7 +38,7 @@ export const EventCard: React.FC<EventCardProps> = ({
   onShare,
   onTagClick
 }) => {
-  const placesLeft = Math.max(0, event.capacity - event.attendeeCount);
+  const places = placesLeft(event);
 
   return (
     <article
@@ -172,10 +173,14 @@ export const EventCard: React.FC<EventCardProps> = ({
         {/* Card Footer: Capacity & Detail Affordance */}
         <div className="pt-4 border-t border-[#D8CDBC]/80 flex items-center justify-between">
           <div className="text-xs text-[#675A50]">
-            <span className="font-medium text-[#1E1814] tabular-nums">
-              {placesLeft}
-            </span>{' '}
-            {placesLeft === 1 ? 'place' : 'places'} left
+            {places === null ? (
+              'Places available'
+            ) : (
+              <>
+                <span className="font-medium text-[#1E1814] tabular-nums">{places}</span>{' '}
+                {places === 1 ? 'place' : 'places'} left
+              </>
+            )}
           </div>
 
           <div className="inline-flex items-center gap-1 text-xs font-medium text-[#8A4F33] group-hover:translate-x-0.5 transition-transform duration-200">

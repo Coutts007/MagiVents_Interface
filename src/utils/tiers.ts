@@ -1,4 +1,12 @@
-import { TicketTier } from '../types';
+import { EventItem, TicketTier } from '../types';
+
+/** Most tickets one booking can buy (the server's limit) */
+export const MAX_TICKETS_PER_BOOKING = 20;
+
+/** Places still free at an event, or null when it has no capacity limit */
+export function placesLeft(event: Pick<EventItem, 'capacity' | 'attendeeCount'>): number | null {
+  return event.capacity === null || event.capacity === undefined ? null : Math.max(0, event.capacity - event.attendeeCount);
+}
 
 /** Ticket types the organizer can add with one click and then edit freely. Any other name is fine too. */
 export interface TierPreset {
