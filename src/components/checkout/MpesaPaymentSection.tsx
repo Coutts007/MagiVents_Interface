@@ -186,7 +186,7 @@ export const MpesaPaymentSection: React.FC<MpesaPaymentSectionProps> = ({
 
       <div className="flex items-center gap-1.5 text-[11px] text-[#675A50]">
         <ShieldCheck className="w-3.5 h-3.5 text-[#00A34D]" />
-        <span>Your tickets are held for {config?.paymentHoldMinutes ?? 10} minutes while you pay.</span>
+        <span>Your tickets are held for {config?.paymentHoldMinutes ?? 2} minutes while you pay.</span>
       </div>
     </div>
   );

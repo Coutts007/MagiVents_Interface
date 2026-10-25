@@ -298,7 +298,7 @@ All variables are listed with comments in `MagiVents_backend/.env.example` and `
 | Variable | Default | Purpose |
 |---|---|---|
 | `PAYMENTS_MODE` | `simulated` | `simulated` or `live`. Also decides listing fees: `simulated` takes them online with the fake gateway; `live` has no online listing-fee gateway yet, so organizers pay the platform Paybill or Till by hand and an admin records it |
-| `PAYMENT_HOLD_MINUTES` | `10` | How long a pending booking holds its tickets |
+| `PAYMENT_HOLD_MINUTES` | `2` | How long a pending booking holds its tickets |
 | `PAYMENTS_SIMULATED_DELAY_SECONDS` | `6` | How long the fake gateway takes (0 = immediately) |
 | `PAYMENT_CALLBACK_SECRET` | empty | Unguessable path segment in Daraja callback URLs (required for Daraja) |
 | `DARAJA_ALLOWED_IPS` | empty | Optional allowlist of Safaricom callback IPs |
@@ -427,7 +427,7 @@ Data migrations gave the organizer role to every user who already owned an event
    - **Card.** Paystack's secure page; MagiVents never sees card details.
 4. **Submit.**
    - Free bookings are confirmed at once.
-   - Paid bookings become **pending**, and their tickets are held for 10 minutes with a visible countdown.
+   - Paid bookings become **pending**, and their tickets are held for 2 minutes with a visible countdown.
 5. **Complete the payment.** What the attendee sees depends on the method:
    - STK: **Check your phone**, then approve with the M-Pesa PIN.
    - Paybill: the business number, a personal account number (e.g. `MV4KL8JPEF`) and the exact amount.
