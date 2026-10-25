@@ -53,7 +53,8 @@ describe('formatCountdown', () => {
 describe('pollDelay', () => {
   it('polls quickly at first, then backs off', () => {
     expect(pollDelay(0)).toBe(2500);
-    expect(pollDelay(15)).toBe(4000);
+    expect(pollDelay(35)).toBe(2500);
+    expect(pollDelay(40)).toBe(4000);
     expect(pollDelay(100)).toBe(8000);
   });
 });

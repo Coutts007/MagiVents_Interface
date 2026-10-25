@@ -35,10 +35,11 @@ export function formatCountdown(totalSeconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-/** Poll quickly at first (most M-Pesa prompts are answered in seconds), then back off. */
+/** Poll quickly while an M-Pesa prompt can still be answered (about 90 s), so the result shows within seconds
+ * of the attendee acting on it; then back off (Paybill payments take longer). */
 export function pollDelay(attempt: number): number {
-  if (attempt < 10) return 2500;
-  if (attempt < 30) return 4000;
+  if (attempt < 36) return 2500;
+  if (attempt < 60) return 4000;
   return 8000;
 }
 
