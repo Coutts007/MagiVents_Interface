@@ -82,7 +82,9 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
     Math.min(
       selectedTier.available,
       Math.floor(placesLeft / admitsPerTicket),
-      selectedPrice.onSale && typeof selectedTier.saleRemaining === 'number' ? selectedTier.saleRemaining : Infinity
+      selectedPrice.onSale && typeof selectedTier.saleRemaining === 'number' ? selectedTier.saleRemaining : Infinity,
+      // Free events: one registration per person
+      event.isFree ? 1 : Infinity
     )
   );
   const salesState = tierSalesState(selectedTier, now);
@@ -528,6 +530,9 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
               )}
 
               {/* Quantity Selector */}
+              {event.isFree ? (
+              <p className="mb-6 text-xs text-[#675A50]">Free event: one ticket per person.</p>
+              ) : (
               <div className="mb-6">
                 <label className="text-xs font-semibold text-[#1E1814] uppercase tracking-wider block mb-2">
                   Number of tickets
@@ -556,6 +561,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
                   </button>
                 </div>
               </div>
+              )}
 
               {/* Inclusions summary */}
               {selectedTier.perks.length > 0 && (
