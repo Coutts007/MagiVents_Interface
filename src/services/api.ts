@@ -109,7 +109,7 @@ function refreshAccessToken(): Promise<string> {
 }
 
 /** Shown for any failure on the server's side; the details stay in the server log */
-export const SERVER_ERROR_MESSAGE = 'Server error.';
+export const SERVER_ERROR_MESSAGE = 'Something went wrong on our side. Please try again in a moment.';
 /** Shown when the request never reached the server */
 export const NETWORK_ERROR_MESSAGE = 'Network error. Check your connection and try again.';
 
@@ -160,6 +160,13 @@ export function getApiErrorMessage(error: unknown, fallback = 'Something went wr
   return firstMessage(data) || fallback;
 }
 
+/** The server's machine-readable error code (e.g. "account_not_found"), when it sent one */
+export function getApiErrorCode(error: unknown): string | null {
+  if (!axios.isAxiosError(error) || !error.response) return null;
+  const data = error.response.data as { code?: unknown } | null;
+  return data && typeof data === 'object' && typeof data.code === 'string' ? data.code : null;
+}
+
 // --- Auth -------------------------------------------------------------------
 
 export const authApi = {
@@ -167,8 +174,9 @@ export const authApi = {
     API.post<AuthResponse>('/auth/login/', { email, password }).then((r) => r.data),
   register: (name: string, email: string, password: string) =>
     API.post<AuthResponse>('/auth/register/', { name, email, password }).then((r) => r.data),
-  google: (credential: string) =>
-    API.post<AuthResponse>('/auth/google/', { credential }).then((r) => r.data),
+  /** signin: only an existing account; signup: creates one when there is none */
+  google: (credential: string, intent: 'signin' | 'signup') =>
+    API.post<AuthResponse>('/auth/google/', { credential, intent }).then((r) => r.data),
   profile: () => API.get<UserProfile>('/auth/profile/').then((r) => r.data),
   updateProfile: (updates: Partial<UserProfile>) =>
     API.patch<UserProfile>('/auth/profile/', updates).then((r) => r.data),

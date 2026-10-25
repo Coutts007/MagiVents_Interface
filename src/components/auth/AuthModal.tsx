@@ -12,7 +12,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { AuthModalMode } from '../../types/auth';
-import { useAuth } from '../../context/AuthContext';
+import { AuthError, useAuth } from '../../context/AuthContext';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -44,6 +44,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   // States
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [suggestSignup, setSuggestSignup] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   const resetForm = () => {
@@ -52,6 +53,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setPassword('');
     setConfirmPassword('');
     setErrorMessage(null);
+    setSuggestSignup(false);
     setSuccessNotice(null);
     setShowPassword(false);
   };
@@ -64,6 +66,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setSuggestSignup(false);
     try {
       await login(email, password);
       resetForm();
@@ -95,14 +98,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleGoogleAuth = async (credential: string) => {
     setErrorMessage(null);
+    setSuggestSignup(false);
     setIsGoogleLoading(true);
     try {
-      await loginWithGoogle(credential);
+      await loginWithGoogle(credential, mode === 'signup' ? 'signup' : 'signin');
       resetForm();
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Google authentication was not completed.');
+      setErrorMessage(err.message || 'Google sign-in was not completed. Please try again.');
+      // Signed in with a Google account that has no MagiVents account yet: offer sign-up in one tap
+      setSuggestSignup(err instanceof AuthError && err.code === 'account_not_found');
     } finally {
       setIsGoogleLoading(false);
     }
@@ -195,7 +201,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {errorMessage && (
           <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start gap-2.5 text-xs text-red-800 animate-in fade-in">
             <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{errorMessage}</span>
+            <div className="space-y-2">
+              <span className="leading-relaxed block">{errorMessage}</span>
+              {suggestSignup && mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setErrorMessage(null);
+                    setSuggestSignup(false);
+                  }}
+                  className="font-semibold text-[#8A4F33] underline underline-offset-2 cursor-pointer"
+                >
+                  Sign up instead
+                </button>
+              )}
+            </div>
           </div>
         )}
 

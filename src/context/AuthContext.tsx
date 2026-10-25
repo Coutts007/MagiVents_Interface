@@ -1,6 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types/auth';
-import { authApi, AuthResponse, getApiErrorMessage, setSessionExpiredHandler, tokenStore } from '../services/api';
+import {
+  authApi,
+  AuthResponse,
+  getApiErrorCode,
+  getApiErrorMessage,
+  setSessionExpiredHandler,
+  tokenStore
+} from '../services/api';
+
+/** An auth failure with a message for the user and, when the server sent one, its code */
+export class AuthError extends Error {
+  constructor(message: string, public readonly code: string | null = null) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -10,8 +25,9 @@ interface AuthContextType {
   isInitializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  /** Exchanges a Google Identity Services ID token (credential) for a MagiVents session */
-  loginWithGoogle: (credential: string) => Promise<void>;
+  /** Exchanges a Google Identity Services ID token (credential) for a MagiVents session. With "signin" an account
+   * must already exist (AuthError code "account_not_found" otherwise); "signup" creates one. */
+  loginWithGoogle: (credential: string, intent?: 'signin' | 'signup') => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -51,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       return await action();
     } catch (err) {
-      throw new Error(getApiErrorMessage(err, fallback));
+      throw new AuthError(getApiErrorMessage(err, fallback), getApiErrorCode(err));
     } finally {
       setIsLoading(false);
     }
@@ -81,8 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     startSession(response);
   };
 
-  const loginWithGoogle = async (credential: string): Promise<void> => {
-    const response = await run(() => authApi.google(credential), 'Google authentication was not completed.');
+  const loginWithGoogle = async (credential: string, intent: 'signin' | 'signup' = 'signin'): Promise<void> => {
+    const response = await run(() => authApi.google(credential, intent), 'Google sign-in was not completed. Please try again.');
     startSession(response);
   };
 
